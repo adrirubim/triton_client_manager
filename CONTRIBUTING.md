@@ -36,7 +36,17 @@ cd MANAGER
 .venv/bin/python -m unittest tests.test_regression -v
 ```
 
-### 3. Integration tests (WebSocket)
+### 3. Full test suite (pytest)
+
+```bash
+cd MANAGER
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt -r requirements-test.txt
+.venv/bin/pytest tests/ -v
+```
+
+### 4. Integration tests (WebSocket only)
 
 Requires: `pip install -r requirements-test.txt` (pytest, pytest-asyncio, websockets).  
 The server is started automatically by a session-scoped fixture:
@@ -48,7 +58,7 @@ cd MANAGER
 
 Alternative: `python tests/smoke_runtime.py --with-ws-client` (standalone, no pytest).
 
-### 4. Compilation check
+### 5. Compilation check
 
 ```bash
 cd MANAGER
@@ -56,7 +66,7 @@ python -m py_compile client_manager.py
 python -m compileall -q classes utils
 ```
 
-Continuous integration should run at least the regression suite on pull requests. Smoke and integration tests are recommended locally before pushing.
+Continuous integration should run at least the regression suite and a subset of pytest on pull requests. Smoke and integration tests are recommended locally before pushing.
 
 ## Upgrade Dependencies
 

@@ -1,8 +1,20 @@
 from typing import TYPE_CHECKING, Callable
-from classes.job.joberrors import *
+
+from classes.docker.dockererrors import DockerAPIError, DockerCreationMissingField, DockerImageNotFound
+from classes.job.joberrors import (
+    JobActionNotFound,
+    JobContainerCreationFailed,
+    JobDeletionFailed,
+    JobDeletionMissingField,
+    JobVMCreationFailed,
+)
 from classes.openstack.openstackerrors import OpenstackCreationMissingKey, OpenstackResourceNotFound
-from classes.docker.dockererrors import DockerCreationMissingField, DockerImageNotFound, DockerAPIError
-from classes.triton.tritonerrors import TritonServerHealthFailed, TritonModelLoadFailed, TritonModelNotReady, TritonConfigDownloadFailed
+from classes.triton.tritonerrors import (
+    TritonConfigDownloadFailed,
+    TritonModelLoadFailed,
+    TritonModelNotReady,
+    TritonServerHealthFailed,
+)
 
 from .creation import JobCreation
 from .deletion import JobDeletion
@@ -45,32 +57,65 @@ class JobManagement:
         """Process management request and send response"""
 
         try:
-            msg_uuid: str     = msg.get("uuid")
+            msg_uuid: str = msg.get("uuid")
             msg_payload: dict = msg.get("payload", {})
             payload_action: str = msg_payload.get("action")
 
-            if payload_action not in self.management_actions_available: raise JobActionNotFound(payload_action)
-            action_function = getattr(self, payload_action, None)
-            if not action_function: raise JobActionNotFound(payload_action)
+            if payload_action not in self.management_actions_available:
+                raise JobActionNotFound(payload_action)
 
-            data   = action_function(msg_uuid, msg_payload)
+            action_function = getattr(self, payload_action, None)
+            if not action_function:
+                raise JobActionNotFound(payload_action)
+
+            data = action_function(msg_uuid, msg_payload)
             status = True
 
-        except JobActionNotFound as e:           status = False; data = str(e)
-        except JobVMCreationFailed as e:         status = False; data = str(e)
-        except JobContainerCreationFailed as e:  status = False; data = str(e)
-        except JobDeletionMissingField as e:     status = False; data = str(e)
-        except JobDeletionFailed as e:           status = False; data = str(e)
-        except OpenstackCreationMissingKey as e: status = False; data = str(e)
-        except OpenstackResourceNotFound as e:   status = False; data = str(e)
-        except DockerCreationMissingField as e:  status = False; data = str(e)
-        except DockerImageNotFound as e:         status = False; data = str(e)
-        except DockerAPIError as e:              status = False; data = str(e)
-        except TritonServerHealthFailed as e:    status = False; data = str(e)
-        except TritonModelLoadFailed as e:       status = False; data = str(e)
-        except TritonModelNotReady as e:         status = False; data = str(e)
-        except TritonConfigDownloadFailed as e:  status = False; data = str(e)
-        except Exception as e:                   status = False; data = f"Unexpected error: {str(e)}"
+        except JobActionNotFound as e:
+            status = False
+            data = str(e)
+        except JobVMCreationFailed as e:
+            status = False
+            data = str(e)
+        except JobContainerCreationFailed as e:
+            status = False
+            data = str(e)
+        except JobDeletionMissingField as e:
+            status = False
+            data = str(e)
+        except JobDeletionFailed as e:
+            status = False
+            data = str(e)
+        except OpenstackCreationMissingKey as e:
+            status = False
+            data = str(e)
+        except OpenstackResourceNotFound as e:
+            status = False
+            data = str(e)
+        except DockerCreationMissingField as e:
+            status = False
+            data = str(e)
+        except DockerImageNotFound as e:
+            status = False
+            data = str(e)
+        except DockerAPIError as e:
+            status = False
+            data = str(e)
+        except TritonServerHealthFailed as e:
+            status = False
+            data = str(e)
+        except TritonModelLoadFailed as e:
+            status = False
+            data = str(e)
+        except TritonModelNotReady as e:
+            status = False
+            data = str(e)
+        except TritonConfigDownloadFailed as e:
+            status = False
+            data = str(e)
+        except Exception as e:
+            status = False
+            data = f"Unexpected error: {str(e)}"
         finally:
             response_payload = msg.copy()
             response_payload["payload"] = {"status": status, "data": data}

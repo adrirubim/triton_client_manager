@@ -5,8 +5,8 @@ from typing import Optional
 @dataclass
 class Flavor:
     # --- Identity ---
-    id: str               # id (UUID with microversion 2.53)
-    name: str             
+    id: str  # id (UUID with microversion 2.53)
+    name: str
 
     # --- Info ---
     vcpus: int
@@ -20,16 +20,14 @@ class Flavor:
 
         for raw in flavors["flavors"]:
             needed = {
-                
                 # --- Identity ---
                 "id": raw["id"],
                 "name": raw["name"],
-
                 # --- Info ---
                 "swap": raw.get("swap", None),
                 "vcpus": raw["vcpus"],
                 "local_gb": raw["disk"],
-                "memory_mb": raw["ram"]
+                "memory_mb": raw["ram"],
             }
 
             flavors[needed["id"]] = cls(**needed)

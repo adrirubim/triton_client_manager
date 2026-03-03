@@ -1,4 +1,4 @@
-from .info.info import TritonInfo
-from .info.data.server import TritonServer
 from .infer import TritonInfer
+from .info.data.server import TritonServer
+from .info.info import TritonInfo
 from .tritonthread import TritonThread

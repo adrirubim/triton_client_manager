@@ -35,6 +35,18 @@ Reference for Triton Client Manager (MANAGER). `requirements.txt` uses minimum v
 | numpy | 1.26.0 |
 | protobuf | 5.26.0 |
 
+## Test / Dev Dependencies
+
+| Package | Minimum |
+|---------|---------|
+| pytest | 9.0.0 |
+| pytest-asyncio | 0.23.0 |
+| websockets | 12.0 |
+| coverage | 7.6.0 |
+| black | 24.4.0 |
+| ruff | 0.5.0 |
+| isort | 5.13.0 |
+
 ## Upgrade
 
 ```bash

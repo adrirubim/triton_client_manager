@@ -106,11 +106,15 @@ class VM:
 
         # Zone / host - try direct attribute access first, then dict lookup
         # Use hypervisor_hostname for the actual host machine name
-        zone = getattr(s, 'availability_zone', None) or pick(d, "OS-EXT-AZ:availability_zone", "OS_EXT_AZ_availability_zone")
-        host = (getattr(s, 'hypervisor_hostname', None) or 
-                pick(d, "OS-EXT-SRV-ATTR:hypervisor_hostname", "OS_EXT_SRV_ATTR_hypervisor_hostname") or
-                getattr(s, 'host', None) or 
-                pick(d, "OS-EXT-SRV-ATTR:host", "OS_EXT_SRV_ATTR_host"))
+        zone = getattr(s, "availability_zone", None) or pick(
+            d, "OS-EXT-AZ:availability_zone", "OS_EXT_AZ_availability_zone"
+        )
+        host = (
+            getattr(s, "hypervisor_hostname", None)
+            or pick(d, "OS-EXT-SRV-ATTR:hypervisor_hostname", "OS_EXT_SRV_ATTR_hypervisor_hostname")
+            or getattr(s, "host", None)
+            or pick(d, "OS-EXT-SRV-ATTR:host", "OS_EXT_SRV_ATTR_host")
+        )
 
         identity = Identity(
             id=str(pick(d, "id", default="")),
@@ -157,12 +161,14 @@ class VM:
                     ip = a.get("addr")
                     mac = a.get("OS-EXT-IPS-MAC:mac_addr")
                     if ver in (4, 6) and ip:
-                        nets.append(Networking(
-                            network=str(net_name),
-                            address_type=int(ver),
-                            address=str(ip),
-                            mac=str(mac) if mac else None,
-                        ))
+                        nets.append(
+                            Networking(
+                                network=str(net_name),
+                                address_type=int(ver),
+                                address=str(ip),
+                                mac=str(mac) if mac else None,
+                            )
+                        )
 
         # Access
         sec_groups_raw = d.get("security_groups") or []
@@ -188,30 +194,42 @@ class VM:
         timestamps = Timestamps(
             created=parse_dt(pick(d, "created", "created_at")),
             updated=parse_dt(pick(d, "updated", "updated_at")),
-            launched=parse_dt(pick(d, "OS-SRV-USG:launched_at", "OS_SRV_USG_launched_at", "launched_at")),
-            terminated=parse_dt(pick(d, "OS-SRV-USG:terminated_at", "OS_SRV_USG_terminated_at", "terminated_at")),
+            launched=parse_dt(
+                pick(d, "OS-SRV-USG:launched_at", "OS_SRV_USG_launched_at", "launched_at")
+            ),
+            terminated=parse_dt(
+                pick(d, "OS-SRV-USG:terminated_at", "OS_SRV_USG_terminated_at", "terminated_at")
+            ),
         )
 
         # State - try direct attribute access first for OpenStack extension fields
-        volumes_attached = pick(d,
-            "os-extended-volumes:volumes_attached",
-            "os_extended_volumes_volumes_attached",
-            default=[]
-        ) or []
+        volumes_attached = (
+            pick(
+                d,
+                "os-extended-volumes:volumes_attached",
+                "os_extended_volumes_volumes_attached",
+                default=[],
+            )
+            or []
+        )
 
-        power_state = getattr(s, 'power_state', None) or pick(d, "OS-EXT-STS:power_state", "OS_EXT_STS_power_state")
-        task_state = getattr(s, 'task_state', None) or pick(d, "OS-EXT-STS:task_state", "OS_EXT_STS_task_state")
-        
+        power_state = getattr(s, "power_state", None) or pick(
+            d, "OS-EXT-STS:power_state", "OS_EXT_STS_power_state"
+        )
+        task_state = getattr(s, "task_state", None) or pick(
+            d, "OS-EXT-STS:task_state", "OS_EXT_STS_task_state"
+        )
+
         # Handle locked: if False/None -> None, if True -> get the reason string
-        locked_bool = getattr(s, 'locked', None)
+        locked_bool = getattr(s, "locked", None)
         if locked_bool is None:
             locked_bool = pick(d, "locked")
-        
+
         locked_reason = None
         if locked_bool:
-            locked_reason = (getattr(s, 'locked_reason', None) or 
-                           pick(d, "locked_reason") or 
-                           "Locked")  # Default if no reason provided
+            locked_reason = (
+                getattr(s, "locked_reason", None) or pick(d, "locked_reason") or "Locked"
+            )  # Default if no reason provided
 
         state = State(
             status=pick(d, "status"),

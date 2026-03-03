@@ -2,10 +2,11 @@ import logging
 from typing import TYPE_CHECKING, Callable
 
 from classes.job.joberrors import JobInferenceMissingField
-from classes.triton.tritonerrors import TritonInferenceFailed
 from classes.triton import TritonInfer
-from .handlers.http import JobInferenceHttp
+from classes.triton.tritonerrors import TritonInferenceFailed
+
 from .handlers.grpc import JobInferenceGrpc
+from .handlers.http import JobInferenceHttp
 
 if TYPE_CHECKING:
     from classes.docker import DockerThread
@@ -22,12 +23,14 @@ logger = logging.getLogger(__name__)
 class JobInference:
     """Handles inference-type job requests"""
 
-    def __init__(self,
-                 triton: "TritonThread",
-                 docker: "DockerThread",
-                 openstack: "OpenstackThread",
-                 websocket: Callable[[str, dict], bool],
-                 inference_actions_available: list): #TODO remove actions avliable not needed ( remove even the row inside the confing and all related)
+    def __init__(
+        self,
+        triton: "TritonThread",
+        docker: "DockerThread",
+        openstack: "OpenstackThread",
+        websocket: Callable[[str, dict], bool],
+        inference_actions_available: list,
+    ):  # TODO remove actions avliable not needed ( remove even the row inside the confing and all related)
 
         self.triton = triton
         self.docker = docker
@@ -45,12 +48,13 @@ class JobInference:
         if self._http is not None and self._grpc is not None:
             return
 
-        if not hasattr(self.triton, "triton_infer") or not isinstance(self.triton.triton_infer, TritonInfer):
+        if not hasattr(self.triton, "triton_infer") or not isinstance(
+            self.triton.triton_infer, TritonInfer
+        ):
             raise RuntimeError("TritonThread.triton_infer is not initialized")
 
         self._http = JobInferenceHttp(self.docker, self.triton.triton_infer, self.triton)
         self._grpc = JobInferenceGrpc(self.docker, self.triton.triton_infer, self.triton)
-
 
     def handle_inference(self, msg: dict):
         """
@@ -62,7 +66,7 @@ class JobInference:
         """
 
         msg_uuid: str = msg.get("uuid", "")
-        payload:  dict = msg.get("payload", {}) or {}
+        payload: dict = msg.get("payload", {}) or {}
 
         if not msg_uuid:
             raise JobInferenceMissingField("uuid")
@@ -114,7 +118,9 @@ class JobInference:
             logger.warning("Triton inference failed: %s", e)
             self.websocket(
                 msg_uuid,
-                self._make_payload(msg_uuid, "FAILED", e.model_name if hasattr(e, "model_name") else None, str(e)),
+                self._make_payload(
+                    msg_uuid, "FAILED", e.model_name if hasattr(e, "model_name") else None, str(e)
+                ),
             )
         except Exception as e:  # noqa: BLE001
             logger.exception("Unexpected inference error")
@@ -123,16 +129,12 @@ class JobInference:
                 self._make_payload(msg_uuid, "FAILED", None, f"Unexpected error: {e}"),
             )
 
-
-
     # -------------------------------------------- #
     #              WEBSOCKET HELPERS                #
     # -------------------------------------------- #
     def _make_payload(self, msg_uuid: str, status: str, model_name: str, data) -> dict:
-        return {"type": "inference",
-                "uuid": msg_uuid,
-                "payload": {
-                            "data":       data,
-                            "status":     status,
-                            "model_name": model_name}}
-
+        return {
+            "type": "inference",
+            "uuid": msg_uuid,
+            "payload": {"data": data, "status": status, "model_name": model_name},
+        }

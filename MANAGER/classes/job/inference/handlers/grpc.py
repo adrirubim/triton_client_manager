@@ -1,25 +1,27 @@
 import logging
-
-logger = logging.getLogger(__name__)
-
 from typing import TYPE_CHECKING, Callable
+
 from classes.triton import TritonInfer
 from classes.triton.tritonerrors import TritonInferenceFailed
+
 from .base import check_instance, validate_fields
 
 if TYPE_CHECKING:
     from classes.docker import DockerThread
     from classes.triton import TritonThread
 
+logger = logging.getLogger(__name__)
+
 
 class JobInferenceGrpc:
     """gRPC streaming inference handler."""
 
-    def __init__(self, docker: "DockerThread", triton_infer: TritonInfer,
-                 triton: "TritonThread" = None):
-        self.docker       = docker
+    def __init__(
+        self, docker: "DockerThread", triton_infer: TritonInfer, triton: "TritonThread" = None
+    ):
+        self.docker = docker
         self.triton_infer = triton_infer
-        self.triton       = triton
+        self.triton = triton
 
     def handle(self, msg_uuid: str, payload: dict, send: Callable) -> None:
         logger.info(" Running gRPC inference...")

@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from classes.openstack import OpenstackThread
 
+
 class JobDeleteVM:
     def __init__(self, openstack: "OpenstackThread"):
         self.openstack = openstack
@@ -13,4 +14,4 @@ class JobDeleteVM:
         self.openstack.delete_vm(payload)
 
         print(f"[Deletion-{msg_uuid}] ✓ VM deleted: {payload['vm_id']}")
-        return 
+        return

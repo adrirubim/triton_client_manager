@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional
 
+
 @dataclass
 class VM:
     # --- Identity ---
@@ -41,7 +42,7 @@ class VM:
                 return e.get("OS-EXT-IPS-MAC:mac_addr"), e.get("addr")
 
         return None, None
-    
+
     @classmethod
     def _parse_raw(cls, raw: dict) -> dict:
         addresses: dict[str, list[dict]] = raw.get("addresses") or {}
@@ -74,21 +75,23 @@ class VM:
             parsed = cls._parse_raw(raw)
             vms[parsed["id"]] = cls(**parsed)
         return vms
-    
+
     @classmethod
     def from_id(cls, raw: dict) -> "VM":
         return cls(**cls._parse_raw(raw))
-    
+
     def has_changed(self, other: "VM") -> tuple[bool, list[str]]:
         changed_fields = []
-        
+
         if self.status != other.status:
             changed_fields.append(f"status: {other.status} -> {self.status}")
-        
+
         if self.host_id != other.host_id:
             changed_fields.append(f"host_id: {other.host_id} -> {self.host_id}")
-        
+
         if self.address_private != other.address_private:
-            changed_fields.append(f"address_private: {other.address_private} -> {self.address_private}")
-        
+            changed_fields.append(
+                f"address_private: {other.address_private} -> {self.address_private}"
+            )
+
         return (len(changed_fields) > 0, changed_fields)

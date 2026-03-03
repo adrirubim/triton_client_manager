@@ -6,6 +6,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
 app = FastAPI()
 
+
 def build_hf_conversion_job_payload() -> Dict[str, Any]:
     return {
         "job_id": str(uuid.uuid4()),
@@ -18,6 +19,7 @@ def build_hf_conversion_job_payload() -> Dict[str, Any]:
         "priority": "normal",
     }
 
+
 async def send_job_loop(ws: WebSocket, interval_s: float = 5.0):
     """
     Sends a new job every `interval_s` seconds until cancelled/disconnected.
@@ -26,6 +28,7 @@ async def send_job_loop(ws: WebSocket, interval_s: float = 5.0):
         payload = build_hf_conversion_job_payload()
         await ws.send_text(json.dumps({"type": "job", "payload": payload}))
         await asyncio.sleep(interval_s)
+
 
 @app.websocket("/ws")
 async def ws_endpoint(ws: WebSocket):
@@ -40,7 +43,9 @@ async def ws_endpoint(ws: WebSocket):
         msg = json.loads(raw)
 
         if msg.get("type") != "auth":
-            await ws.send_text(json.dumps({"type": "error", "payload": {"message": "auth required"}}))
+            await ws.send_text(
+                json.dumps({"type": "error", "payload": {"message": "auth required"}})
+            )
             await ws.close(code=1008)
             return
 

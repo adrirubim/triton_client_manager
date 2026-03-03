@@ -1,2 +1,2 @@
-from .jobthread import JobThread
 from .joberrors import *
+from .jobthread import JobThread

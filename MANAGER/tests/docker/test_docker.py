@@ -14,7 +14,7 @@ from typing import Optional
 import pytest
 
 # Add parent directory to path (works from any location)
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 
 def _docker_worker_reachable(host: str, port: int, timeout: float = 2.0) -> bool:
@@ -27,6 +27,7 @@ def _docker_worker_reachable(host: str, port: int, timeout: float = 2.0) -> bool
         return result == 0
     except Exception:
         return False
+
 
 from classes.docker.info import DockerInfo
 from classes.docker.creation import DockerCreation
@@ -43,16 +44,16 @@ class MockVM:
 
 def load_config():
     """Load configuration from docker.yaml"""
-    config_path = os.path.join(os.path.dirname(__file__), '../../config/docker.yaml')
-    with open(config_path, 'r') as f:
+    config_path = os.path.join(os.path.dirname(__file__), "../../config/docker.yaml")
+    with open(config_path, "r") as f:
         return yaml.safe_load(f)
 
 
 def test_1_load_config(config=None):
     """Test 1: Load and validate configuration"""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("TEST 1: Load Configuration from docker.yaml")
-    print("="*60)
+    print("=" * 60)
 
     cfg = config if config is not None else load_config()
     assert cfg is not None, "Failed to load configuration"
@@ -69,9 +70,9 @@ def test_1_load_config(config=None):
 
 def test_2_registry_images(config):
     """Test 2: Discover images from Docker registry"""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("TEST 2: Discover Images from Registry")
-    print("="*60)
+    print("=" * 60)
 
     docker_info = DockerInfo(config)
     print(f"\n📡 Connecting to registry: {config['registry_endpoint']}")
@@ -96,17 +97,13 @@ def test_2_registry_images(config):
 
 def test_3_container_discovery(config):
     """Test 3: Discover containers from worker VMs"""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("TEST 3: Discover Containers from Worker VMs")
-    print("="*60)
+    print("=" * 60)
 
     docker_info = DockerInfo(config)
     mock_vms = {
-        "vm-001": MockVM(
-            id="vm-001",
-            name="docker-worker-1",
-            address_private="10.50.0.234"
-        )
+        "vm-001": MockVM(id="vm-001", name="docker-worker-1", address_private="10.50.0.234")
     }
 
     print(f"\n📡 Querying worker VMs...")
@@ -142,9 +139,9 @@ def test_4_container_lifecycle(config, mock_vms):
             "(run in environment with access to worker VM)"
         )
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("TEST 4: Container Lifecycle (Create & Delete)")
-    print("="*60)
+    print("=" * 60)
 
     docker_creation = DockerCreation(config)
     docker_deletion = DockerDeletion(config)
@@ -156,9 +153,9 @@ def test_4_container_lifecycle(config, mock_vms):
 
     try:
         # Step 1: Create Container
-        print("\n" + "-"*60)
+        print("\n" + "-" * 60)
         print("STEP 1: Creating Container")
-        print("-"*60)
+        print("-" * 60)
 
         print(f"\n📦 Creating container...")
         print(f"   Worker: {worker_ip}")
@@ -171,16 +168,16 @@ def test_4_container_lifecycle(config, mock_vms):
             name=test_container_name,
             command=["sleep", "300"],
             detach=True,
-            auto_remove=False
+            auto_remove=False,
         )
 
         assert container_id, "Container creation failed"
         print(f"\n✅ Container created: {container_id[:12]}")
 
         # Step 2: Verify Container Exists
-        print("\n" + "-"*60)
+        print("\n" + "-" * 60)
         print("STEP 2: Verifying Container Exists")
-        print("-"*60)
+        print("-" * 60)
 
         time.sleep(2)  # Wait for container to start
 
@@ -202,26 +199,23 @@ def test_4_container_lifecycle(config, mock_vms):
             print(f"\n⚠️  Container not found in list (may still be starting)")
 
         # Step 3: Delete Container
-        print("\n" + "-"*60)
+        print("\n" + "-" * 60)
         print("STEP 3: Deleting Container")
-        print("-"*60)
+        print("-" * 60)
 
         print(f"\n🗑️  Deleting container: {container_id[:12]}")
 
         success = docker_deletion.handle(
-            worker_ip=worker_ip,
-            container_id=container_id,
-            force=True,
-            remove_volumes=False
+            worker_ip=worker_ip, container_id=container_id, force=True, remove_volumes=False
         )
 
         assert success, "Container deletion failed"
         print(f"\n✅ Container deleted successfully")
 
         # Step 4: Verify Container is Gone
-        print("\n" + "-"*60)
+        print("\n" + "-" * 60)
         print("STEP 4: Verifying Container Removed")
-        print("-"*60)
+        print("-" * 60)
 
         time.sleep(2)  # Wait for deletion to complete
 
@@ -239,6 +233,7 @@ def test_4_container_lifecycle(config, mock_vms):
 
     except Exception:
         import traceback
+
         traceback.print_exc()
         if container_id:
             print(f"\n🧹 Attempting cleanup...")
@@ -251,24 +246,20 @@ def test_4_container_lifecycle(config, mock_vms):
 
 
 def main():
-    print("="*60)
+    print("=" * 60)
     print("🐳 COMPREHENSIVE DOCKER TEST SUITE")
-    print("="*60)
+    print("=" * 60)
     print("\nThis test covers:")
     print("  1. Configuration loading from docker.yaml")
     print("  2. Image discovery from registry")
     print("  3. Container discovery from worker VMs")
     print("  4. Container lifecycle (create & delete)")
-    print("="*60)
+    print("=" * 60)
 
     results = []
     config = None
     mock_vms = {
-        "vm-001": MockVM(
-            id="vm-001",
-            name="docker-worker-1",
-            address_private="10.50.0.234"
-        )
+        "vm-001": MockVM(id="vm-001", name="docker-worker-1", address_private="10.50.0.234")
     }
 
     try:
@@ -307,21 +298,21 @@ def main():
 
 
 def _print_summary(results):
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("📊 TEST RESULTS SUMMARY")
-    print("="*60)
+    print("=" * 60)
     passed = sum(1 for _, r in results if r)
     total = len(results)
     for test_name, result in results:
         status = "✅ PASS" if result else "❌ FAIL"
         print(f"{status} - {test_name}")
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print(f"Final Score: {passed}/{total} tests passed")
     if passed == total:
         print("🎉 ALL TESTS PASSED!")
     else:
         print("⚠️  Some tests failed")
-    print("="*60)
+    print("=" * 60)
 
 
 if __name__ == "__main__":
@@ -334,5 +325,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n\n❌ Test suite failed: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)

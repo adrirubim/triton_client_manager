@@ -14,6 +14,5 @@ class JobDeleteContainer:
         # --- Execute ---
         self.docker.delete_container(payload)
 
-
         print(f"[Deletion-{msg_uuid}] ✓ Container deleted")
         return payload

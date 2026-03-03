@@ -1,7 +1,9 @@
-import numpy as np
 import threading
+
+import numpy as np
 import tritonclient.grpc as grpcclient
 import tritonclient.http as httpclient
+
 from .constants import TYPE_MAP
 from .tritonerrors import TritonInferenceFailed
 
@@ -23,16 +25,17 @@ class TritonInfer:
         """Convert payload inputs to tritonclient.grpc InferInput objects."""
         grpc_inputs = []
         for inp in inputs:
-            dims     = inp["dims"]
-            shape    = [dims] if isinstance(dims, int) else list(dims)
+            dims = inp["dims"]
+            shape = [dims] if isinstance(dims, int) else list(dims)
             datatype = TYPE_MAP.get(inp["type"], inp["type"])
-            value    = inp["value"]
+            value = inp["value"]
 
             infer_input = grpcclient.InferInput(inp["name"], shape, datatype)
 
             if datatype == "BYTES":
-                data = np.array([value.encode("utf-8") if isinstance(value, str) else value],
-                                dtype=object)
+                data = np.array(
+                    [value.encode("utf-8") if isinstance(value, str) else value], dtype=object
+                )
             else:
                 data = np.array([value])
 
@@ -46,16 +49,17 @@ class TritonInfer:
         """Convert payload inputs to tritonclient.http InferInput objects."""
         http_inputs = []
         for inp in inputs:
-            dims     = inp["dims"]
-            shape    = [dims] if isinstance(dims, int) else list(dims)
+            dims = inp["dims"]
+            shape = [dims] if isinstance(dims, int) else list(dims)
             datatype = TYPE_MAP.get(inp["type"], inp["type"])
-            value    = inp["value"]
+            value = inp["value"]
 
             infer_input = httpclient.InferInput(inp["name"], shape, datatype)
 
             if datatype == "BYTES":
-                data = np.array([value.encode("utf-8") if isinstance(value, str) else value],
-                                dtype=object)
+                data = np.array(
+                    [value.encode("utf-8") if isinstance(value, str) else value], dtype=object
+                )
             else:
                 data = np.array([value])
 
@@ -63,7 +67,6 @@ class TritonInfer:
             http_inputs.append(infer_input)
 
         return http_inputs
-
 
     # -------------------------------------------- #
     #            OUTPUT DECODERS                   #
@@ -99,9 +102,15 @@ class TritonInfer:
     # -------------------------------------------- #
     #          gRPC STREAMING  (LLM)               #
     # -------------------------------------------- #
-    def stream(self, grpc_client, model_name: str, inputs: list,
-               on_chunk: callable, output_name: str = "output",
-               timeout: int = STREAM_TIMEOUT) -> None:
+    def stream(
+        self,
+        grpc_client,
+        model_name: str,
+        inputs: list,
+        on_chunk: callable,
+        output_name: str = "output",
+        timeout: int = STREAM_TIMEOUT,
+    ) -> None:
         """
         Stream LLM inference via gRPC. Blocks until the stream ends or times out.
 
@@ -111,7 +120,7 @@ class TritonInfer:
 
         Raises TritonInferenceFailed on connection, stream error, or timeout.
         """
-        done   = threading.Event()
+        done = threading.Event()
         errors = []
 
         def _callback(result, error):
@@ -147,8 +156,7 @@ class TritonInfer:
     # -------------------------------------------- #
     #           HTTP SINGLE-SHOT  (ML)             #
     # -------------------------------------------- #
-    def infer(self, http_client, model_name: str, inputs: list,
-              timeout: int = 30):
+    def infer(self, http_client, model_name: str, inputs: list, timeout: int = 30):
         """
         Single-shot ML inference via HTTP. Returns the raw result object.
         Call TritonInfer.decode_response(result) to get decoded outputs.
@@ -157,7 +165,8 @@ class TritonInfer:
         """
         try:
             http_inputs = self._build_http_inputs(inputs)
-            return http_client.infer(model_name=model_name, inputs=http_inputs,
-                                     client_timeout=timeout)
+            return http_client.infer(
+                model_name=model_name, inputs=http_inputs, client_timeout=timeout
+            )
         except Exception as e:
             raise TritonInferenceFailed(model_name, str(e))

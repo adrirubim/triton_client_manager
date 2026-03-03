@@ -2,6 +2,7 @@
 Runtime smoke test: JobThread DI, WebSocket auth, info queue_stats.
 Uses mocks for OpenStack/Docker/Triton. Run from MANAGER: python tests/smoke_runtime.py
 """
+
 import json
 import os
 import sys
@@ -23,6 +24,7 @@ def _create_mock_thread(name, attrs=None):
 
 def run_smoke(include_ws_client=False):
     from utils.logging_config import configure_logging
+
     configure_logging()
 
     from yaml import safe_load
@@ -76,15 +78,22 @@ def run_smoke(include_ws_client=False):
             if not results["auth"]:
                 return
             await asyncio.sleep(0.2)
-            info_msg = {"type": "info", "uuid": "smoke-test-client", "payload": {"action": "queue_stats"}}
+            info_msg = {
+                "type": "info",
+                "uuid": "smoke-test-client",
+                "payload": {"action": "queue_stats"},
+            }
             await sock.send(json.dumps(info_msg))
             r = json.loads(await sock.recv())
-            results["info"] = r.get("type") == "info_response" and r.get("payload", {}).get("status") == "success"
+            results["info"] = (
+                r.get("type") == "info_response" and r.get("payload", {}).get("status") == "success"
+            )
 
     asyncio.run(_test())
 
     if include_ws_client:
         from ws_client_test import test_multiple_clients
+
         uri = f"ws://127.0.0.1:{port}/ws"
         try:
             asyncio.run(test_multiple_clients(uri=uri, keep_alive_sec=1))
@@ -101,8 +110,13 @@ def run_smoke(include_ws_client=False):
 
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser(description="Smoke test for Triton Client Manager")
-    parser.add_argument("--with-ws-client", action="store_true", help="Run ws_client_test multi-client scenario as part of smoke")
+    parser.add_argument(
+        "--with-ws-client",
+        action="store_true",
+        help="Run ws_client_test multi-client scenario as part of smoke",
+    )
     args = parser.parse_args()
 
     os.chdir(os.path.join(os.path.dirname(__file__), ".."))

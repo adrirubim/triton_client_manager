@@ -12,7 +12,7 @@ class A:
         return f"best {payload}"
 
     def run(self, action: str, payload):
-        fn = getattr(self, action, None)          # get method named like action
+        fn = getattr(self, action, None)  # get method named like action
         if fn is None or not callable(fn):
             raise JobActionNotFound(action)
         return fn(payload)

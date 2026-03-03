@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional
 
+
 @dataclass
 class Network:
     # --- Identity ---
@@ -31,14 +32,12 @@ class Network:
                 "name": raw["name"],
                 "tenant_id": raw["tenant_id"],
                 "project_id": raw["project_id"],
-
                 # --- Info ---
                 "shared": raw["shared"],
                 "status": raw["status"],
                 "subnets": raw.get("subnets", []),
                 "router_internal": raw.get("router:internal", False),
                 "router_external": raw.get("router:external", False),
-
                 # --- Time ---
                 "created_at": raw.get("created_at"),
                 "updated_at": raw.get("updated_at"),

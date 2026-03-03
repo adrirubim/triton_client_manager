@@ -153,6 +153,20 @@ Inference routes by `vm_id` and `container_id` (matches Triton server registrati
 
 **Protocol:** `payload.request.protocol` (`grpc` or `http`); default `http`.
 
+### Reference Pydantic models
+
+The following Pydantic models capture the expected schema for WebSocket messages.  
+They are used as a reference for validation and tooling:
+
+```python
+from classes.websocket.schemas import (
+    AuthMessage,
+    InfoMessage,
+    ManagementMessage,
+    InferenceMessage,
+)
+```
+
 ## Common Validation Failures
 
 - Missing `uuid`, `type`, or `payload`
@@ -161,3 +175,4 @@ Inference routes by `vm_id` and `container_id` (matches Triton server registrati
 - `uuid` mismatch after auth
 - Deletion missing `vm_id` or `container_id`
 - Inference missing `vm_id`, `container_id`, `model_name`, or `inputs`
+- Message larger than the configured `max_message_bytes` limit (defaults to 64 KiB), returns an `error` message and closes the WebSocket with code `1009`.

@@ -1,3 +1,7 @@
-access_key: admin 
-secret_key: admin
-region: us-east-1
+# Example MinIO/S3 configuration template.
+# Do NOT commit real credentials here — use environment variables
+# or pass credentials in the management payload (`payload.minio`).
+
+access_key: YOUR_MINIO_ACCESS_KEY
+secret_key: YOUR_MINIO_SECRET_KEY
+region: YOUR_MINIO_REGION

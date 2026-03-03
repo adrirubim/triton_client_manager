@@ -1,2 +1,2 @@
-from .info import TritonInfo
 from .data import TritonServer
+from .info import TritonInfo

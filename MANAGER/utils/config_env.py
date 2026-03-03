@@ -9,6 +9,7 @@ Env vars (OpenStack):
   OPENSTACK_REGION_NAME
   OPENSTACK_VERIFY_SSL (true|false)
 """
+
 import os
 from typing import Any
 

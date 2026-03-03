@@ -1,3 +1,3 @@
 from .deletion import OpenstackDeletion
 
-__all__ = ['OpenstackDeletion']
+__all__ = ["OpenstackDeletion"]

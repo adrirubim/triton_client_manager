@@ -1,4 +1,4 @@
-from .vm import JobDeleteVM
 from .container import JobDeleteContainer
-from .server import JobDeleteServer
 from .deletion import JobDeletion
+from .server import JobDeleteServer
+from .vm import JobDeleteVM

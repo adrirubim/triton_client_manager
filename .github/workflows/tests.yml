@@ -35,13 +35,13 @@ jobs:
           python -m py_compile client_manager.py
           python -m compileall -q classes utils
 
-      - name: Run smoke test
+      - name: Run unit tests with coverage
         working-directory: MANAGER
+        env:
+          PYTHONPATH: .
         run: |
-          python tests/smoke_runtime.py
-
-      - name: Run regression tests
-        working-directory: MANAGER
-        run: |
-          python -m unittest tests.test_regression -v
+          pip install coverage
+          coverage run -m pytest
+          coverage xml
+          coverage report
 

@@ -1,4 +1,5 @@
 from typing import TYPE_CHECKING
+
 from classes.job.joberrors import JobVMCreationFailed
 
 if TYPE_CHECKING:

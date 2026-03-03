@@ -4,27 +4,26 @@ logger = logging.getLogger(__name__)
 
 import threading
 import time
-from typing import Optional, Callable
+from typing import Callable, Optional
 
-from .info.info import TritonInfo
-from .info.data.server import TritonServer
 from .creation.creation import TritonCreation
 from .deletion.deletion import TritonDeletion
 from .inference.inference import TritonInference
-from .tritonerrors import TritonServerStateChanged, TritonMissingArgument, TritonMissingInstance
-
+from .info.data.server import TritonServer
+from .info.info import TritonInfo
+from .tritonerrors import TritonMissingArgument, TritonMissingInstance, TritonServerStateChanged
 
 ###################################
 #        Triton Thread            #
 ###################################
 
-class TritonThread(threading.Thread):
 
+class TritonThread(threading.Thread):
     def __init__(self, config: dict):
         super().__init__(name="Triton_Thread", daemon=True)
-        self._stop_event  = threading.Event()
+        self._stop_event = threading.Event()
         self._ready_event = threading.Event()
-        self._data_lock   = threading.Lock()
+        self._data_lock = threading.Lock()
 
         # --- Loop ---
         self.refresh_time = config["refresh_time"]
@@ -33,9 +32,9 @@ class TritonThread(threading.Thread):
         self.dict_servers: dict[tuple, TritonServer] = {}  # {(vm_id, container_id): TritonServer}
 
         # --- Handlers ---
-        self.triton_info      = TritonInfo(timeout=config["health_check_timeout"])
-        self.triton_creation  = TritonCreation(config)
-        self.triton_deletion  = TritonDeletion()
+        self.triton_info = TritonInfo(timeout=config["health_check_timeout"])
+        self.triton_creation = TritonCreation(config)
+        self.triton_deletion = TritonDeletion()
         self.triton_inference = TritonInference(config)
 
         # --- WebSocket (set by ClientManager) ---
@@ -59,7 +58,7 @@ class TritonThread(threading.Thread):
             try:
                 self.load()
                 time.sleep(self.refresh_time)
-            except Exception as e:
+            except Exception:
                 logger.info(" TritonThread main loop: {e}")
         logger.info("[TritonThread] Stopped")
 
@@ -67,13 +66,13 @@ class TritonThread(threading.Thread):
         if self.websocket:
             try:
                 alert_payload = {
-                    "type":       "alert",
+                    "type": "alert",
                     "error_type": type(error).__name__,
-                    "message":    str(error),
-                    "timestamp":  time.time(),
+                    "message": str(error),
+                    "timestamp": time.time(),
                 }
                 self.websocket(alert_payload)
-            except Exception as e:
+            except Exception:
                 logger.info(" TritonThread failed to send alert: {e}")
 
     def load(self) -> None:
@@ -87,19 +86,21 @@ class TritonThread(threading.Thread):
         for (vm_id, container_id), server in servers.items():
             try:
                 # --- Check Health Server ---
-                healthy    = self.triton_info.is_server_ready(server.vm_ip)
+                healthy = self.triton_info.is_server_ready(server.vm_ip)
                 new_status = "ready" if healthy else "unhealthy"
 
                 # --- Change Healthy -> Unhealthy ---
                 if new_status != server.status:
-                    old_status    = server.status
+                    old_status = server.status
                     server.status = new_status
 
                     # --- Send Alert --
-                    self._send_alert(TritonServerStateChanged(server.vm_ip,
-                                                              container_id,
-                                                              [f"status: {old_status} -> {new_status}"]))
-            except Exception as e:
+                    self._send_alert(
+                        TritonServerStateChanged(
+                            server.vm_ip, container_id, [f"status: {old_status} -> {new_status}"]
+                        )
+                    )
+            except Exception:
                 logger.info(" Health check failed for ({vm_id}, {container_id[:12]}): {e}")
 
     # -------------------------------------------- #
@@ -110,10 +111,14 @@ class TritonThread(threading.Thread):
         """Create a TritonServer (wait, load model, build clients) and register it."""
 
         # --- Check ---
-        if "vm_id"        not in data: raise TritonMissingArgument("vm_id")
-        if "vm_ip"        not in data: raise TritonMissingArgument("vm_ip")
-        if "minio"        not in data: raise TritonMissingArgument("minio")
-        if "container_id" not in data: raise TritonMissingArgument("container_id")
+        if "vm_id" not in data:
+            raise TritonMissingArgument("vm_id")
+        if "vm_ip" not in data:
+            raise TritonMissingArgument("vm_ip")
+        if "minio" not in data:
+            raise TritonMissingArgument("minio")
+        if "container_id" not in data:
+            raise TritonMissingArgument("container_id")
 
         # --- Optional ---
         data["triton"] = data.get("triton", {})
@@ -124,20 +129,22 @@ class TritonThread(threading.Thread):
         # --- Replace Dead ---
         with self._data_lock:
             existing = self.dict_servers.get((data["vm_id"], data["container_id"]))
-            if existing: existing.close()
+            if existing:
+                existing.close()
             self.dict_servers[(data["vm_id"], data["container_id"])] = server
 
         return server
-
 
     def delete_server(self, data: dict) -> None:
         """Unload all models on the server, close clients, and deregister."""
 
         # --- Catch ---
-        if not "vm_id" in data:        raise TritonMissingArgument("vm_id")
-        if not "container_id" in data: raise TritonMissingArgument("container_id")
+        if "vm_id" not in data:
+            raise TritonMissingArgument("vm_id")
+        if "container_id" not in data:
+            raise TritonMissingArgument("container_id")
 
-        vm_id        = data["vm_id"]
+        vm_id = data["vm_id"]
         container_id = data["container_id"]
 
         # --- Fetch ---
@@ -157,5 +164,3 @@ class TritonThread(threading.Thread):
 
         logger.info(" Deregistered ({vm_id}, {container_id[:12]})")
         return data
-
-

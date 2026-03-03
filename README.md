@@ -8,6 +8,7 @@
 [![Docker](https://img.shields.io/badge/Docker-24+-2496ED?style=flat&logo=docker&logoColor=white)](https://www.docker.com/)
 [![Triton Client](https://img.shields.io/badge/Triton_Client-2.65-76B900?style=flat)](https://github.com/triton-inference-server/client)
 [![Tests](https://img.shields.io/badge/Tests-smoke%20%2B%20regression-brightgreen?style=flat)](docs/TESTING.md)
+[![CI - Tests](https://github.com/adrirubim/triton_client_manager/actions/workflows/tests.yml/badge.svg)](https://github.com/adrirubim/triton_client_manager/actions/workflows/tests.yml)
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=flat)](LICENSE)
 
 ## 📋 Table of Contents
@@ -290,6 +291,18 @@ cd MANAGER
 ```
 
 Full details and known caveats are documented in [docs/TESTING.md](docs/TESTING.md).
+
+### Full Test Suite (pytest)
+
+For a full local run that matches CI:
+
+```bash
+cd MANAGER
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt -r requirements-test.txt
+.venv/bin/pytest tests/ -v
+```
 
 ---
 

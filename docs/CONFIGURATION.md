@@ -24,7 +24,7 @@ Reference for `MANAGER/config/*.yaml`.
 | `openstack.yaml` | Auth, creation/deletion settings |
 | `docker.yaml` | Registry, timeouts |
 | `triton.yaml` | Health check, creation timeouts |
-| `minio.yaml` | Reference template for MinIO/S3 credentials (`access_key`, `secret_key`, `region`); actual MinIO config is passed in management payloads |
+| `minio.yaml` | Reference template for MinIO/S3 credentials (`access_key`, `secret_key`, `region`); **never store real secrets here**. Actual MinIO config is passed in management payloads or via environment variables. |
 
 ## Runtime Assumptions
 
@@ -51,6 +51,7 @@ Reference for `MANAGER/config/*.yaml`.
 | `host` | Bind address (e.g. `"0.0.0.0"`) |
 | `port` | Listen port (e.g. `8000`) |
 | `valid_types` | Allowed message types: `auth`, `info`, `management`, `inference` |
+| `max_message_bytes` | Optional hard limit for incoming WebSocket messages (default `65536`) |
 
 ## OpenStack (auth_url, env vars)
 
@@ -70,9 +71,9 @@ Example: `export OPENSTACK_AUTH_URL=https://keystone.example.com:5000/v3/auth/to
 
 ## Other Config Files
 
-`openstack.yaml`, `docker.yaml`, `triton.yaml` are used by OpenStackThread, DockerThread, TritonThread. Consult the implementing classes for required keys. See `config/openstack.yaml.example` for a template without secrets.
+`openstack.yaml`, `docker.yaml`, `triton.yaml` are used by OpenStackThread, DockerThread, TritonThread. Consult the implementing classes for required keys. **Do not commit real credentials**: see `config/openstack.yaml.example` for a template without secrets, and prefer environment variables (`OPENSTACK_...`) for sensitive values.
 
-`minio.yaml` is a reference template (not loaded at startup). MinIO/S3 credentials and endpoint are provided per-request in management payloads (`payload.minio`); see `payload_examples/` for structure.
+`minio.yaml` is a reference template (not loaded at startup). MinIO/S3 credentials and endpoint are provided per-request in management payloads (`payload.minio`) or through environment variables such as `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, and `MINIO_REGION`; see `payload_examples/` for structure.
 
 ## Version-Sensitive Dependencies
 

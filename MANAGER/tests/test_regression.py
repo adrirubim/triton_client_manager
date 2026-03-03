@@ -22,8 +22,12 @@ class TestJobHandlerInstantiation(unittest.TestCase):
 
         mock_docker = type("DockerThread", (), {"dict_containers": {}})()
         mock_openstack = type("OpenstackThread", (), {"dict_servers": {}})()
-        mock_ws = lambda cid, msg: True
-        mock_get_queue_stats = lambda: {}
+
+        def mock_ws(cid, msg):
+            return True
+
+        def mock_get_queue_stats():
+            return {}
 
         info = JobInfo(mock_docker, mock_openstack, mock_ws, mock_get_queue_stats)
         self.assertIs(info.docker, mock_docker)
@@ -38,7 +42,9 @@ class TestJobHandlerInstantiation(unittest.TestCase):
         mock_docker = type("DockerThread", (), {})()
         mock_triton = type("TritonThread", (), {})()
         mock_openstack = type("OpenstackThread", (), {})()
-        mock_ws = lambda cid, msg: True
+
+        def mock_ws(cid, msg):
+            return True
 
         mgmt = JobManagement(
             mock_docker,
@@ -56,7 +62,10 @@ class TestJobHandlerInstantiation(unittest.TestCase):
 
         mock_docker = type("DockerThread", (), {})()
         mock_openstack = type("OpenstackThread", (), {})()
-        mock_ws = lambda cid, msg: True
+
+        def mock_ws(cid, msg):
+            return True
+
         mock_triton = type("TritonThread", (), {})()
 
         inf = JobInference(
@@ -84,7 +93,7 @@ class TestDeletionPayloadNormalization(unittest.TestCase):
         class MockOpenstack:
             def delete_vm(self, vm_id): return True
 
-        deletion = JobDeletion(MockTriton(), MockDocker(), MockOpenstack())
+        JobDeletion(MockTriton(), MockDocker(), MockOpenstack())
         payload = {
             "vm_id": "vm-123",
             "container_id": "cont-456",

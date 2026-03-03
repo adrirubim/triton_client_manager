@@ -37,6 +37,9 @@ Uses mocks for OpenStack, Docker, Triton. Verifies:
 
 ```bash
 cd MANAGER
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt -r requirements-test.txt
 .venv/bin/python tests/smoke_runtime.py
 ```
 
@@ -51,15 +54,15 @@ cd MANAGER
 | **File** | `MANAGER/tests/test_regression.py` |
 | **Purpose** | Unit tests for DI, contracts, config |
 
-**Covers** (suite intenta verificar):
+**Covers** (the suite aims to verify):
 
 - JobInfo, JobManagement, JobInference constructor signatures
 - Deletion payload normalization (flat and nested)
 - Auth contract (top-level `uuid`)
-- Inference example (vm_id en payload; ver [API_CONTRACTS.md](API_CONTRACTS.md))
-- `inspect_config` ausente en advertised actions (test espera que esté removido)
+-- Inference example (`vm_id` in payload; see [API_CONTRACTS.md](API_CONTRACTS.md))
+-- `inspect_config` absent from advertised actions (test expects it to be removed)
 
-**Known failures** (actualmente no pasan): `test_job_inference_instantiation`, `test_inference_example_uses_vm_ip`, `test_inspect_config_not_in_actions`.
+**Known failures** (historical, may no longer apply): `test_job_inference_instantiation`, `test_inference_example_uses_vm_ip`, `test_inspect_config_not_in_actions`.
 
 **Run:**
 
@@ -98,18 +101,20 @@ Full verification flow (recommended after upgrades or dependency changes):
 
 ```bash
 cd MANAGER
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt -r requirements-test.txt
 
 # 1. Smoke with WebSocket client
 .venv/bin/python tests/smoke_runtime.py --with-ws-client
 
-# 2. Regression (unit tests)
-.venv/bin/python -m unittest tests.test_regression -v
+# 2. Full pytest suite
+.venv/bin/pytest tests/ -v
 
-# 3. Integration (multi-client WebSocket)
-.venv/bin/pip install -r requirements-test.txt
-.venv/bin/pytest tests/test_integration_ws.py -v
+# 3. Regression (optional if pytest is already green)
+.venv/bin/python -m unittest tests.test_regression -v
 ```
 
-4. Ensure all tests pass.
+Ensure all tests pass locally before pushing.
 
 Continuous integration (for example, GitHub Actions) should run the regression suite on pull requests.
