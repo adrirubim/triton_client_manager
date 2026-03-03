@@ -1,0 +1,6 @@
+gitlab_url: https://git2004.vsrv.one
+project_id: 106
+
+project: triton_client_manager
+local_registry: localhost:5000
+# token and token_name are injected from GITLAB_TOKEN / GITLAB_TOKEN_NAME env vars

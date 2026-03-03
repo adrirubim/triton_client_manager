@@ -1,0 +1,15 @@
+{
+  "type": "management",
+  "uuid": "user-123",
+  "payload": {
+    "action": "deletion",
+    "openstack": {
+      "vm_ip": "xxx.xxx.xx.xx",
+      "vm_id": "openstack-vm-uuid"
+    },
+    "docker": {
+      "container_id": "docker-container-id",
+      "name": "my-model-name"
+    }
+  }
+}

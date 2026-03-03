@@ -1,0 +1,4 @@
+refresh_time: 30          # health check loop interval (seconds)
+health_check_timeout: 5   # per-server HTTP ping timeout
+stream_timeout: 120       # gRPC stream hard timeout (used by TritonInfer.stream)
+http_infer_timeout: 30    # HTTP inference timeout (used by TritonInfer.infer)

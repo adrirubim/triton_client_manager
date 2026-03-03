@@ -1,0 +1,47 @@
+name: "example"
+backend: "python"
+max_batch_size: 0
+
+input [
+  { name: "prompt" data_type: TYPE_STRING dims: [ 1 ] },
+  { name: "config" data_type: TYPE_STRING dims: [ 1 ] },
+  { name: "uuid"   data_type: TYPE_STRING dims: [ 1 ] }
+]
+
+output [
+  { name: "output" data_type: TYPE_STRING dims: [ 1 ] }
+]
+
+
+# ---------- Setting how many copies of this model ----------
+instance_group [
+  { count: 1 kind: KIND_CPU }
+]
+
+# ---------- Stream Settings ----------
+model_transaction_policy {
+  decoupled: true
+}
+
+sequence_batching {
+  max_sequence_idle_microseconds: 180000000  # 180s idle => Triton releases the sequence slot
+  direct {}
+}
+
+
+
+# ---------- During config.pbtxt creation ----------
+parameters: {
+  key: "n_ctx"
+  value: {
+    string_value: "4096"
+  }
+}
+
+parameters: {
+  key: "n_threads"
+  value: {
+    string_value: "16"
+  }
+}
+

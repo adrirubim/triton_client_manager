@@ -1,0 +1,3 @@
+venv
+# Never commit a filled-in bootstrap with a real token
+bootstrap.sh

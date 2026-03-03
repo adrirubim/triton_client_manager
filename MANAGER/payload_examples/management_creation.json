@@ -1,0 +1,36 @@
+{
+  "type": "management",
+  "uuid": "user-123",
+  "payload": {
+    "action": "creation",
+    "openstack": {
+      "name": "triton-worker-1",
+      "keypair": "disposable-ssh",
+      "image_id": "your-image-id-here",
+      "security": "sc-icmp-ssh-triton-inference",
+      "flavor_id": "your-flavor-id-here",
+      "network_id": "your-network-id-here",
+      "config_drive": false
+    },
+    "docker": {
+      "image": "tritonserver:25.12-py3-ARM",
+      "name": "my-container",
+      "command": [
+        "tritonserver",
+        "--model-control-mode=explicit",
+        "--exit-timeout-sec", "2"
+      ]
+    },
+    "minio": {
+      "endpoint": "http://x.xx.xx.xx:9000",
+      "bucket": "bucket-name",
+      "folder": "folder-model",
+      "access_key": "admin",
+      "secret_key": "admin"
+    },
+    "triton": {
+      "n_ctx": 8192,
+      "n_threads": 8
+    }
+  }
+}

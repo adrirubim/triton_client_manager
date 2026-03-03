@@ -1,0 +1,44 @@
+# Project-specific
+_MINIO_COMMANDS
+fix_merge.py
+fix_all.py
+resolve_del.py
+
+# Internal documentation (do not push to GitLab)
+docs/internal/
+
+# Sensitive keys (never commit)
+*.pem
+MANAGER/config/*.pem
+MANAGER/___openstack___/openstack_*
+MANAGER/___openstack___/docker-vm/auto-update/config.yaml
+MANAGER/config/openstack.yaml
+MANAGER/config/openstack.local.yaml
+_TRITON_ML
+MODEL_CONVERSION
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Virtual environments (create inside MANAGER/ only)
+.venv/
+venv/
+.MOCK_SERVER/mockvenv
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

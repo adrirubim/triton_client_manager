@@ -1,0 +1,16 @@
+{
+  "type": "management",
+  "uuid": "user-123",
+  "payload": {
+    "action": "create_vm",
+    "openstack": {
+      "name": "triton-worker-1",
+      "keypair": "disposable-ssh",
+      "image_id": "your-image-id-here",
+      "security": "sc-icmp-ssh-triton-inference",
+      "flavor_id": "your-flavor-id-here",
+      "network_id": "your-network-id-here",
+      "config_drive": false
+    }
+  }
+}

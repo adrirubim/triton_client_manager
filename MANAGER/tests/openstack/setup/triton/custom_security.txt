@@ -1,0 +1,11 @@
+# create
+# modify rules
+
+openstack security group create sc-icmp-ssh-triton-conversion --description "ICMP + SSH +"
+openstack security group rule create sc-icmp-ssh-triton-conversion --ingress --ethertype IPv4 --protocol tcp --dst-port 22   --remote-ip 0.0.0.0/0
+openstack security group rule create sc-icmp-ssh-triton-conversion --ingress --ethertype IPv4 --protocol icmp --remote-ip 0.0.0.0/0
+
+openstack security group create sc-icmp-ssh-triton-inference --description "ICMP + SSH + INFERENCE (8000:8002)"
+openstack security group rule create sc-icmp-ssh-triton-inference --ingress --ethertype IPv4 --protocol tcp --dst-port 22   --remote-ip 0.0.0.0/0
+openstack security group rule create sc-icmp-ssh-triton-inference --ingress --ethertype IPv4 --protocol icmp --remote-ip 0.0.0.0/0
+openstack security group rule create sc-icmp-ssh-triton-inference --ingress --ethertype IPv4 --protocol tcp --dst-port 8000:8002

@@ -1,0 +1,7 @@
+# create
+# modify rules
+
+openstack security group create sc-icmp-ssh-registry --description "ICMP + SSH + Docker registry (5000)"
+openstack security group rule create sc-icmp-ssh-registry --ingress --ethertype IPv4 --protocol tcp --dst-port 22   --remote-ip 0.0.0.0/0
+openstack security group rule create sc-icmp-ssh-registry --ingress --ethertype IPv4 --protocol icmp --remote-ip 0.0.0.0/0
+openstack security group rule create sc-icmp-ssh-registry --ingress --ethertype IPv4 --protocol tcp --dst-port 5000

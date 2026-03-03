@@ -1,0 +1,1 @@
+285f8044-63fa-47ca-8b15-14e4186ddfdc | minio_flavor    | 16384 |   50 |         0 |     8 | True 

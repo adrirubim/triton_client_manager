@@ -1,0 +1,51 @@
+# OpenStack configuration — copy to openstack.yaml and set values
+# Or use environment variables: OPENSTACK_AUTH_URL, OPENSTACK_APPLICATION_CREDENTIAL_ID, etc.
+
+refresh_time: 10
+creation_variables: [name, keypair, image_id, security, flavor_id, network_id]
+
+# --- OpenstackAuth ---
+auth_url: "https://YOUR_KEYSTONE_HOST:5000/v3/auth/tokens"
+application_credential_id: "YOUR_APP_CREDENTIAL_ID"
+application_credential_secret: "YOUR_APP_CREDENTIAL_SECRET"
+region_name: RegionOne
+verify_ssl: true  # set false for self-signed certs (suppresses InsecureRequestWarning)
+
+# --- OpenstackCreation ---
+creation_timeout: 60
+creation_endpoint: /servers
+
+# --- OpenstackDeletion ---
+deletion_timeout: 120
+deletion_endpoint: /servers
+
+# --- OpenstackInfo Endpoints ---
+info_endpoints:
+  vms:
+    path: /servers/detail
+    service: compute
+    data_class: VM
+  hosts:
+    path: /os-hypervisors/detail
+    service: compute
+    data_class: Host
+  images:
+    path: /v2/images
+    service: image
+    data_class: Image
+  flavors:
+    path: /flavors/detail
+    service: compute
+    data_class: Flavor
+  networks:
+    path: /v2.0/networks
+    service: network
+    data_class: Network
+  keypairs:
+    path: /os-keypairs
+    service: compute
+    data_class: Keypair
+  security:
+    path: /v2.0/security-groups
+    service: network
+    data_class: Security

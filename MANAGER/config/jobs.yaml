@@ -1,0 +1,22 @@
+# Per-user queue size configuration (Level 1: Your queues)
+max_queue_size_info_per_user: 10
+max_queue_size_management_per_user: 5
+max_queue_size_inference_per_user: 10
+
+# Worker thread configuration
+max_workers_info: 2
+max_workers_management: 1
+max_workers_inference: 5
+
+# Executor queue size configuration (Level 2: Executor internal queues)
+max_executor_queue_info: 100
+max_executor_queue_management: 50
+max_executor_queue_inference: 200
+
+# Queue cleanup interval (seconds)
+queue_cleanup_interval: 300
+queue_idle_threshold: 900
+
+info_actions_available: [queue]
+management_actions_available: [creation, deletion, create_vm, create_container, create_server, delete_server, delete_container, delete_vm]
+inference_actions_available: [grpc, http]

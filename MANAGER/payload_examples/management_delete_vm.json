@@ -1,0 +1,10 @@
+{
+  "type": "management",
+  "uuid": "user-123",
+  "payload": {
+    "action": "delete_vm",
+    "openstack": {
+      "vm_id": "openstack-vm-uuid"
+    }
+  }
+}

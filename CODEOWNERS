@@ -1,0 +1,15 @@
+# CODEOWNERS — Triton Client Manager
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+# Paths are relative to repository root.
+
+# Default owner
+*                       @adrirubim
+
+# Documentation
+/docs/                   @adrirubim
+
+# Configuration (sensitive)
+/MANAGER/config/         @adrirubim
+
+# Application code
+/MANAGER/classes/        @adrirubim

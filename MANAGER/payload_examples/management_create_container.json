@@ -1,0 +1,26 @@
+{
+  "type": "management",
+  "uuid": "user-123",
+  "payload": {
+    "action": "create_container",
+    "openstack": {
+      "vm_ip": "xxx.xxx.xx.xx"
+    },
+    "docker": {
+      "image": "tritonserver:25.12-py3-ARM",
+      "name": "my-container",
+      "command": [
+        "tritonserver",
+        "--model-control-mode=explicit",
+        "--exit-timeout-sec", "2"
+      ]
+    },
+    "minio": {
+      "endpoint": "http://x.xx.xx.xx:9000",
+      "bucket": "bucket-name",
+      "folder": "folder-model",
+      "access_key": "admin",
+      "secret_key": "admin"
+    }
+  }
+}

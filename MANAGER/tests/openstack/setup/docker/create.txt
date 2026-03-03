@@ -1,0 +1,7 @@
+openstack server create registry_vm \
+--image aa2fa70e-5b72-43aa-98c8-35b5f3776efa \
+--flavor docker_registry \
+--network public \
+--key-name luca \
+--security-group sc-icmp-ssh-registry \
+--wait

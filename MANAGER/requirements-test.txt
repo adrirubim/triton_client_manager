@@ -1,0 +1,9 @@
+# Test dependencies (install: pip install -r requirements-test.txt)
+-r requirements.txt
+
+# Testing
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+
+# WebSocket client for smoke/integration tests
+websockets>=12.0

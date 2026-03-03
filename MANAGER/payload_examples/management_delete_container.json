@@ -1,0 +1,13 @@
+{
+  "type": "management",
+  "uuid": "user-123",
+  "payload": {
+    "action": "delete_container",
+    "openstack": {
+      "vm_ip": "xxx.xxx.xx.xx"
+    },
+    "docker": {
+      "container_id": "docker-container-id"
+    }
+  }
+}

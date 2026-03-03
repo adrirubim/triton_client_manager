@@ -1,0 +1,1 @@
+9b5ffd7c-e9c0-4b45-b783-36b1aef90472 | triton.small    |  8192 |   20 |         0 |     4 | True 

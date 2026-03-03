@@ -1,0 +1,1 @@
+openstack server create triton_vm --flavor triton.small --image 77df0577-600d-429f-8d37-6cfa70f6f716 --network public --key-name luca --security-group sc-icmp-ssh-triton
