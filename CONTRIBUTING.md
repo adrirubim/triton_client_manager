@@ -1,22 +1,20 @@
 # Contributing to Triton Client Manager
 
----
-
-## Table of Contents
-
-- [Branch Workflow](#branch-workflow)
-- [Validate Before Pushing](#validate-before-pushing)
-- [Documentation Updates](#documentation-updates)
-- [Merge Request Hygiene](#merge-request-hygiene)
+Thank you for your interest in contributing to this project. Please read this guide and the main `README` before opening pull requests.
 
 ---
 
-## Branch Workflow
+## Branching and Workflow
 
-- Use feature branches for changes; merge via pull requests.
-- Keep `master` (or main) deployable at all times.
+- Work on **feature branches**; merge changes via pull requests.
+- Keep `main` deployable at all times.
+- Use clear branch names: `feat/...`, `fix/...`, `docs/...`.
 
-## Validate Before Pushing
+---
+
+## Local Validation (Before Pushing)
+
+Always validate locally with the same steps that CI will run.
 
 ### 1. Smoke test
 
@@ -29,7 +27,7 @@ cd MANAGER
 
 ### 2. Regression tests
 
-Unit tests for DI, deletion, auth, inference, config:
+Unit tests for DI, deletion, auth, inference, and config:
 
 ```bash
 cd MANAGER
@@ -68,9 +66,11 @@ python -m compileall -q classes utils
 
 Continuous integration should run at least the regression suite and a subset of pytest on pull requests. Smoke and integration tests are recommended locally before pushing.
 
-## Upgrade Dependencies
+---
 
-To update all packages to latest stable:
+## Dependencies
+
+To update all packages to the latest stable versions:
 
 ```bash
 cd MANAGER
@@ -79,14 +79,25 @@ cd MANAGER
 
 Run smoke and regression tests afterward to verify.
 
-## Documentation Updates
+---
+
+## Documentation
 
 - Update `docs/` when changing architecture, API contracts, configuration, or operations.
-- Update [docs/CHANGELOG_INTERNAL.md](docs/CHANGELOG_INTERNAL.md) for notable internal changes.
-- Keep [MANAGER/README.md](MANAGER/README.md) as a slim quick-start; move detailed content to `docs/`.
+- Update `docs/CHANGELOG_INTERNAL.md` for notable internal changes.
+- Keep `MANAGER/README.md` as a slim quick-start; move detailed content to `docs/`.
 
-## Pull Request Hygiene
+---
 
+## Pull Requests
+
+- Open a pull request against the appropriate base branch (usually `main`).
 - Summarize scope, areas touched, and validation performed.
-- Reference related issues when applicable.
-- Ensure CI passes before requesting review.
+- Ensure all tests and linters pass; CI must be green before merge.
+- Reference related issues when applicable (for example, `Fixes #123`).
+
+---
+
+## Questions
+
+- For questions or coordination, contact the maintainer (see `README` → Author).
