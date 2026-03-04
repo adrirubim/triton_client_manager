@@ -90,4 +90,3 @@ def test_jobthread_cleanup_empty_queues_removes_idle_entries(caplog):
     assert jt.info_queues == {}
     assert jt.management_queues == {}
     assert jt.inference_queues == {}
-

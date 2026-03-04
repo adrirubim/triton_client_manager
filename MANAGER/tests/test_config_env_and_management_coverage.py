@@ -58,6 +58,9 @@ def test_job_management_wraps_unknown_action_and_selected_errors():
 
     # Known action but with malformed payloads to trigger specific exceptions.
     # deletion without required fields triggers JobDeletionMissingField.
-    bad_deletion = {"uuid": "u2", "type": "management", "payload": {"action": "deletion"}}
+    bad_deletion = {
+        "uuid": "u2",
+        "type": "management",
+        "payload": {"action": "deletion"},
+    }
     jm.handle_management(bad_deletion)
-

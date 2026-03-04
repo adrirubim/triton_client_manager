@@ -85,7 +85,9 @@ def test_send_to_client_success(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_handle_client_rejects_oversized_and_invalid_messages(monkeypatch, caplog):
+async def test_handle_client_rejects_oversized_and_invalid_messages(
+    monkeypatch, caplog
+):
     ws = WebSocketThread(
         host="127.0.0.1",
         port=0,

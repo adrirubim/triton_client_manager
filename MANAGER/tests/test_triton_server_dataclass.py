@@ -48,4 +48,3 @@ def test_triton_server_close_swallows_client_errors():
     )
     # Should not raise despite client.close failing
     server.close()
-
