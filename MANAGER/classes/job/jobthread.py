@@ -5,6 +5,7 @@ from queue import Empty
 
 # Import bounded executor instead of standard ThreadPoolExecutor
 from utils.bounded_executor import BoundedThreadPoolExecutor
+from utils.metrics import observe_job_processing, observe_job_rejected
 
 from .inference import JobInference
 
@@ -142,7 +143,10 @@ class JobThread(threading.Thread):
             try:
                 # --- Info ---
                 self.fair_process_queues(
-                    self.info_queues, self.executor_info, self.job_info.handle_info
+                    self.info_queues,
+                    self.executor_info,
+                    self.job_info.handle_info,
+                    "info",
                 )
 
                 # --- Management ---
@@ -150,6 +154,7 @@ class JobThread(threading.Thread):
                     self.management_queues,
                     self.executor_management,
                     self.job_management.handle_management,
+                    "management",
                 )
 
                 # --- Inference ---
@@ -157,6 +162,7 @@ class JobThread(threading.Thread):
                     self.inference_queues,
                     self.executor_inference,
                     self.job_inference.handle_inference,
+                    "inference",
                 )
 
                 # -- Clean-Up ---
@@ -199,6 +205,10 @@ class JobThread(threading.Thread):
         msg_uuid = msg.get("uuid")
         msg_type = msg.get("type")
 
+        # Authorization context (populated by WebSocketThread if available)
+        auth_ctx = msg.get("_auth", {})
+        roles = auth_ctx.get("roles") or []
+
         # --- Queue Separation Logic ---
         try:
             if msg_type == "info":
@@ -208,12 +218,38 @@ class JobThread(threading.Thread):
                     queue_dict=self.info_queues,
                 )
             elif msg_type == "management":
+                # Simple role-based authorization: require "management" or "admin"
+                if "management" not in roles and "admin" not in roles:
+                    if self.websocket:
+                        self.websocket(
+                            msg_uuid,
+                            {
+                                "type": "error",
+                                "payload": {
+                                    "message": "Forbidden: missing 'management' role"
+                                },
+                            },
+                        )
+                    return
                 queue = self.get_or_create_queue(
                     user_id=msg_uuid,
                     max_size=self.max_queue_size_management_per_user,
                     queue_dict=self.management_queues,
                 )
             elif msg_type == "inference":
+                # Simple role-based authorization: require "inference" or "admin"
+                if "inference" not in roles and "admin" not in roles:
+                    if self.websocket:
+                        self.websocket(
+                            msg_uuid,
+                            {
+                                "type": "error",
+                                "payload": {
+                                    "message": "Forbidden: missing 'inference' role"
+                                },
+                            },
+                        )
+                    return
                 queue = self.get_or_create_queue(
                     user_id=msg_uuid,
                     max_size=self.max_queue_size_inference_per_user,
@@ -235,6 +271,10 @@ class JobThread(threading.Thread):
                 queue.put_nowait(msg)
 
         except Exception as e:
+            # Queue full (or other queue-level error) -> backpressure metric
+            if msg_type in {"info", "management", "inference"}:
+                observe_job_rejected(msg_type)
+
             logger.warning(
                 "Queue full for user %s, type %s: %s",
                 msg_uuid,
@@ -253,6 +293,7 @@ class JobThread(threading.Thread):
         queue_dict: dict[str, QueueJob],
         executor: BoundedThreadPoolExecutor,
         handler,
+        job_type: str,
     ):
 
         # --- Executor Status ---
@@ -274,7 +315,15 @@ class JobThread(threading.Thread):
                 msg = queue.get_nowait()
 
                 # --- Execute ---
-                executor.submit(handler, msg)
+                def _wrapped(m: dict, _handler=handler, _job_type=job_type) -> None:
+                    start = time.time()
+                    try:
+                        _handler(m)
+                    finally:
+                        duration = time.time() - start
+                        observe_job_processing(_job_type, duration)
+
+                executor.submit(_wrapped, msg)
 
             except Empty:
                 continue

@@ -6,6 +6,7 @@ from prometheus_client import (
     CollectorRegistry,
     Counter,
     Gauge,
+    Histogram,
     generate_latest,
 )
 
@@ -31,6 +32,21 @@ WS_MESSAGES_TOTAL = Counter(
 WS_ERRORS_TOTAL = Counter(
     "tcm_ws_errors_total",
     "Total errors while handling WebSocket clients",
+    registry=registry,
+)
+
+# Job / backpressure metrics
+JOBS_REJECTED_TOTAL = Counter(
+    "tcm_jobs_rejected_total",
+    "Total jobs rejected due to full queues or executors",
+    ["type"],
+    registry=registry,
+)
+
+JOB_PROCESSING_SECONDS = Histogram(
+    "tcm_job_processing_seconds",
+    "Job processing time in seconds by type",
+    ["type"],
     registry=registry,
 )
 
@@ -111,6 +127,22 @@ EXECUTOR_INFERENCE_AVAILABLE = Gauge(
 
 def observe_ws_message(msg_type: str) -> None:
     WS_MESSAGES_TOTAL.labels(type=msg_type).inc()
+
+
+def observe_job_rejected(job_type: str) -> None:
+    """
+    Increment the rejected jobs counter for the given job type.
+
+    job_type is typically one of: "info", "management", "inference".
+    """
+    JOBS_REJECTED_TOTAL.labels(type=job_type).inc()
+
+
+def observe_job_processing(job_type: str, duration_seconds: float) -> None:
+    """
+    Observe job processing duration for the given job type.
+    """
+    JOB_PROCESSING_SECONDS.labels(type=job_type).observe(duration_seconds)
 
 
 def generate_metrics_response(

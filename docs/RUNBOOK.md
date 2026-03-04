@@ -15,6 +15,7 @@ Operations and deployment guidance for Triton Client Manager.
 - [Startup Assumptions](#startup-assumptions)
 - [Pre-Push Validation](#pre-push-validation)
 - [Logging and Troubleshooting](#logging-and-troubleshooting)
+- [SLOs, Alerts, and Dashboards](#slos-alerts-and-dashboards)
 - [Deployment Examples](#deployment-examples)
 - [Backup and Restore](#backup-and-restore)
 
@@ -52,20 +53,43 @@ ruff check .
 # Run tests
 pytest
 
-# Start the manager
-python client_manager.py
+# Start the DEV server (no OpenStack/Docker/Triton required)
+.venv/bin/python dev_server.py
 ```
+
+This `dev_server.py` entrypoint:
+
+- Arranca únicamente `JobThread` + `WebSocketThread`.
+- Usa backends simulados para OpenStack/Docker/Triton (no hace llamadas externas).
+- Expone `/ws`, `/health`, `/ready` y `/metrics` en el `host`/`port` de `websocket.yaml`.
+
+Para un entorno **completo** con OpenStack/Docker/Triton reales, utiliza `client_manager.py` como se describe más abajo.
 
 See [TESTING.md](TESTING.md) for detailed test commands and [CONFIGURATION.md](CONFIGURATION.md) for config file reference.
 
 ## Run Application
+
+### Full pipeline (requires real OpenStack/Docker/Triton)
 
 ```bash
 cd MANAGER
 python client_manager.py
 ```
 
-Threads start in order: OpenStack → Triton → Docker → Job → WebSocket. Each must report ready within 30 seconds or startup fails with `TimeoutError`.
+Threads start in order: OpenStack → Triton → Docker → Job → WebSocket. Each must report ready within 30 seconds or startup fails with `TimeoutError`. This is the entrypoint intended for staging/production.
+
+### Dev-only pipeline (no external dependencies)
+
+```bash
+cd MANAGER
+.venv/bin/python dev_server.py
+```
+
+In this mode:
+
+- `OpenstackThread`, `DockerThread` and `TritonThread` are not initialized.
+- The WebSocket server and job thread behave like production for `auth`, `info` and queue handling.
+- This is the recommended mode to reproduce issues locally and to feed Prometheus/Grafana dashboards.
 
 ## Smoke Test
 
@@ -183,13 +207,158 @@ Typical patterns when tailing logs:
 
 The WebSocket server also exposes Prometheus metrics at:
 
-- `GET /metrics` — queue and executor gauges plus WebSocket counters.
+- `GET /metrics` — queue and executor gauges plus WebSocket and job-level counters/histograms.
 
 Use this endpoint to monitor:
 
 - Total and per‑type queued jobs.
 - Executor pending tasks and available worker slots.
 - WebSocket connections, disconnections, messages by type, and errors.
+- Jobs rejected due to backpressure and job processing times by type.
+
+### Operational playbooks (backpressure and dependency failures)
+
+#### Queues saturated / backpressure active
+
+- **Síntomas**:
+  - `tcm_queue_total_queued` creciendo de forma sostenida.
+  - `tcm_executor_*_pending` cerca de su máximo y `tcm_executor_*_available` cerca de 0.
+  - Incrementos en `tcm_jobs_rejected_total{type="info|management|inference"}`.
+- **Acciones**:
+  - Revisar tráfico de entrada (`journalctl ... | grep "type=inference"` / `info` / `management`).
+  - Considerar aumentar `max_workers_*` y/o `max_queue_size_*_per_user` (ver `docs/CONFIGURATION.md`), o escalar réplicas del manager.
+  - Coordinar con el sistema cliente para aplicar backoff/reintentos exponenciales.
+
+#### Triton no responde o responde con error sistemático
+
+- **Síntomas**:
+  - Errores repetidos en logs de `TritonThread` o `TritonInfer`.
+  - Jobs de `management` o `inference` con `status: false` y mensajes de fallo de salud/carga de modelo.
+  - Posible aumento de `tcm_jobs_rejected_total{type="inference"}` si las colas se llenan.
+- **Acciones**:
+  - Verificar salud de instancias Triton externas (Kubernetes/VMs) y conectividad de red.
+  - Revisar configuración de modelos (nombres, paths, versiones) y logs de Triton.
+  - Si es un problema de capacidad, escalar workers Triton o ajustar timeouts y reintentos.
+
+#### OpenStack lento o intermitente
+
+- **Síntomas**:
+  - Logs de `OpenstackThread` con timeouts o errores de red.
+  - Jobs de `management` con `status: false` en operaciones de creación/eliminación de VMs.
+  - Aumento del tiempo de procesamiento para jobs de `management` en `tcm_job_processing_seconds`.
+- **Acciones**:
+  - Comprobar estado del API de OpenStack y latencias desde el nodo donde corre el manager.
+  - Ajustar timeouts y políticas de reintento según documentación de OpenStack.
+  - En caso de degradación prolongada, comunicar al equipo de SRE/infra y considerar pausar flujos de creación hasta que se estabilice.
+
+## SLOs, Alerts, and Dashboards
+
+This section provides reference SLOs, alert rules, and example dashboards to help SRE/operations
+teams run Triton Client Manager in production.
+
+### Reference SLOs
+
+These SLOs are suggestions; you should tune them to your environment:
+
+- **WebSocket error rate**
+  - **SLO**: WebSocket protocol/application errors \< 1% of total messages over a rolling 5‑minute window.
+  - **Signals**: `tcm_ws_errors_total` vs `tcm_ws_messages_total`.
+
+- **Info queue latency**
+  - **SLO**: P95 latency of `info.queue_stats` \< 200 ms.
+  - **Signals**: HTTP latency from your ingress/load balancer, or a custom histogram in front of `/ws` and `/metrics`.
+
+- **Manager availability**
+  - **SLO**: Manager process availability \>= 99.5%.
+  - **Signals**: uptime of the Kubernetes Deployment / systemd service; readiness/liveness success rate.
+
+### Example Prometheus alerts (pseudo‑YAML)
+
+You can implement alerts in Prometheus/Alertmanager using rules like:
+
+```yaml
+groups:
+  - name: triton-client-manager.slo
+    rules:
+      - alert: TcmHighWebSocketErrorRate
+        expr: |
+          (
+            rate(tcm_ws_errors_total[5m])
+            /
+            rate(tcm_ws_messages_total[5m])
+          ) > 0.01
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High WebSocket error rate in Triton Client Manager"
+          description: "Error rate > 1% for more than 10 minutes."
+
+      - alert: TcmManagerNotReady
+        expr: up{job="triton-client-manager"} == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Triton Client Manager is down or not scraping metrics"
+          description: "No metrics scraped from job=triton-client-manager for 5 minutes."
+```
+
+You can adapt the `job`/labels to match your Prometheus configuration.
+
+### Example Grafana dashboard (what to include)
+
+At minimum, we recommend a Grafana dashboard with panels for:
+
+- **WebSocket traffic**
+  - Graph: `rate(tcm_ws_connections_total[5m])` (new connections).
+  - Graph: `rate(tcm_ws_messages_total[5m])` split by `type` (auth, info, management, inference).
+  - Graph: `rate(tcm_ws_errors_total[5m])` (errors).
+
+- **Queues and backpressure**
+  - SingleStat / graph: `tcm_queue_total_queued`.
+  - Graphs split by type: `tcm_queue_info_total`, `tcm_queue_management_total`, `tcm_queue_inference_total`.
+  - Graph: `tcm_executor_*_pending` and `tcm_executor_*_available` to see executor saturation.
+  - Graph: `rate(tcm_jobs_rejected_total[5m])` split by `type`.
+
+- **Dependencies (Triton / OpenStack)**
+  - Panels that show health and error rates from:
+    - Triton metrics (if you expose them to Prometheus).
+    - OpenStack API metrics (HTTP status codes, latency), if available via your infra.
+
+An example dashboard JSON is provided at `grafana/tcm_dashboard.json`. You can import it
+directly into Grafana and then customize it for your environment.
+
+### Day 2 operations checklist
+
+When responding to incidents or degradation, use this checklist:
+
+1. **Is the manager healthy?**
+   - Check `/health` and `/ready` endpoints (or Kubernetes probes).
+   - Verify `up{job="triton-client-manager"}` in Prometheus.
+
+2. **Is traffic abnormal?**
+   - Look at WebSocket connections and messages per type.
+   - Check `tcm_ws_errors_total` and error rates.
+
+3. **Are queues/backpressure active?**
+   - Check `tcm_queue_total_queued` and per‑type queue gauges.
+   - Check `tcm_executor_*_pending` / `tcm_executor_*_available`.
+   - Inspect `tcm_jobs_rejected_total{type=...}` to see which job types are being rejected.
+
+4. **Are dependencies failing?**
+   - Look for errors in OpenStack, Docker, and Triton logs.
+   - Use the operational playbooks above (backpressure, Triton down, OpenStack slow).
+
+5. **Do you need to scale?**
+   - If backpressure is sustained and dependencies are healthy:
+     - Scale Triton workers (more pods/VMs).
+     - Scale Triton Client Manager replicas.
+     - Adjust `max_workers_*` and queue sizes carefully (see `docs/CONFIGURATION.md`).
+
+6. **Post‑incident**
+   - Capture a short summary: root cause, impact, and which SLOs were touched.
+   - Consider updating alerts, dashboards, or configuration to detect similar issues earlier.
 
 ## Health and Readiness Probes
 

@@ -54,6 +54,8 @@ class WebSocketThread(threading.Thread):
 
         # Store active connections: {client_id: WebSocket}
         self.clients: Dict[str, WebSocket] = {}
+        # Store auth context per client_id: {client_id: {"sub": ..., "tenant_id": ..., "roles": [...]}}
+        self.client_auth: Dict[str, dict] = {}
         self.clients_lock = threading.Lock()
 
         # FastAPI app
@@ -177,6 +179,28 @@ class WebSocketThread(threading.Thread):
             client_id = message["uuid"]
             observe_ws_message(message.get("type", "unknown"))
 
+            # Optional multi-tenant auth payload validation
+            payload = message.get("payload", {}) or {}
+            client_block = payload.get("client")
+            roles = []
+            tenant_id = None
+            sub = None
+            if client_block is not None:
+                sub = client_block.get("sub")
+                tenant_id = client_block.get("tenant_id")
+                roles = client_block.get("roles", [])
+                if (
+                    not isinstance(sub, str)
+                    or not isinstance(tenant_id, str)
+                    or not isinstance(roles, list)
+                ):
+                    await self._send_error(
+                        websocket,
+                        "Invalid auth payload: expected 'client.sub', 'client.tenant_id', and 'client.roles'",
+                    )
+                    await websocket.close(code=1008)
+                    return
+
             # Check if client already connected
             with self.clients_lock:
                 if client_id in self.clients:
@@ -186,8 +210,13 @@ class WebSocketThread(threading.Thread):
                     await websocket.close(code=1008)
                     return
 
-                # Store client connection
+                # Store client connection and auth context
                 self.clients[client_id] = websocket
+                self.client_auth[client_id] = {
+                    "sub": sub,
+                    "tenant_id": tenant_id,
+                    "roles": roles,
+                }
 
             # Send auth confirmation
             await websocket.send_text(json.dumps({"type": "auth.ok"}))
@@ -242,6 +271,11 @@ class WebSocketThread(threading.Thread):
                     )
                     continue  # Don't close connection, just skip this message
 
+                # Attach auth context (if any) so downstream components can enforce roles/limits
+                if client_id:
+                    auth_ctx = self.client_auth.get(client_id, {})
+                    message["_auth"] = auth_ctx
+
                 # Call message handler in executor to avoid blocking async loop
                 if self.on_message:
                     try:
@@ -282,6 +316,7 @@ class WebSocketThread(threading.Thread):
             if client_id:
                 with self.clients_lock:
                     self.clients.pop(client_id, None)
+                    self.client_auth.pop(client_id, None)
 
                 if self.on_disconnect:
                     try:

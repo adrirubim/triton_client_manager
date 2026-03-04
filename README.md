@@ -92,6 +92,7 @@ The system exposes inference endpoints (HTTP and gRPC) and manages per-user job 
 - ✅ **Regression tests** — Contracts for DI, deletion normalization, auth, and inference examples
 - ✅ **Smoke test** — Validates startup, WebSocket auth, and `queue_stats` with mocks
 - ✅ **Internal changelog** — [CHANGELOG_INTERNAL](docs/CHANGELOG_INTERNAL.md) tracks notable engineering changes
+- ✅ **Observability stack** — Sample Prometheus + Grafana setup with a ready‑to‑use dashboard (`monitoring/`, `grafana/tcm_dashboard.json`)
 
 ---
 
@@ -184,7 +185,19 @@ See [CONFIGURATION](docs/CONFIGURATION.md) for full details.
 
 ### 6. Run the Application
 
+#### Dev mode (recommended for local development)
+
+Runs only `JobThread` + `WebSocketThread` with mocked OpenStack/Docker/Triton backends. No external services required; ideal for experimenting with `/ws`, `/metrics` and the Grafana dashboard.
+
 ```bash
+cd MANAGER
+.venv/bin/python dev_server.py
+```
+
+#### Full pipeline (requires real OpenStack/Docker/Triton)
+
+```bash
+cd MANAGER
 python client_manager.py
 ```
 
@@ -374,6 +387,11 @@ For local development and tests:
 
 ```bash
 cd MANAGER
+
+# Dev server (no external services, recommended for local work)
+.venv/bin/python dev_server.py
+
+# Full manager (requires OpenStack/Docker/Triton)
 python client_manager.py
 ```
 
@@ -392,6 +410,20 @@ cd MANAGER
 python -m py_compile client_manager.py
 python -m compileall -q classes utils
 ```
+
+### Monitoring stack (Prometheus + Grafana)
+
+From the repository root:
+
+```bash
+cd monitoring
+docker compose up -d
+```
+
+Then:
+
+- Prometheus UI at `http://localhost:9090`
+- Grafana UI at `http://localhost:3000` (import `grafana/tcm_dashboard.json` and point it to the `prometheus` data source)
 
 ---
 

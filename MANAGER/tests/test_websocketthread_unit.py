@@ -127,3 +127,35 @@ async def test_handle_client_rejects_oversized_and_invalid_messages(
     await ws._handle_client(dummy2)
     assert hasattr(dummy2, "closed_code")
     assert dummy2.closed_code == 1008
+
+
+@pytest.mark.asyncio
+async def test_handle_client_rejects_invalid_auth_payload(monkeypatch):
+    ws = WebSocketThread(
+        host="127.0.0.1",
+        port=0,
+        valid_types=["auth", "info"],
+        on_message=lambda *_args, **_kwargs: None,
+    )
+
+    dummy = _DummyWebSocket()
+
+    async def accept():
+        return None
+
+    # auth message with malformed client block (missing sub/tenant_id/roles types)
+    async def recv_text_bad_auth():
+        return json.dumps(
+            {
+                "uuid": "u",
+                "type": "auth",
+                "payload": {"client": {"sub": 123, "tenant_id": None, "roles": "x"}},
+            }
+        )
+
+    dummy.accept = accept
+    dummy.receive_text = recv_text_bad_auth
+
+    await ws._handle_client(dummy)
+    assert hasattr(dummy, "closed_code")
+    assert dummy.closed_code == 1008

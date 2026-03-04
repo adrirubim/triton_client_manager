@@ -13,8 +13,12 @@ from classes.websocket.schemas import (
 )
 from utils.logging_config import configure_logging
 from utils.metrics import (
+    JOB_PROCESSING_SECONDS,
+    JOBS_REJECTED_TOTAL,
     WS_MESSAGES_TOTAL,
     generate_metrics_response,
+    observe_job_processing,
+    observe_job_rejected,
     observe_ws_message,
 )
 
@@ -124,6 +128,22 @@ def test_metrics_observe_and_generate_response_with_stats_and_failure(monkeypatc
 
     response2 = generate_metrics_response(boom)
     assert response2.status_code == 200
+
+
+def test_job_metrics_rejected_and_processing_histogram():
+    # Rejected jobs counter should track rejections per type
+    observe_job_rejected("info")
+    observe_job_rejected("management")
+    sample_rejected = JOBS_REJECTED_TOTAL.collect()[0]
+    rejected_labels = {s.labels["type"] for s in sample_rejected.samples}
+    assert {"info", "management"}.issubset(rejected_labels)
+
+    # Processing histogram should accept observations and expose count samples
+    observe_job_processing("inference", 0.01)
+    sample_hist = JOB_PROCESSING_SECONDS.collect()[0]
+    # Find the *_count sample to ensure at least one observation was recorded
+    counts = [s for s in sample_hist.samples if s.name.endswith("_count")]
+    assert any(s.labels.get("type") == "inference" and s.value >= 1 for s in counts)
 
 
 def test_metrics_endpoint_and_logging_config_in_fastapi_app():

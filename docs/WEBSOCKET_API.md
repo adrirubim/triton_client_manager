@@ -41,19 +41,54 @@ If any required field is missing, the server responds with:
 
 ### 2.1 `auth` – Authentication
 
-The **first** request on each connection must be of type `auth`.
+The **first** request on each connection must be of type `auth`. It establishes the
+identity and authorization model for the WebSocket session.
 
-**Minimal request:**
+#### Auth payload
+
+The recommended payload shape is:
 
 ```json
 {
   "uuid": "frontend-123",
   "type": "auth",
-  "payload": {}
+  "payload": {
+    "token": "opaque-or-jwt-token",
+    "client": {
+      "sub": "user-123",
+      "tenant_id": "tenant-abc",
+      "roles": ["inference", "management"]
+    }
+  }
 }
 ```
 
-**Successful response:**
+- `uuid` (string): stable identifier for the client within this connection.
+- `payload.token` (string): authentication token (for example, JWT or API key) issued
+  by your identity provider. Triton Client Manager treats it as opaque and focuses on
+  the `client` block for authorization decisions.
+- `payload.client.sub` (string): subject / user id.
+- `payload.client.tenant_id` (string): tenant / project identifier.
+- `payload.client.roles` (array of strings): roles granted to the client. Typical
+  roles:
+  - `"inference"` – can send `inference` messages.
+  - `"management"` – can send `management` messages.
+  - `"admin"` – full access.
+
+The server validates that:
+
+- `payload` is an object.
+- If `client` is present, it contains `sub`, `tenant_id`, and `roles` (list of
+  strings).
+
+If the structure is invalid, the server responds with an error and closes the
+connection.
+
+> Backwards compatibility: for local tests and smoke flows, an empty payload
+> (`"payload": {}`) is still accepted and treated as an unauthenticated client
+> with no special roles. In that mode, only basic `info` calls are expected.
+
+#### Successful response
 
 ```json
 {
@@ -61,7 +96,7 @@ The **first** request on each connection must be of type `auth`.
 }
 ```
 
-**Typical errors:**
+#### Typical errors
 
 - First message is not `auth`:
 
@@ -85,7 +120,19 @@ The **first** request on each connection must be of type `auth`.
   }
   ```
 
-On an error in the first message, the server may close the connection.
+- Invalid auth payload (missing required fields in `client`):
+
+  ```json
+  {
+    "type": "error",
+    "payload": {
+      "message": "Invalid auth payload: expected 'client.sub', 'client.tenant_id', and 'client.roles'"
+    }
+  }
+  ```
+
+On an error in the first message, the server may close the connection with
+WebSocket close code `1008`.
 
 ---
 
@@ -328,5 +375,9 @@ An external integrator (frontend, other service) should, at minimum, follow this
 5. Optionally, send `management` or `inference` messages, depending on the capabilities and constraints of your deployment.
 6. Close the WebSocket connection when it is no longer needed.
 
-For a functional client example, see `MANAGER/_______WEBSOCKET/client.py` and `docs/TESTING.md` (smoke + WebSocket integration section).
+For functional client examples, see:
+
+- `MANAGER/_______WEBSOCKET/client.py` — cliente mínimo interactivo.
+- `MANAGER/_______WEBSOCKET/sdk.py` — SDK ligero (`TcmWebSocketClient`) y helpers de quickstart.
+- `MANAGER/_______WEBSOCKET/README.md` — quickstart “copiar/pegar y ejecutar” usando el SDK.
 

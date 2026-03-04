@@ -14,7 +14,18 @@ async def test_auth_and_info(ws_server):
     """Auth and queue_stats info work over WebSocket."""
     uri = ws_server
     async with connect(uri) as sock:
-        auth_msg = {"type": "auth", "uuid": "pytest-client", "payload": {}}
+        auth_msg = {
+            "type": "auth",
+            "uuid": "pytest-client",
+            "payload": {
+                # Minimal client block to exercise multi-tenant auth path
+                "client": {
+                    "sub": "user-test",
+                    "tenant_id": "tenant-test",
+                    "roles": ["inference", "management"],
+                }
+            },
+        }
         await sock.send(json.dumps(auth_msg))
         r = json.loads(await sock.recv())
         assert r.get("type") == "auth.ok", r
