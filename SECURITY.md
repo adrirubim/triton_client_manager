@@ -1,14 +1,36 @@
-# Security
+# Security Policy
+
+## Supported Versions
+
+We release security updates for the following versions:
+
+| Version | Supported |
+| ------- | --------- |
+| main    | ✅         |
 
 ---
 
-## Table of Contents
+## Reporting a Vulnerability
 
-- [Do Not Commit Secrets](#do-not-commit-secrets)
-- [Safe Handling of Credentials](#safe-handling-of-credentials)
-- [Dependency Hygiene](#dependency-hygiene)
-- [Logging Caution](#logging-caution)
-- [Reporting Vulnerabilities](#reporting-vulnerabilities)
+If you discover a security vulnerability in this project, please report it **responsibly**.
+
+**Do not** open a public issue for security-sensitive topics.
+
+### How to report
+
+1. **Email:** [adrianmorillasperez@gmail.com](mailto:adrianmorillasperez@gmail.com)  
+   Use a descriptive subject, for example: `[Security] triton_client_manager – short description`.
+2. **Include (if possible):**
+   - Description of the vulnerability
+   - Steps to reproduce
+   - Impact and affected components
+   - Suggested fix or workaround (optional)
+
+### What to expect
+
+- You will receive an acknowledgement as soon as possible.
+- A fix will be investigated and you will be kept informed of progress.
+- Once fixed, a security advisory may be published (crediting you if you wish).
 
 ---
 
@@ -17,31 +39,28 @@
 - Never commit API keys, passwords, tokens, or credentials.
 - Use environment variables or secure secret stores for runtime secrets.
 - Config files in `MANAGER/config/` may contain placeholders; replace with real values only in deployment environments.
+- **SSH keys (`.pem`)**: Never commit private keys. `*.pem` files are in `.gitignore`. Use environment variables or a secret manager (for example `SSH_KEY_PATH`) to supply key paths at runtime.
+
+---
 
 ## Safe Handling of Credentials
 
-- OpenStack, Docker registry, MinIO, and similar credentials must be supplied at runtime or via environment.
-- Avoid logging credentials or sensitive payloads.
-- Review `MANAGER/config/` before committing; ensure no accidental credential inclusion.
-- **SSH keys (`.pem`)**: Never commit private keys. `*.pem` files are in `.gitignore`. Use environment variables or a secret manager (e.g. `SSH_KEY_PATH`) to supply key paths at runtime.
+- Credentials for OpenStack, Docker registry, MinIO / S3, Triton, and similar services must be supplied at runtime (env vars, secret manager, CI secrets).
+- Avoid logging credentials, tokens, or full request/response payloads that may contain sensitive data.
+- Review `MANAGER/config/` before committing to ensure no accidental credential inclusion.
+
+---
 
 ## Dependency Hygiene
 
-- Keep dependencies in `MANAGER/requirements.txt` up to date.
-- Run `pip list --outdated` periodically and update with care.
-- Pin versions where stability matters (e.g. uvicorn range per [docs/CONFIGURATION.md](docs/CONFIGURATION.md)).
+- Keep dependencies in `MANAGER/requirements.txt` and `MANAGER/requirements-test.txt` up to date.
+- Run `pip list --outdated` periodically and review upgrade notes before bumping versions.
+- Pin or range-lock versions where stability matters (for example `uvicorn` and other infra components, see `docs/CONFIGURATION.md`).
 
-## Logging Caution
+---
 
-- Do not log full request/response payloads that may contain user data.
-- Avoid logging stack traces or errors that could expose internal paths or configuration.
+## Logging and Debugging Caution
 
-## Reporting Vulnerabilities
-
-To report a security vulnerability:
-
-| Field | Value |
-|-------|-------|
-| **Contact** | Configure via GitHub repository settings (Settings → Security) or use `security@your-org.com` (replace with your org contact). |
-| **Include** | Description, steps to reproduce, impact, and suggested fix (if any). |
-| **Disclosure** | Allow reasonable time for a fix before public disclosure. |
+- Do not log full request/response bodies that may include user data or credentials.
+- Prefer structured logs with minimal necessary context.
+- In production, avoid verbose stack traces that could expose internal paths, configuration, or infrastructure details.
