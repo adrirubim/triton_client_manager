@@ -1,3 +1,4 @@
+import logging
 import threading
 import time
 from typing import TYPE_CHECKING, Callable, Optional
@@ -18,6 +19,9 @@ from .info import DockerInfo
 
 if TYPE_CHECKING:
     from ..openstack import OpenstackThread
+
+
+logger = logging.getLogger(__name__)
 
 ###################################
 #        Docker Thread            #
@@ -60,11 +64,11 @@ class DockerThread(threading.Thread):
         return self._ready_event.wait(timeout)
 
     def stop(self):
-        print("[DockerThread] Stopping...")
+        logger.info("[DockerThread] Stopping...")
         self._stop_event.set()
 
     def run(self):
-        print("[DockerThread] Started")
+        logger.info("[DockerThread] Started")
 
         while not self._stop_event.is_set():
             try:
@@ -72,9 +76,9 @@ class DockerThread(threading.Thread):
                 time.sleep(self.refresh_time)
 
             except Exception as e:
-                print(f"[Error] DockerThread main loop: {e}")
+                logger.exception("DockerThread main loop error: %s", e)
 
-        print("[DockerThread] Stopped")
+        logger.info("[DockerThread] Stopped")
 
     def _send_alert(self, error: Exception):
         if self.websocket:
@@ -87,7 +91,7 @@ class DockerThread(threading.Thread):
                 }
                 self.websocket(alert_payload)
             except Exception as e:
-                print(f"[Error] Failed to send alert: {e}")
+                logger.warning("Failed to send Docker alert: %s", e)
 
     def load(self) -> None:
         with self._data_lock:

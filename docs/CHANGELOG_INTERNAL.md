@@ -11,7 +11,7 @@ Engineering changelog for Triton Client Manager. Not for product marketing.
 | Component | Change |
 |-----------|--------|
 | **JobManagement** | Constructor order `(docker, triton, openstack, websocket, management_actions_available)` |
-| **JobInference** | Constructor order `(docker, openstack, websocket, inference_actions_available, triton)` |
+| **JobInference** | Constructor order updated to `(triton, docker, openstack, websocket, inference_actions_available)` and aligned with `JobThread` wiring |
 | **JobInfo** | Constructor fixed to `(docker, openstack, websocket, get_queue_stats)` — no extra arguments |
 
 ### Deletion Payload Normalization
@@ -50,3 +50,8 @@ Engineering changelog for Triton Client Manager. Not for product marketing.
 - Smoke runtime test: `tests/smoke_runtime.py`
 - Regression suite: `tests/test_regression.py`
 - CI: regression tests run on pull requests (e.g. via GitHub Actions)
+
+### Metrics and Observability
+
+- Introduced `utils/metrics.py` with Prometheus counters and gauges for WebSocket traffic and job queues/executors.
+- Exposed `/metrics` endpoint in `WebSocketThread` (FastAPI) wired to `JobThread.get_queue_stats()` for queue/executor statistics.

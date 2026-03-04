@@ -7,6 +7,14 @@ from typing import Callable, Dict, List, Optional
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
+from utils.metrics import (
+    WS_CONNECTIONS_TOTAL,
+    WS_DISCONNECTIONS_TOTAL,
+    WS_ERRORS_TOTAL,
+    generate_metrics_response,
+    observe_ws_message,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -20,6 +28,7 @@ class WebSocketThread(threading.Thread):
         on_connect: Optional[Callable[[str], None]] = None,
         on_disconnect: Optional[Callable[[str], None]] = None,
         max_message_bytes: int = 64 * 1024,
+        get_queue_stats: Optional[Callable[[], dict]] = None,
     ):
         """
         Initialize WebSocket server.
@@ -41,6 +50,7 @@ class WebSocketThread(threading.Thread):
         self.on_connect = on_connect
         self.on_disconnect = on_disconnect
         self.max_message_bytes = max_message_bytes
+        self.get_queue_stats = get_queue_stats
 
         # Store active connections: {client_id: WebSocket}
         self.clients: Dict[str, WebSocket] = {}
@@ -67,6 +77,11 @@ class WebSocketThread(threading.Thread):
         async def ready():
             """Readiness probe (server ready to accept connections)."""
             return {"status": "ready"}
+
+        @self.app.get("/metrics")
+        async def metrics():
+            """Prometheus metrics endpoint."""
+            return generate_metrics_response(self.get_queue_stats)
 
         @self.app.websocket("/ws")
         async def websocket_endpoint(websocket: WebSocket):
@@ -120,7 +135,11 @@ class WebSocketThread(threading.Thread):
         try:
             # Accept connection
             await websocket.accept()
-            logger.info("Client connected, waiting for auth")
+            WS_CONNECTIONS_TOTAL.inc()
+            logger.info(
+                "Client connected, waiting for auth",
+                extra={"client_uuid": "-", "job_id": "-", "job_type": "ws_auth"},
+            )
 
             # ========== FIRST MESSAGE: AUTH ==========
             raw_msg = await websocket.receive_text()
@@ -156,6 +175,7 @@ class WebSocketThread(threading.Thread):
 
             # Extract client ID from uuid
             client_id = message["uuid"]
+            observe_ws_message(message.get("type", "unknown"))
 
             # Check if client already connected
             with self.clients_lock:
@@ -171,7 +191,15 @@ class WebSocketThread(threading.Thread):
 
             # Send auth confirmation
             await websocket.send_text(json.dumps({"type": "auth.ok"}))
-            logger.info("Client '%s' authenticated", client_id)
+            logger.info(
+                "Client '%s' authenticated",
+                client_id,
+                extra={
+                    "client_uuid": client_id,
+                    "job_id": "-",
+                    "job_type": "auth",
+                },
+            )
 
             # Notify connection callback
             if self.on_connect:
@@ -217,6 +245,7 @@ class WebSocketThread(threading.Thread):
                 # Call message handler in executor to avoid blocking async loop
                 if self.on_message:
                     try:
+                        observe_ws_message(message.get("type", "unknown"))
                         await asyncio.get_event_loop().run_in_executor(
                             None, self.on_message, client_id, message
                         )
@@ -224,10 +253,29 @@ class WebSocketThread(threading.Thread):
                         logger.exception("Error in on_message callback: %s", e)
 
         except WebSocketDisconnect:
-            logger.info("Client %s disconnected", client_id)
+            WS_DISCONNECTIONS_TOTAL.inc()
+            logger.info(
+                "Client %s disconnected",
+                client_id,
+                extra={
+                    "client_uuid": client_id or "-",
+                    "job_id": "-",
+                    "job_type": "disconnect",
+                },
+            )
 
         except Exception as e:
-            logger.exception("Error handling client %s: %s", client_id, e)
+            WS_ERRORS_TOTAL.inc()
+            logger.exception(
+                "Error handling client %s: %s",
+                client_id,
+                e,
+                extra={
+                    "client_uuid": client_id or "-",
+                    "job_id": "-",
+                    "job_type": "ws_error",
+                },
+            )
 
         finally:
             # Remove client
@@ -257,11 +305,26 @@ class WebSocketThread(threading.Thread):
             websocket = self.clients.get(client_id)
 
         if not websocket:
-            logger.warning("Client %s not connected", client_id)
+            logger.warning(
+                "Client %s not connected",
+                client_id,
+                extra={
+                    "client_uuid": client_id,
+                    "job_id": "-",
+                    "job_type": "ws_send",
+                },
+            )
             return False
 
         if not self.loop:
-            logger.warning("Event loop not available")
+            logger.warning(
+                "Event loop not available",
+                extra={
+                    "client_uuid": client_id,
+                    "job_id": "-",
+                    "job_type": "ws_send",
+                },
+            )
             return False
 
         try:
@@ -273,7 +336,16 @@ class WebSocketThread(threading.Thread):
             future.result(timeout=5.0)
             return True
         except Exception as e:
-            logger.exception("Failed to send to %s: %s", client_id, e)
+            logger.exception(
+                "Failed to send to %s: %s",
+                client_id,
+                e,
+                extra={
+                    "client_uuid": client_id,
+                    "job_id": "-",
+                    "job_type": "ws_send",
+                },
+            )
             return False
 
     def send_to_first_client(self, message: dict) -> bool:
@@ -282,7 +354,14 @@ class WebSocketThread(threading.Thread):
             first_client_id = next(iter(self.clients), None)
 
         if not first_client_id:
-            logger.debug("No connected clients for alert delivery")
+            logger.debug(
+                "No connected clients for alert delivery",
+                extra={
+                    "client_uuid": "-",
+                    "job_id": "-",
+                    "job_type": "ws_broadcast",
+                },
+            )
             return False
 
         return self.send_to_client(first_client_id, message)
@@ -318,7 +397,12 @@ class WebSocketThread(threading.Thread):
 
     def run(self):
         """Run the server in this thread"""
-        logger.info("Starting on %s:%s", self.host, self.port)
+        logger.info(
+            "Starting on %s:%s",
+            self.host,
+            self.port,
+            extra={"client_uuid": "-", "job_id": "-", "job_type": "ws_server"},
+        )
 
         # Create new event loop for this thread
         self.loop = asyncio.new_event_loop()
@@ -351,14 +435,21 @@ class WebSocketThread(threading.Thread):
         try:
             self.loop.run_until_complete(_serve_with_ready())
         except Exception as e:
-            logger.exception("Server error: %s", e)
+            logger.exception(
+                "Server error: %s",
+                e,
+                extra={"client_uuid": "-", "job_id": "-", "job_type": "ws_server"},
+            )
         finally:
             self._ready_event.set()  # Unblock any waiter if we failed to start
             self.loop.close()
 
     def stop(self):
         """Stop the server and close all connections"""
-        logger.info("Stopping")
+        logger.info(
+            "Stopping",
+            extra={"client_uuid": "-", "job_id": "-", "job_type": "ws_server"},
+        )
         self._stop_event.set()
 
         # Signal uvicorn to exit gracefully (main_loop checks should_exit ~every 0.1s)
@@ -376,4 +467,13 @@ class WebSocketThread(threading.Thread):
                 if websocket and self.loop:
                     asyncio.run_coroutine_threadsafe(websocket.close(), self.loop)
             except Exception as e:
-                logger.warning("Error closing client %s: %s", client_id, e)
+                logger.warning(
+                    "Error closing client %s: %s",
+                    client_id,
+                    e,
+                    extra={
+                        "client_uuid": client_id,
+                        "job_id": "-",
+                        "job_type": "ws_server",
+                    },
+                )

@@ -1,103 +1,92 @@
 """
-Simple WebSocket Client Test
-Connects to server and sends test messages
+Simple WebSocket client for manual testing.
+
+Protocol:
+    - First message MUST be an "auth" message with fields:
+        { "uuid": "<client-id>", "type": "auth", "payload": {...} }
+    - Subsequent messages MUST reuse the same "uuid".
 """
 
 import asyncio
 import json
+from typing import Any, Dict
 
 from websockets.asyncio.client import connect
 
 
-async def test_client():
-    uri = "ws://localhost:8000/ws"
+async def test_client() -> None:
+    uri = "ws://127.0.0.1:8000/ws"
+    client_uuid = "test-client-123"
 
-    print("🚀 Starting WebSocket Test Client...")
-    print(f"📍 Connecting to: {uri}\n")
+    print("Starting WebSocket test client...")
+    print(f"Connecting to: {uri}\n")
 
     try:
         async with connect(uri) as websocket:
-            print("✅ Connected to server!\n")
+            print("Connected to server.\n")
 
             # ========== STEP 1: Send Auth ==========
             print("=" * 60)
-            print("[STEP 1] Sending authentication...")
+            print("[STEP 1] Sending authentication")
             print("=" * 60)
 
-            auth_message = {"type": "auth", "payload": {"user_id": "test_user_123"}}
+            auth_message: Dict[str, Any] = {
+                "uuid": client_uuid,
+                "type": "auth",
+                "payload": {},
+            }
 
-            print("\n📤 SENDING AUTH MESSAGE:")
-            print(f"   Content: {json.dumps(auth_message, indent=2)}")
+            print("\nSending auth message:")
+            print(json.dumps(auth_message, indent=2))
 
             await websocket.send(json.dumps(auth_message))
-            print("   ✅ Sent!")
+            print("Auth message sent.")
 
             # Wait for auth response
             auth_response = await websocket.recv()
             auth_data = json.loads(auth_response)
 
-            print("\n📥 RECEIVED AUTH RESPONSE:")
-            print(f"   Content: {json.dumps(auth_data, indent=2)}")
+            print("\nReceived auth response:")
+            print(json.dumps(auth_data, indent=2))
 
             if auth_data.get("type") != "auth.ok":
-                print("\n❌ Authentication failed!")
+                print("\nAuthentication failed.")
                 return
 
-            print("\n✅ Authentication successful!")
+            print("\nAuthentication successful.")
 
             # ========== STEP 2: Send Info Request ==========
             print("\n" + "=" * 60)
-            print("[STEP 2] Sending info request...")
+            print("[STEP 2] Sending info request (queue_stats)")
             print("=" * 60)
 
-            info_request = {
+            info_request: Dict[str, Any] = {
+                "uuid": client_uuid,
                 "type": "info",
-                "payload": {"job_id": "test-job-456", "request_type": "queue_stats"},
+                "payload": {
+                    "action": "queue_stats",
+                },
             }
 
-            print("\n📤 SENDING INFO REQUEST:")
-            print(f"   Content: {json.dumps(info_request, indent=2)}")
-            print("\n   NOTE: user_id is NOT included here!")
-            print("   The server will add it automatically.")
+            print("\nSending info request:")
+            print(json.dumps(info_request, indent=2))
 
             await websocket.send(json.dumps(info_request))
-            print("\n   ✅ Sent!")
+            print("Info request sent.")
 
             # Wait for response
-            print("\n⏳ Waiting for server response...")
+            print("\nWaiting for server response...")
             response = await websocket.recv()
             response_data = json.loads(response)
 
-            print("\n📥 RECEIVED RESPONSE:")
-            print(f"   Content: {json.dumps(response_data, indent=2)}")
+            print("\nReceived response:")
+            print(json.dumps(response_data, indent=2))
 
-            # ========== Summary ==========
-            print("\n" + "=" * 60)
-            print("SUMMARY")
-            print("=" * 60)
-            print("\n✅ Test completed successfully!")
-            print("\n📊 What the server received:")
-            print(f"   - Original message: {json.dumps(info_request, indent=6)}")
-            print(
-                f"   - After adding user_id: {json.dumps(response_data['payload']['you_sent'], indent=6)}"
-            )
-            print(
-                "\n🎯 Key point: Server automatically adds 'user_id' to every message!"
-            )
-
-            print("\n👋 Closing connection...")
+            print("\nTest completed successfully.")
 
     except Exception as e:
-        print(f"\n❌ ERROR: {e}")
+        print(f"\nERROR: {e}")
 
 
 if __name__ == "__main__":
-    print("\n" + "=" * 60)
-    print("WebSocket Client Test")
-    print("=" * 60 + "\n")
-
     asyncio.run(test_client())
-
-    print("\n" + "=" * 60)
-    print("Test Complete")
-    print("=" * 60 + "\n")

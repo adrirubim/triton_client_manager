@@ -1,5 +1,8 @@
 import asyncio
 import json
+import logging
+
+import pytest
 
 from classes.websocket.websocketthread import WebSocketThread
 
@@ -10,6 +13,9 @@ class _DummyWebSocket:
 
     async def send_text(self, text: str):
         self.sent.append(text)
+
+    async def close(self, code: int | None = None):
+        self.closed_code = code
 
 
 def test_validate_message_variants():
@@ -76,3 +82,46 @@ def test_send_to_client_success(monkeypatch):
     assert dummy.sent
     sent_msg = json.loads(dummy.sent[0])
     assert sent_msg == {"x": 1}
+
+
+@pytest.mark.asyncio
+async def test_handle_client_rejects_oversized_and_invalid_messages(monkeypatch, caplog):
+    ws = WebSocketThread(
+        host="127.0.0.1",
+        port=0,
+        valid_types=["auth", "info"],
+        on_message=lambda *_args, **_kwargs: None,
+    )
+    ws.max_message_bytes = 1  # make any non-empty JSON be "too large"
+
+    dummy = _DummyWebSocket()
+
+    async def accept():
+        return None
+
+    # First, test oversized message path
+    async def recv_text_too_big():
+        return json.dumps({"uuid": "u", "type": "auth", "payload": {}})
+
+    dummy.accept = accept
+    dummy.receive_text = recv_text_too_big
+
+    with caplog.at_level(logging.INFO):
+        await ws._handle_client(dummy)
+
+    assert hasattr(dummy, "closed_code")
+    assert dummy.closed_code == 1009
+
+    # Now test invalid JSON path
+    ws.max_message_bytes = 64 * 1024
+
+    async def recv_text_bad_json():
+        return "not-json"
+
+    dummy2 = _DummyWebSocket()
+    dummy2.accept = accept
+    dummy2.receive_text = recv_text_bad_json
+
+    await ws._handle_client(dummy2)
+    assert hasattr(dummy2, "closed_code")
+    assert dummy2.closed_code == 1008

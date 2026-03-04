@@ -8,14 +8,28 @@ Central index for Triton Client Manager documentation.
 
 | Document | Purpose |
 |----------|---------|
-| [ARCHITECTURE.md](ARCHITECTURE.md) | System design, components, flows, dependency injection |
-| [VERSION_STACK.md](VERSION_STACK.md) | Reference versions (Python, FastAPI, uvicorn, etc.) |
-| [API_CONTRACTS.md](API_CONTRACTS.md) | WebSocket message formats, auth, payloads |
-| [RUNBOOK.md](RUNBOOK.md) | Operations, deployment, validation |
-| [TESTING.md](TESTING.md) | Smoke and regression tests |
-| [CONFIGURATION.md](CONFIGURATION.md) | Config files reference |
-| [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | Common issues and fixes |
-| [CHANGELOG_INTERNAL.md](CHANGELOG_INTERNAL.md) | Internal engineering changelog |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | System design, components, flows, dependency injection, failure domains, observability |
+| [VERSION_STACK.md](VERSION_STACK.md) | Reference versions (Python, FastAPI, uvicorn, Triton client, etc.) |
+| [API_CONTRACTS.md](API_CONTRACTS.md) | WebSocket message formats, auth, payloads, and error contracts |
+| [RUNBOOK.md](RUNBOOK.md) | Operations, deployment, validation, health/ready/metrics endpoints |
+| [TESTING.md](TESTING.md) | Smoke, regression, integration, coverage, and linting strategy |
+| [CONFIGURATION.md](CONFIGURATION.md) | Config files reference and environment/runtime assumptions |
+| [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | Common issues, root causes, and fixes |
+| [CHANGELOG_INTERNAL.md](CHANGELOG_INTERNAL.md) | Internal engineering changelog (non-marketing) |
+
+## Audience and Reading Paths
+
+- **Developers (backend / platform)**:
+  - Start with: `README.md` (repo root) → `ARCHITECTURE.md` → `CONFIGURATION.md`.
+  - Then: `TESTING.md` and `CHANGELOG_INTERNAL.md` for validation and historical context.
+
+- **Operations / SRE**:
+  - Start with: `RUNBOOK.md` (day‑to‑day operations) → `TROUBLESHOOTING.md`.
+  - Use: `/health`, `/ready`, and `/metrics` endpoints as described in `RUNBOOK.md` and `ARCHITECTURE.md`.
+
+- **Integrators / client teams**:
+  - Start with: `API_CONTRACTS.md` for WebSocket contracts and message schemas.
+  - Complement with: payload examples in `MANAGER/payload_examples/` and high‑level overview in the root `README.md`.
 
 ## Folder Structure (MANAGER)
 

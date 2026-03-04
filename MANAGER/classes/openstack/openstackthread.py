@@ -87,8 +87,8 @@ class OpenstackThread(threading.Thread):
                 self.load()
                 time.sleep(self.refresh_time)
 
-            except Exception:
-                logger.info(" OpenstackThread main loop: {e}")
+            except Exception as e:
+                logger.exception("OpenstackThread main loop error: %s", e)
 
         logger.info("[OpenstackThread] Stopped")
 
@@ -102,8 +102,8 @@ class OpenstackThread(threading.Thread):
                     "timestamp": time.time(),
                 }
                 self.websocket(alert_payload)
-            except Exception:
-                logger.info(" Failed to send alert: {e}")
+            except Exception as e:
+                logger.warning("Failed to send OpenStack alert: %s", e)
 
     def load(self) -> None:
         # Fetch all data outside the lock to avoid holding it during slow API calls

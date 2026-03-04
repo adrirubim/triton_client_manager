@@ -7,7 +7,8 @@ Operations and deployment guidance for Triton Client Manager.
 ## Table of Contents
 
 - [Working Directory](#working-directory)
-- [Local Setup](#local-setup)
+- [Local Setup (Development)](#local-setup-development)
+- [How to Run in Dev](#how-to-run-in-dev)
 - [Run Application](#run-application)
 - [Smoke Test](#smoke-test)
 - [Regression Tests](#regression-tests)
@@ -23,7 +24,7 @@ Operations and deployment guidance for Triton Client Manager.
 
 Run all commands from `MANAGER` or ensure the current working directory is `MANAGER` when starting the application. `client_manager.py` loads `config/*.yaml` relative to the current directory.
 
-## Local Setup
+## Local Setup (Development)
 
 ```bash
 cd MANAGER
@@ -33,6 +34,29 @@ pip install -r requirements.txt -r requirements-test.txt
 ```
 
 > **Note:** On Ubuntu/WSL (PEP 668), system-wide `pip install` may fail; use a virtual environment. See [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+
+## How to Run in Dev
+
+Minimal flow for a new developer:
+
+```bash
+cd MANAGER
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt -r requirements-test.txt
+
+# Lint & format
+black .
+ruff check .
+
+# Run tests
+pytest
+
+# Start the manager
+python client_manager.py
+```
+
+See [TESTING.md](TESTING.md) for detailed test commands and [CONFIGURATION.md](CONFIGURATION.md) for config file reference.
 
 ## Run Application
 
@@ -84,8 +108,25 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt -r requirements-test.txt
 
+# 1. Lint & format
+black .
+ruff check . --fix
+ruff check .
+black --check .
+
+# 2. Smoke + tests
 .venv/bin/python tests/smoke_runtime.py --with-ws-client
 .venv/bin/pytest tests/ -v
+
+# 3. Optional regression
+.venv/bin/python -m unittest tests.test_regression -v
+
+# 4. Optional coverage report
+.venv/bin/pytest --cov=classes --cov=utils --cov=client_manager --cov-report=term-missing
+# Or HTML report in MANAGER/htmlcov/
+.venv/bin/pytest --cov=classes --cov=utils --cov=client_manager --cov-report=html
+
+# 5. Compilation
 python -m py_compile client_manager.py
 python -m compileall -q classes utils
 ```
@@ -137,6 +178,18 @@ Typical patterns when tailing logs:
   ```bash
   journalctl -u triton-client-manager.service -f | grep "type=inference"
   ```
+
+### Metrics endpoint
+
+The WebSocket server also exposes Prometheus metrics at:
+
+- `GET /metrics` — queue and executor gauges plus WebSocket counters.
+
+Use this endpoint to monitor:
+
+- Total and per‑type queued jobs.
+- Executor pending tasks and available worker slots.
+- WebSocket connections, disconnections, messages by type, and errors.
 
 ## Health and Readiness Probes
 

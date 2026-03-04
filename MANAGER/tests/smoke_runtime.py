@@ -48,7 +48,11 @@ def run_smoke(include_ws_client=False):
     job.triton = mock_triton
     job.websocket = None
 
-    ws = WebSocketThread(**config_ws, on_message=job.on_message)
+    ws = WebSocketThread(
+        **config_ws,
+        on_message=job.on_message,
+        get_queue_stats=job.get_queue_stats,
+    )
     job.websocket = ws.send_to_client
 
     job.start()

@@ -28,6 +28,11 @@ All messages must be JSON with:
 
 Validation failures return `{"type": "error", "payload": {"message": "..."}}`.
 
+WebSocket close codes:
+
+- `1008` — Policy violation / protocol error (invalid JSON on first message, missing required fields, wrong first `type`, UUID mismatch on subsequent messages).
+- `1009` — Message too big (payload size above `max_message_bytes`).
+
 ## Auth
 
 The first message after connection must be `auth`.
@@ -175,4 +180,4 @@ from classes.websocket.schemas import (
 - `uuid` mismatch after auth
 - Deletion missing `vm_id` or `container_id`
 - Inference missing `vm_id`, `container_id`, `model_name`, or `inputs`
-- Message larger than the configured `max_message_bytes` limit (defaults to 64 KiB), returns an `error` message and closes the WebSocket with code `1009`.
+- Message larger than the configured `max_message_bytes` limit (defaults to 64 KiB) — returns an `error` message and closes the WebSocket with code `1009`.

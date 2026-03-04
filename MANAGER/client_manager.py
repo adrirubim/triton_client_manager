@@ -8,6 +8,7 @@ from classes.job import JobThread  # -> Conccurent multiple threads (LOTS of REQ
 from classes.openstack import OpenstackThread
 from classes.triton import TritonThread
 from classes.websocket import WebSocketThread
+from utils.logging_config import configure_logging
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +46,9 @@ class ClientManager:
         self.openstack = OpenstackThread(**self.config_openstack)
         self.triton = TritonThread(self.config_triton)
         self.websocket = WebSocketThread(
-            **self.config_websocket, on_message=self.job.on_message
+            **self.config_websocket,
+            on_message=self.job.on_message,
+            get_queue_stats=self.job.get_queue_stats,
         )
 
         # --- Params for communication ---
@@ -104,6 +107,8 @@ class ClientManager:
 
 
 def main():
+    # Configure structured logging once at process start
+    configure_logging()
     client = ClientManager()
     try:
         while client.running:

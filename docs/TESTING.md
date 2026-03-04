@@ -9,6 +9,8 @@ Canonical source of truth for test execution and coverage.
 - [Smoke Test](#smoke-test)
 - [Regression Tests](#regression-tests)
 - [Integration Tests (WebSocket)](#integration-tests-websocket)
+- [Coverage](#coverage)
+- [Linting (Ruff + Black)](#linting-ruff--black)
 - [Before Pushing](#before-pushing)
 
 ---
@@ -80,7 +82,7 @@ cd MANAGER
 | **File** | `MANAGER/tests/test_integration_ws.py` |
 | **Purpose** | Multi-client WebSocket auth and info flow |
 
-Requires: `pip install -r requirements-test.txt` (pytest, pytest-asyncio, websockets). The server is started automatically by a session-scoped fixture.
+Requires: `pip install -r requirements-test.txt` (pytest, pytest-asyncio, websockets, httpx). The server is started automatically by a session-scoped fixture.
 
 **Run:**
 
@@ -95,6 +97,49 @@ cd MANAGER
 .venv/bin/python tests/smoke_runtime.py --with-ws-client
 ```
 
+## Coverage
+
+To run the full pytest suite with coverage over the core modules (`classes`, `utils`, `client_manager`) and see a terminal summary:
+
+```bash
+cd MANAGER
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt -r requirements-test.txt
+
+.venv/bin/pytest --cov=classes --cov=utils --cov=client_manager --cov-report=term-missing
+```
+
+To generate an HTML coverage report (written to `MANAGER/htmlcov/index.html`):
+
+```bash
+cd MANAGER
+source .venv/bin/activate
+
+.venv/bin/pytest --cov=classes --cov=utils --cov=client_manager --cov-report=html
+```
+
+## Linting (Ruff + Black)
+
+CI runs **Ruff** and **Black** on every push and pull request. You should run the same checks locally:
+
+```bash
+cd MANAGER
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt -r requirements-test.txt
+
+# Auto-format (Black) and autofix (Ruff)
+black .
+ruff check . --fix
+
+# Verify everything is clean
+ruff check .
+black --check .
+```
+
+These tools come from `requirements-test.txt` and are required for CI to pass.
+
 ## Before Pushing
 
 Full verification flow (recommended after upgrades or dependency changes):
@@ -105,16 +150,28 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt -r requirements-test.txt
 
-# 1. Smoke with WebSocket client
+# 1. Lint & format
+black .
+ruff check . --fix
+ruff check .
+black --check .
+
+# 2. Smoke with WebSocket client
 .venv/bin/python tests/smoke_runtime.py --with-ws-client
 
-# 2. Full pytest suite
+# 3. Full pytest suite
 .venv/bin/pytest tests/ -v
 
-# 3. Regression (optional if pytest is already green)
+# 4. Regression (optional if pytest is already green)
 .venv/bin/python -m unittest tests.test_regression -v
 ```
 
 Ensure all tests pass locally before pushing.
 
-Continuous integration (for example, GitHub Actions) should run the regression suite on pull requests.
+Continuous integration (for example, GitHub Actions) runs:
+
+- `pip install -r requirements.txt -r requirements-test.txt`
+- `ruff check .`
+- `black --check .`
+- smoke + regression tests
+- full or partial pytest suite on pull requests.

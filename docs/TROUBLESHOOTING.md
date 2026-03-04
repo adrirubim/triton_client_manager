@@ -84,9 +84,9 @@ If you use `tests/ws_client_test.py` or `_______WEBSOCKET/client.py`, add: `pip 
 |---------|--------------------------------------|------|
 | JobInfo | `(docker, openstack, websocket, get_queue_stats)` | |
 | JobManagement | `(docker, triton, openstack, websocket, management_actions_available=...)` | |
-| JobInference | `(docker, openstack, websocket, inference_actions_available, triton)` | *Order mismatch:* `__init__` expects `(triton, docker, openstack, websocket, inference_actions_available)` — wiring is incorrect |
+| JobInference | `(triton, docker, openstack, websocket, inference_actions_available)` | |
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for the full dependency injection map.
+If you see mismatches, check that the constructor definitions in the corresponding classes match these signatures. See [ARCHITECTURE.md](ARCHITECTURE.md) for the full dependency injection map.
 
 ## Uvicorn Lifespan / Startup
 
@@ -123,3 +123,13 @@ Use top-level `uuid`, not `payload.user_id`.
 **Symptom:** OpenStack thread fails to initialize; `TimeoutError`.
 
 **Fix:** Ensure OpenStack API is reachable and credentials in `config/openstack.yaml` are correct. For local validation without OpenStack, use the smoke test (mocks).
+
+## Metrics and Observability Issues
+
+**Symptom:** `/metrics` endpoint returns only zeros or fails intermittently.
+
+**Fix:**
+
+- `/metrics` pulls queue/executor stats via `JobThread.get_queue_stats()`. If stats collection raises, the endpoint falls back to empty values but still returns `200`.
+- Check that `JobThread` is running and that `WebSocketThread` was started with `get_queue_stats` wired in `ClientManager.setup()`.
+- Use logs (with `client_uuid`, `job_id`, `job_type`) together with metrics gauges (`tcm_queue_*`, `tcm_executor_*`, `tcm_ws_*`) to correlate traffic, backpressure and failures.

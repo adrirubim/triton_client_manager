@@ -74,6 +74,38 @@ def test_job_management_unknown_action_sets_status_false():
     assert "Job action not found" in payload["payload"]["data"]
 
 
+def test_job_management_wraps_specific_error_types_in_payload():
+    docker = MagicMock()
+    triton = MagicMock()
+    openstack = MagicMock()
+    sent, ws = _make_ws_collector()
+
+    jm = JobManagement(
+        docker=docker,
+        triton=triton,
+        openstack=openstack,
+        websocket=ws,
+        management_actions_available=["creation"],
+    )
+
+    # Force a specific exception from the pipeline handler (e.g. DockerAPIError)
+    from classes.docker.dockererrors import DockerAPIError
+
+    def raise_docker_api(*_args, **_kwargs):
+        raise DockerAPIError("boom")
+
+    jm.creation = raise_docker_api
+
+    msg = {"uuid": "u2", "payload": {"action": "creation"}}
+    jm.handle_management(msg)
+
+    assert len(sent) == 1
+    uuid, payload = sent[0]
+    assert uuid == "u2"
+    assert payload["payload"]["status"] is False
+    assert "boom" in payload["payload"]["data"]
+
+
 def test_job_inference_http_success_and_failed_protocol():
     # Prepare fake TritonThread with TritonInfer and HTTP handler
     triton_thread = MagicMock()

@@ -77,11 +77,12 @@ The system exposes inference endpoints (HTTP and gRPC) and manages per-user job 
 - ✅ **Creation pipeline** — VM → container → Triton server, with rollback on failures
 - ✅ **Deletion pipeline** — Triton → container → VM, with flat and nested payload support
 - ✅ **Config-driven behavior** — Jobs, OpenStack, Docker, Triton, and MinIO configured via YAML
+- ✅ **Observability** — Structured logging with correlation fields and Prometheus metrics exposed at `/metrics`
 
 ### 🧠 Inference Workflows
 
 - ✅ **HTTP inference** — Single request/response via Triton HTTP client
-- ✅ **gRPC inference** — Streaming support via Triton gRPC client
+- ✅ **gRPC inference** — Streaming support via Triton gRPC client (planned/experimental; see `docs/ARCHITECTURE.md`)
 - ✅ **Routing by IDs** — Uses `vm_id` and `container_id` for routing (aligned with Triton server registration)
 - ✅ **Payload examples** — Sample management and inference payloads in [MANAGER/payload_examples/](MANAGER/payload_examples/)
 
@@ -338,7 +339,7 @@ For in-depth diagrams and contracts, see [ARCHITECTURE](docs/ARCHITECTURE.md) an
 <a id="project-status"></a>
 ## 📊 Project Status
 
-**Overall Status:** In active development, architecture and core flows are stable.
+**Overall Status:** In active development. Architecture and core flows (auth, info, management, HTTP inference) are stable; advanced observability, gRPC streaming workflows and richer auth/multi-tenant support are planned.
 
 | Aspect        | Status      | Notes                                                          |
 | ------------- | ----------- | -------------------------------------------------------------- |

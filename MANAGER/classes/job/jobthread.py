@@ -133,7 +133,10 @@ class JobThread(threading.Thread):
         return self._ready_event.wait(timeout)
 
     def run(self) -> None:
-        logger.info("Started")
+        logger.info(
+            "Started",
+            extra={"client_uuid": "-", "job_id": "-", "job_type": "job_loop"},
+        )
 
         while not self._stop_event.is_set():
             try:
@@ -163,13 +166,23 @@ class JobThread(threading.Thread):
                 time.sleep(0.01)
 
             except Exception as e:
-                logger.exception("Main loop error: %s", e)
+                logger.exception(
+                    "Main loop error: %s",
+                    e,
+                    extra={"client_uuid": "-", "job_id": "-", "job_type": "job_loop"},
+                )
 
-        logger.info("Stopped")
+        logger.info(
+            "Stopped",
+            extra={"client_uuid": "-", "job_id": "-", "job_type": "job_loop"},
+        )
 
     def stop(self) -> None:
         """Stop the thread and shutdown executors"""
-        logger.info("Stopping")
+        logger.info(
+            "Stopping",
+            extra={"client_uuid": "-", "job_id": "-", "job_type": "job_loop"},
+        )
         self._stop_event.set()
 
         # Shutdown executors gracefully
@@ -207,14 +220,32 @@ class JobThread(threading.Thread):
                     queue_dict=self.inference_queues,
                 )
             else:
-                logger.error("Unknown message type: %s", msg_type)
+                logger.error(
+                    "Unknown message type: %s",
+                    msg_type,
+                    extra={
+                        "client_uuid": msg_uuid,
+                        "job_id": "-",
+                        "job_type": msg_type or "unknown",
+                    },
+                )
                 queue = None
 
             if queue:
                 queue.put_nowait(msg)
 
         except Exception as e:
-            logger.warning("Queue full for user %s, type %s: %s", msg_uuid, msg_type, e)
+            logger.warning(
+                "Queue full for user %s, type %s: %s",
+                msg_uuid,
+                msg_type,
+                e,
+                extra={
+                    "client_uuid": msg_uuid,
+                    "job_id": "-",
+                    "job_type": msg_type or "unknown",
+                },
+            )
 
     # --------------- Queue Related ---------------
     def fair_process_queues(
@@ -248,7 +279,16 @@ class JobThread(threading.Thread):
             except Empty:
                 continue
             except Exception as e:
-                logger.exception("Processing queue for user %s: %s", user_id, e)
+                logger.exception(
+                    "Processing queue for user %s: %s",
+                    user_id,
+                    e,
+                    extra={
+                        "client_uuid": user_id,
+                        "job_id": "-",
+                        "job_type": "queue_process",
+                    },
+                )
 
     def cleanup_empty_queues(self):
         """
@@ -303,6 +343,11 @@ class JobThread(threading.Thread):
                 len(empty_info),
                 len(empty_management),
                 len(empty_inference),
+                extra={
+                    "client_uuid": "-",
+                    "job_id": "-",
+                    "job_type": "queue_cleanup",
+                },
             )
 
     def get_or_create_queue(
@@ -315,7 +360,15 @@ class JobThread(threading.Thread):
         with self.queue_lock:
             if user_id not in queue_dict:
                 queue_dict[user_id] = QueueJob(maxsize=max_size)
-                logger.info("Created queue for user: %s", user_id)
+                logger.info(
+                    "Created queue for user: %s",
+                    user_id,
+                    extra={
+                        "client_uuid": user_id,
+                        "job_id": "-",
+                        "job_type": "queue_create",
+                    },
+                )
             return queue_dict[user_id]
 
     # ------------ INFO ------------

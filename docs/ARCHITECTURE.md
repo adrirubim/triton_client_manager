@@ -42,15 +42,16 @@ Each thread must report ready before the next starts. Failure raises `TimeoutErr
 | Module | Responsibility |
 |--------|----------------|
 | `client_manager.py` | Entry point; loads config, wires dependencies, starts threads |
-| `classes/websocket/` | WebSocket server (FastAPI/uvicorn), auth, type validation, `send_to_client` |
+| `classes/websocket/` | WebSocket server (FastAPI/uvicorn), auth, type validation, `send_to_client`, `/health`, `/ready`, `/metrics` |
 | `classes/job/` | Per-user queues, routing by type (info, management, inference) |
 | `classes/job/info/` | Info requests (e.g. `queue_stats`) |
 | `classes/job/management/` | VM, container, Triton creation/deletion pipelines |
-| `classes/job/inference/` | Inference to Triton (target: HTTP/gRPC; *current implementation has bugs*) |
+| `classes/job/inference/` | Inference to Triton (HTTP implemented; gRPC path experimental/incomplete) |
 | `classes/openstack/` | Auth, info, VM creation/deletion |
 | `classes/docker/` | Container creation/deletion on OpenStack VMs |
 | `classes/triton/` | Triton server lifecycle, health checks, inference clients |
-| `utils/bounded_executor.py` | ThreadPool with bounded queue |
+| `utils/bounded_executor.py` | ThreadPool with bounded queue (backpressure) |
+| `utils/metrics.py` | Prometheus metrics for WebSocket and job queues/executors |
 
 ## Dependency Injection
 
@@ -58,11 +59,11 @@ Dependencies are set by `ClientManager.setup()`:
 
 | Component | Constructor / Wiring |
 |-----------|----------------------|
-| `JobThread` | Receives `docker`, `openstack`, `triton`, `websocket` (callbacks) |
-| `JobInfo` | `(docker, openstack, websocket, get_queue_stats)` |
-| `JobManagement` | `(docker, triton, openstack, websocket, management_actions_available)` |
-| `JobInference` | JobThread passes `(docker, openstack, websocket, inference_actions_available, triton)`; `__init__` expects `(triton, docker, ...)` — *order mismatch* |
-| Cross-thread | `docker.openstack`, `openstack.websocket`, `triton.websocket` |
+| `JobThread` | Constructed with queue/executor parameters from `config/jobs.yaml`; later receives `docker`, `openstack`, `triton`, `websocket` as attributes before `start()` |
+| `JobInfo` | Initialized in `JobThread.start()` with `(docker, openstack, websocket, get_queue_stats)` |
+| `JobManagement` | Initialized in `JobThread.start()` with `(docker, triton, openstack, websocket, management_actions_available)` |
+| `JobInference` | Initialized in `JobThread.start()` with `(triton, docker, openstack, websocket, inference_actions_available)` |
+| Cross-thread | `docker.openstack`, `openstack.websocket`, `triton.websocket` are set in `ClientManager.setup()`; WebSocket uses `get_queue_stats` for metrics |
 
 ## WebSocket Request Flow
 
@@ -78,7 +79,7 @@ Dependencies are set by `ClientManager.setup()`:
 |--------------|---------|-------|
 | `info` | `JobInfo.handle_info` | Action from `payload.action` (e.g. `queue_stats`) |
 | `management` | `JobManagement.handle_management` | Action from `payload.action` |
-| `inference` | `JobInference.handle_inference` | Protocol from payload (target); *current flow broken* |
+| `inference` | `JobInference.handle_inference` | Protocol from payload (target); HTTP path implemented and covered by tests, gRPC path planned/experimental |
 
 ## Handler Responsibilities
 
@@ -104,13 +105,16 @@ Deletion is best-effort: failures are collected and reported at the end.
 
 ## Inference Flow
 
-*Target design* (not fully implemented):
+High-level design:
 
-- **HTTP**: one request → one response
-- **gRPC**: streaming, multiple responses via `send("ONGOING", chunk)`
-- Protocol from `payload.request.protocol` or default `http`
+- **Protocol selection**: `payload.request.protocol` (`http` or `grpc`); defaults to `http` if absent.
+- **HTTP**: one request → one response; on success, a single message is sent back with `status="COMPLETED"` and the handler result in `data`.
+- **gRPC**: target design is streaming with multiple responses via `status="ONGOING"` chunks followed by a terminal status; the plumbing exists but is considered experimental/incomplete.
 
-**Current state:** The handlers HTTP/gRPC exist but are not invoked. `handle_inference` has critical bugs (missing `triton_inference`, undefined `action_function`).
+**Current state:**
+
+- The HTTP path is implemented and covered by unit tests in `tests/test_job_management_inference.py`.
+- The gRPC path exists but is not yet considered production‑ready; clients should treat HTTP as the stable protocol until documentation and tests for gRPC are extended.
 
 ## Integration Points
 
@@ -125,5 +129,7 @@ Deletion is best-effort: failures are collected and reported at the end.
 | Risk | Mitigation |
 |------|------------|
 | **Startup order** | Triton starts before Docker; adjust if Triton depends on containers |
-| **Alerts** | OpenStack/Docker/Triton use `send_to_first_client`; with multiple clients, alerts go to one only |
-| **Working directory** | `client_manager.py` loads `config/*.yaml` relative to CWD; run from `MANAGER` |
+| **Alerts** | OpenStack/Docker/Triton use `send_to_first_client`; with multiple clients, alerts go to the first connected client only |
+| **Working directory** | `client_manager.py` loads `config/*.yaml` relative to CWD; run from `MANAGER` so `config/` is resolvable |
+| **Backpressure** | `JobThread` uses `BoundedThreadPoolExecutor` and per‑user bounded queues; if queues or executors fill, jobs are rejected and warnings are logged — monitor `/metrics` gauges for saturation |
+| **Metrics collection** | `/metrics` calls `get_queue_stats`; failures in stats collection are swallowed to keep the endpoint available, but may temporarily expose stale zeros for some gauges |

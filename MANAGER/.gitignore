@@ -1,2 +1,2 @@
 .MOCK_SERVER/mockvenv
-.venv
+.venv.coverage
