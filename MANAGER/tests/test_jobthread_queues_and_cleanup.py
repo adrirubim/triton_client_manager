@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import time
 from queue import Full
-from unittest.mock import MagicMock
 
 from classes.job.info.data.queuejob import QueueJob
 from classes.job.jobthread import JobThread

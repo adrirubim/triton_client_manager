@@ -1,9 +1,5 @@
 from __future__ import annotations
 
-import os
-
-import pytest
-
 from classes.job.management.management import JobManagement
 from utils.config_env import _bool_env, overlay_openstack_config
 
