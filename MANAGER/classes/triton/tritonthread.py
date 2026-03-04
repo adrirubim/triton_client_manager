@@ -11,7 +11,11 @@ from .deletion.deletion import TritonDeletion
 from .inference.inference import TritonInference
 from .info.data.server import TritonServer
 from .info.info import TritonInfo
-from .tritonerrors import TritonMissingArgument, TritonMissingInstance, TritonServerStateChanged
+from .tritonerrors import (
+    TritonMissingArgument,
+    TritonMissingInstance,
+    TritonServerStateChanged,
+)
 
 ###################################
 #        Triton Thread            #
@@ -29,7 +33,9 @@ class TritonThread(threading.Thread):
         self.refresh_time = config["refresh_time"]
 
         # --- Data ---
-        self.dict_servers: dict[tuple, TritonServer] = {}  # {(vm_id, container_id): TritonServer}
+        self.dict_servers: dict[tuple, TritonServer] = (
+            {}
+        )  # {(vm_id, container_id): TritonServer}
 
         # --- Handlers ---
         self.triton_info = TritonInfo(timeout=config["health_check_timeout"])
@@ -97,11 +103,15 @@ class TritonThread(threading.Thread):
                     # --- Send Alert --
                     self._send_alert(
                         TritonServerStateChanged(
-                            server.vm_ip, container_id, [f"status: {old_status} -> {new_status}"]
+                            server.vm_ip,
+                            container_id,
+                            [f"status: {old_status} -> {new_status}"],
                         )
                     )
             except Exception:
-                logger.info(" Health check failed for ({vm_id}, {container_id[:12]}): {e}")
+                logger.info(
+                    " Health check failed for ({vm_id}, {container_id[:12]}): {e}"
+                )
 
     # -------------------------------------------- #
     #               LIFECYCLE                      #

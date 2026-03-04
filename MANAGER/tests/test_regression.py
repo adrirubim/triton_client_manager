@@ -87,11 +87,16 @@ class TestDeletionPayloadNormalization(unittest.TestCase):
         from classes.job.management.deletion.deletion import JobDeletion
 
         class MockTriton:
-            def delete_server(self, data): pass
+            def delete_server(self, data):
+                pass
+
         class MockDocker:
-            def delete_container(self, data): return True
+            def delete_container(self, data):
+                return True
+
         class MockOpenstack:
-            def delete_vm(self, vm_id): return True
+            def delete_vm(self, vm_id):
+                return True
 
         JobDeletion(MockTriton(), MockDocker(), MockOpenstack())
         payload = {
@@ -101,8 +106,14 @@ class TestDeletionPayloadNormalization(unittest.TestCase):
         }
         # Build normalized structure (same logic as handle, without executing)
         vm_id = payload.get("vm_id") or payload.get("openstack", {}).get("vm_id")
-        container_id = payload.get("container_id") or payload.get("docker", {}).get("container_id")
-        vm_ip = payload.get("vm_ip") or payload.get("openstack", {}).get("vm_ip") or payload.get("docker", {}).get("worker_ip")
+        container_id = payload.get("container_id") or payload.get("docker", {}).get(
+            "container_id"
+        )
+        vm_ip = (
+            payload.get("vm_ip")
+            or payload.get("openstack", {}).get("vm_ip")
+            or payload.get("docker", {}).get("worker_ip")
+        )
 
         normalized = dict(payload)
         normalized.setdefault("openstack", {})
@@ -135,12 +146,18 @@ class TestInferenceExample(unittest.TestCase):
 
     def test_inference_example_uses_vm_id_and_container_id(self):
         """payload_examples/inference.json must have vm_id and container_id for API contract."""
-        path = os.path.join(os.path.dirname(__file__), "..", "payload_examples", "inference.json")
+        path = os.path.join(
+            os.path.dirname(__file__), "..", "payload_examples", "inference.json"
+        )
         with open(path, encoding="utf-8") as f:
             data = json.load(f)
         payload = data.get("payload", {})
         self.assertIn("vm_id", payload, "inference payload must have vm_id for routing")
-        self.assertIn("container_id", payload, "inference payload must have container_id for routing")
+        self.assertIn(
+            "container_id",
+            payload,
+            "inference payload must have container_id for routing",
+        )
 
 
 class TestInspectConfigRemoved(unittest.TestCase):
@@ -149,11 +166,16 @@ class TestInspectConfigRemoved(unittest.TestCase):
     def test_inspect_config_not_in_actions(self):
         """inspect_config must not be in management_actions_available."""
         import yaml
+
         path = os.path.join(os.path.dirname(__file__), "..", "config", "jobs.yaml")
         with open(path, encoding="utf-8") as f:
             config = yaml.safe_load(f)
         actions = config.get("management_actions_available", [])
-        self.assertNotIn("inspect_config", actions, "inspect_config not implemented; removed from config")
+        self.assertNotIn(
+            "inspect_config",
+            actions,
+            "inspect_config not implemented; removed from config",
+        )
 
 
 if __name__ == "__main__":

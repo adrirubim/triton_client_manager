@@ -17,7 +17,10 @@ class JobInferenceHttp:
     """HTTP single-shot inference handler."""
 
     def __init__(
-        self, docker: "DockerThread", triton_infer: TritonInfer, triton: "TritonThread" = None
+        self,
+        docker: "DockerThread",
+        triton_infer: TritonInfer,
+        triton: "TritonThread" = None,
     ):
         self.docker = docker
         self.triton_infer = triton_infer
@@ -34,7 +37,9 @@ class JobInferenceHttp:
 
         server = self.triton.get_server(vm_ip, container_id)
         if not server:
-            raise TritonInferenceFailed(model_name, "No active Triton session for this instance")
+            raise TritonInferenceFailed(
+                model_name, "No active Triton session for this instance"
+            )
 
         result = self.triton_infer.infer(server.client, model_name, inputs)
         decoded = TritonInfer.decode_response(result)

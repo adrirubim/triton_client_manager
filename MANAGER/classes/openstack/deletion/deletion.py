@@ -41,7 +41,10 @@ class OpenstackDeletion:
         try:
             # --- Send delete request ---
             response = requests.delete(
-                url=full_endpoint, verify=self.auth.verify_ssl, timeout=10, headers=self.headers_get
+                url=full_endpoint,
+                verify=self.auth.verify_ssl,
+                timeout=10,
+                headers=self.headers_get,
             )
             # --- Parse ---
             response.raise_for_status()

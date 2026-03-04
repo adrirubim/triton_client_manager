@@ -76,7 +76,9 @@ def test_pbtxt_to_config_builds_schema_and_selects_http_or_grpc():
     """_pbtxt_to_config should convert pbtxt to JSON config and choose port based on decoupled flag."""
     tc = TritonCreation({})
     _, params, pbtxt_http = _make_minio_and_params(decoupled=False)
-    config_json, inputs, outputs, model_name, port = tc._pbtxt_to_config(params, pbtxt_http)
+    config_json, inputs, outputs, model_name, port = tc._pbtxt_to_config(
+        params, pbtxt_http
+    )
 
     cfg = json.loads(config_json)
     assert cfg["name"] == "my_model"
@@ -92,13 +94,21 @@ def test_pbtxt_to_config_builds_schema_and_selects_http_or_grpc():
 
 @patch.object(TritonCreation, "_download_pbtxt")
 @patch.object(TritonCreation, "_pbtxt_to_config")
-def test_process_config_builds_key_and_allows_empty_params(mock_pbtxt_to_config, mock_download):
+def test_process_config_builds_key_and_allows_empty_params(
+    mock_pbtxt_to_config, mock_download
+):
     """_process_config should compute S3 key correctly and null config_json when no triton_params."""
     tc = TritonCreation({})
     minio, params, pbtxt = _make_minio_and_params()
 
     mock_download.return_value = pbtxt
-    mock_pbtxt_to_config.return_value = ("{}", [{"name": "i"}], [{"name": "o"}], "m", HTTP_PORT)
+    mock_pbtxt_to_config.return_value = (
+        "{}",
+        [{"name": "i"}],
+        [{"name": "o"}],
+        "m",
+        HTTP_PORT,
+    )
 
     config_json, inputs, outputs, model_name, port = tc._process_config(minio, params)
     assert config_json == "{}"
@@ -116,7 +126,11 @@ def test_process_config_builds_key_and_allows_empty_params(mock_pbtxt_to_config,
 def test_handle_happy_path_http(mock_process_config, mock_http_client_cls):
     """handle should wait for readiness, load model and return TritonServer."""
     tc = TritonCreation(
-        {"client_request_timeout": 5, "server_ready_timeout": 1, "model_ready_timeout": 1}
+        {
+            "client_request_timeout": 5,
+            "server_ready_timeout": 1,
+            "model_ready_timeout": 1,
+        }
     )
 
     mock_process_config.return_value = (
@@ -151,7 +165,9 @@ def test_handle_happy_path_http(mock_process_config, mock_http_client_cls):
 
 @patch("classes.triton.creation.creation.httpclient.InferenceServerClient")
 @patch.object(TritonCreation, "_process_config")
-def test_handle_missing_model_name_or_io_raises(mock_process_config, mock_http_client_cls):
+def test_handle_missing_model_name_or_io_raises(
+    mock_process_config, mock_http_client_cls
+):
     """handle should raise TritonModelLoadFailed when model_name/inputs/outputs are missing."""
     tc = TritonCreation({})
 
@@ -175,11 +191,19 @@ def test_handle_missing_model_name_or_io_raises(mock_process_config, mock_http_c
 
 @patch("classes.triton.creation.creation.httpclient.InferenceServerClient")
 @patch.object(TritonCreation, "_process_config")
-def test_handle_server_not_ready_raises_health_failed(mock_process_config, mock_http_client_cls):
+def test_handle_server_not_ready_raises_health_failed(
+    mock_process_config, mock_http_client_cls
+):
     """If server never reports ready before timeout, TritonServerHealthFailed is raised."""
     tc = TritonCreation({"server_ready_timeout": 0})
 
-    mock_process_config.return_value = ("{}", [{"name": "i"}], [{"name": "o"}], "m", HTTP_PORT)
+    mock_process_config.return_value = (
+        "{}",
+        [{"name": "i"}],
+        [{"name": "o"}],
+        "m",
+        HTTP_PORT,
+    )
 
     client = MagicMock()
     client.is_server_ready.return_value = False
@@ -197,7 +221,13 @@ def test_handle_load_model_failure_raises_model_load_failed(
     """If load_model throws, TritonModelLoadFailed should be raised."""
     tc = TritonCreation({})
 
-    mock_process_config.return_value = ("{}", [{"name": "i"}], [{"name": "o"}], "m", HTTP_PORT)
+    mock_process_config.return_value = (
+        "{}",
+        [{"name": "i"}],
+        [{"name": "o"}],
+        "m",
+        HTTP_PORT,
+    )
 
     client = MagicMock()
     client.is_server_ready.return_value = True
@@ -210,11 +240,19 @@ def test_handle_load_model_failure_raises_model_load_failed(
 
 @patch("classes.triton.creation.creation.httpclient.InferenceServerClient")
 @patch.object(TritonCreation, "_process_config")
-def test_handle_model_not_ready_raises_not_ready(mock_process_config, mock_http_client_cls):
+def test_handle_model_not_ready_raises_not_ready(
+    mock_process_config, mock_http_client_cls
+):
     """If model never becomes ready, TritonModelNotReady should be raised."""
     tc = TritonCreation({"model_ready_timeout": 0})
 
-    mock_process_config.return_value = ("{}", [{"name": "i"}], [{"name": "o"}], "m", HTTP_PORT)
+    mock_process_config.return_value = (
+        "{}",
+        [{"name": "i"}],
+        [{"name": "o"}],
+        "m",
+        HTTP_PORT,
+    )
 
     client = MagicMock()
     client.is_server_ready.return_value = True

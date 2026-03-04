@@ -20,7 +20,9 @@ class TritonInfo:
         self.timeout = timeout
         self.http_port = http_port
 
-    def _client(self, vm_ip: str, timeout: int = None) -> httpclient.InferenceServerClient:
+    def _client(
+        self, vm_ip: str, timeout: int = None
+    ) -> httpclient.InferenceServerClient:
         t = timeout if timeout is not None else self.timeout
         return httpclient.InferenceServerClient(
             url=f"{vm_ip}:{self.http_port}",
@@ -52,7 +54,9 @@ class TritonInfo:
             time.sleep(2)
         return False
 
-    def wait_for_model_ready(self, vm_ip: str, model_name: str, timeout: int = 120) -> bool:
+    def wait_for_model_ready(
+        self, vm_ip: str, model_name: str, timeout: int = 120
+    ) -> bool:
         start = time.time()
         while (time.time() - start) < timeout:
             if self.is_model_ready(vm_ip, model_name):
@@ -68,7 +72,9 @@ class TritonInfo:
         self, vm_ip: str, model_name: str, timeout: int = 30, config_json: str = None
     ) -> bool:
         try:
-            self._client(vm_ip, timeout=timeout).load_model(model_name, config=config_json)
+            self._client(vm_ip, timeout=timeout).load_model(
+                model_name, config=config_json
+            )
             logger.info(" Load request sent for model '{model_name}'")
             return True
         except Exception:

@@ -126,7 +126,9 @@ def test_grpc_handler_streams_start_ongoing_and_errors():
     triton_infer.stream.side_effect = fake_stream
 
     handler.handle(
-        "uuid", {**_basic_payload(), "request": {"inputs": [1], "output_name": "out"}}, send
+        "uuid",
+        {**_basic_payload(), "request": {"inputs": [1], "output_name": "out"}},
+        send,
     )
 
     # There must be one START and several ONGOING statuses

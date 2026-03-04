@@ -1,17 +1,15 @@
 import logging
-
-logger = logging.getLogger(__name__)
-
-# --- Threaded Execution ---
-from classes.websocket import WebSocketThread
-from classes.openstack import OpenstackThread
-from classes.docker import DockerThread
-from classes.triton import TritonThread
-from classes.job import JobThread  # -> Conccurent multiple threads (LOTS of REQUESTS)
-
-from yaml import safe_load
 import time
 
+from yaml import safe_load
+
+from classes.docker import DockerThread
+from classes.job import JobThread  # -> Conccurent multiple threads (LOTS of REQUESTS)
+from classes.openstack import OpenstackThread
+from classes.triton import TritonThread
+from classes.websocket import WebSocketThread
+
+logger = logging.getLogger(__name__)
 
 ########################################################
 #                    Client Manager                    #
@@ -46,7 +44,9 @@ class ClientManager:
         self.docker = DockerThread(self.config_docker)
         self.openstack = OpenstackThread(**self.config_openstack)
         self.triton = TritonThread(self.config_triton)
-        self.websocket = WebSocketThread(**self.config_websocket, on_message=self.job.on_message)
+        self.websocket = WebSocketThread(
+            **self.config_websocket, on_message=self.job.on_message
+        )
 
         # --- Params for communication ---
         self.job.docker = self.docker

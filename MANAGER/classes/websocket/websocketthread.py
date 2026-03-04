@@ -160,7 +160,9 @@ class WebSocketThread(threading.Thread):
             # Check if client already connected
             with self.clients_lock:
                 if client_id in self.clients:
-                    await self._send_error(websocket, f"UUID '{client_id}' is already connected")
+                    await self._send_error(
+                        websocket, f"UUID '{client_id}' is already connected"
+                    )
                     await websocket.close(code=1008)
                     return
 
@@ -174,7 +176,9 @@ class WebSocketThread(threading.Thread):
             # Notify connection callback
             if self.on_connect:
                 try:
-                    await asyncio.get_event_loop().run_in_executor(None, self.on_connect, client_id)
+                    await asyncio.get_event_loop().run_in_executor(
+                        None, self.on_connect, client_id
+                    )
                 except Exception as e:
                     logger.exception("Error in on_connect callback: %s", e)
 
@@ -205,7 +209,8 @@ class WebSocketThread(threading.Thread):
                 # Verify UUID matches authenticated client
                 if message["uuid"] != client_id:
                     await self._send_error(
-                        websocket, f"UUID mismatch. Expected '{client_id}', got '{message['uuid']}'"
+                        websocket,
+                        f"UUID mismatch. Expected '{client_id}', got '{message['uuid']}'",
                     )
                     continue  # Don't close connection, just skip this message
 

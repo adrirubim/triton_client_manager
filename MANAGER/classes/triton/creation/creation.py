@@ -67,7 +67,9 @@ class TritonCreation:
         # --- Wait for request loading ---
         try:
             client.load_model(
-                model_name, config=config_json, client_timeout=self.client_request_timeout
+                model_name,
+                config=config_json,
+                client_timeout=self.client_request_timeout,
             )
         except Exception:
             raise TritonModelLoadFailed(model_name, "Load request failed")
@@ -76,7 +78,9 @@ class TritonCreation:
         start = time.time()
         while (time.time() - start) < self.model_ready_timeout:
             time.sleep(1)
-            if client.is_model_ready(model_name, client_timeout=self.client_request_timeout):
+            if client.is_model_ready(
+                model_name, client_timeout=self.client_request_timeout
+            ):
                 break
         else:
             raise TritonModelNotReady(model_name, self.model_ready_timeout)
@@ -93,7 +97,9 @@ class TritonCreation:
             outputs=outputs,
         )
 
-        logger.info(" Server ({vm_ip}, {container_id[:12]}) ready — model='{model_name}'")
+        logger.info(
+            " Server ({vm_ip}, {container_id[:12]}) ready — model='{model_name}'"
+        )
 
         return server
 
@@ -164,7 +170,9 @@ class TritonCreation:
         )
         pbtxt = self._download_pbtxt(key, minio_config)
 
-        config_json, inputs, outputs, model_name, port = self._pbtxt_to_config(triton_params, pbtxt)
+        config_json, inputs, outputs, model_name, port = self._pbtxt_to_config(
+            triton_params, pbtxt
+        )
 
         if not triton_params:
             config_json = None

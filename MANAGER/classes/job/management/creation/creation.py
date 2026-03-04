@@ -12,7 +12,10 @@ if TYPE_CHECKING:
 
 class JobCreation:
     def __init__(
-        self, triton: "TritonThread", docker: "DockerThread", openstack: "OpenstackThread"
+        self,
+        triton: "TritonThread",
+        docker: "DockerThread",
+        openstack: "OpenstackThread",
     ):
 
         self._vm = JobCreateVM(openstack)

@@ -19,13 +19,21 @@ class JobCreateServer:
             "vm_ip": vm_ip if vm_ip else payload.get("openstack", {}).get("vm_ip"),
             "minio": payload.get("minio", {}),
             "triton": payload.get("triton", {}),
-            "container_id": container_id
-            if container_id
-            else payload.get("docker", {}).get("container_id"),
+            "container_id": (
+                container_id
+                if container_id
+                else payload.get("docker", {}).get("container_id")
+            ),
         }
 
         # --- Create server ---
         server = self.triton.create_server(data)
 
-        print(f"[Creation-{msg_uuid}] ✓ Triton server ready — model='{server.model_name}'")
-        return {"model_name": server.model_name, "inputs": server.inputs, "outputs": server.outputs}
+        print(
+            f"[Creation-{msg_uuid}] ✓ Triton server ready — model='{server.model_name}'"
+        )
+        return {
+            "model_name": server.model_name,
+            "inputs": server.inputs,
+            "outputs": server.outputs,
+        }

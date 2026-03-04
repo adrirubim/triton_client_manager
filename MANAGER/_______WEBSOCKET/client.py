@@ -26,17 +26,17 @@ async def test_client():
 
             auth_message = {"type": "auth", "payload": {"user_id": "test_user_123"}}
 
-            print(f"\n📤 SENDING AUTH MESSAGE:")
+            print("\n📤 SENDING AUTH MESSAGE:")
             print(f"   Content: {json.dumps(auth_message, indent=2)}")
 
             await websocket.send(json.dumps(auth_message))
-            print(f"   ✅ Sent!")
+            print("   ✅ Sent!")
 
             # Wait for auth response
             auth_response = await websocket.recv()
             auth_data = json.loads(auth_response)
 
-            print(f"\n📥 RECEIVED AUTH RESPONSE:")
+            print("\n📥 RECEIVED AUTH RESPONSE:")
             print(f"   Content: {json.dumps(auth_data, indent=2)}")
 
             if auth_data.get("type") != "auth.ok":
@@ -55,35 +55,37 @@ async def test_client():
                 "payload": {"job_id": "test-job-456", "request_type": "queue_stats"},
             }
 
-            print(f"\n📤 SENDING INFO REQUEST:")
+            print("\n📤 SENDING INFO REQUEST:")
             print(f"   Content: {json.dumps(info_request, indent=2)}")
-            print(f"\n   NOTE: user_id is NOT included here!")
-            print(f"   The server will add it automatically.")
+            print("\n   NOTE: user_id is NOT included here!")
+            print("   The server will add it automatically.")
 
             await websocket.send(json.dumps(info_request))
-            print(f"\n   ✅ Sent!")
+            print("\n   ✅ Sent!")
 
             # Wait for response
-            print(f"\n⏳ Waiting for server response...")
+            print("\n⏳ Waiting for server response...")
             response = await websocket.recv()
             response_data = json.loads(response)
 
-            print(f"\n📥 RECEIVED RESPONSE:")
+            print("\n📥 RECEIVED RESPONSE:")
             print(f"   Content: {json.dumps(response_data, indent=2)}")
 
             # ========== Summary ==========
             print("\n" + "=" * 60)
             print("SUMMARY")
             print("=" * 60)
-            print(f"\n✅ Test completed successfully!")
-            print(f"\n📊 What the server received:")
+            print("\n✅ Test completed successfully!")
+            print("\n📊 What the server received:")
             print(f"   - Original message: {json.dumps(info_request, indent=6)}")
             print(
                 f"   - After adding user_id: {json.dumps(response_data['payload']['you_sent'], indent=6)}"
             )
-            print(f"\n🎯 Key point: Server automatically adds 'user_id' to every message!")
+            print(
+                "\n🎯 Key point: Server automatically adds 'user_id' to every message!"
+            )
 
-            print(f"\n👋 Closing connection...")
+            print("\n👋 Closing connection...")
 
     except Exception as e:
         print(f"\n❌ ERROR: {e}")

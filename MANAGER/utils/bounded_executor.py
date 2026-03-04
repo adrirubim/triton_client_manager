@@ -5,9 +5,9 @@ A wrapper around ThreadPoolExecutor that limits the number of pending tasks
 in the internal queue to prevent unbounded memory growth.
 """
 
-from concurrent.futures import ThreadPoolExecutor, Future
-from threading import Semaphore, Lock
-from typing import Callable, Any
+from concurrent.futures import Future, ThreadPoolExecutor
+from threading import Lock, Semaphore
+from typing import Any, Callable
 
 
 class BoundedThreadPoolExecutor:
@@ -30,7 +30,9 @@ class BoundedThreadPoolExecutor:
         future = executor.submit(my_function, arg1, arg2)
     """
 
-    def __init__(self, max_workers: int, max_queue_size: int, thread_name_prefix: str = ""):
+    def __init__(
+        self, max_workers: int, max_queue_size: int, thread_name_prefix: str = ""
+    ):
         """
         Initialize the bounded executor.
 

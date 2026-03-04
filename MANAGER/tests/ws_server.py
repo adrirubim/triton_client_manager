@@ -1,7 +1,8 @@
+import asyncio
 import json
 import uuid
-import asyncio
-from typing import Dict, Any
+from typing import Any, Dict
+
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
 app = FastAPI()

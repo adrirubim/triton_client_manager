@@ -1,14 +1,15 @@
 name: Lint
 
+permissions:
+  contents: read
+
 on:
   push:
     branches:
-      - main
-      - master
+      - '**'
   pull_request:
     branches:
       - main
-      - master
 
 jobs:
   lint:
@@ -38,6 +39,6 @@ jobs:
       - name: Lint and format (ruff + black)
         working-directory: MANAGER
         run: |
-          ruff .
+          ruff check .
           black --check .
 

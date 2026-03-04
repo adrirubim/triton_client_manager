@@ -83,7 +83,9 @@ class OpenstackCreation:
     def loop_status(self, vm_id: str) -> str:
 
         # --- Fucking stupid endpoints ---
-        full_endpoint = self.auth.catalog.compute.endpoint_internal + self.endpoint + "/" + vm_id
+        full_endpoint = (
+            self.auth.catalog.compute.endpoint_internal + self.endpoint + "/" + vm_id
+        )
         # --- Timer ---
         start_time = time.time()
         vm_ip = None

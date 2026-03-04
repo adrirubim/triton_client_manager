@@ -218,7 +218,10 @@ class JobThread(threading.Thread):
 
     # --------------- Queue Related ---------------
     def fair_process_queues(
-        self, queue_dict: dict[str, QueueJob], executor: BoundedThreadPoolExecutor, handler
+        self,
+        queue_dict: dict[str, QueueJob],
+        executor: BoundedThreadPoolExecutor,
+        handler,
     ):
 
         # --- Executor Status ---
@@ -263,7 +266,8 @@ class JobThread(threading.Thread):
             empty_info = [
                 uid
                 for uid, q in self.info_queues.items()
-                if q.empty() and (current_time - q.last_entry) > self.queue_idle_threshold
+                if q.empty()
+                and (current_time - q.last_entry) > self.queue_idle_threshold
             ]
             for uid in empty_info:
                 del self.info_queues[uid]
@@ -273,7 +277,8 @@ class JobThread(threading.Thread):
             empty_management = [
                 uid
                 for uid, q in self.management_queues.items()
-                if q.empty() and (current_time - q.last_entry) > self.queue_idle_threshold
+                if q.empty()
+                and (current_time - q.last_entry) > self.queue_idle_threshold
             ]
             for uid in empty_management:
                 del self.management_queues[uid]
@@ -283,7 +288,8 @@ class JobThread(threading.Thread):
             empty_inference = [
                 uid
                 for uid, q in self.inference_queues.items()
-                if q.empty() and (current_time - q.last_entry) > self.queue_idle_threshold
+                if q.empty()
+                and (current_time - q.last_entry) > self.queue_idle_threshold
             ]
             for uid in empty_inference:
                 del self.inference_queues[uid]
@@ -299,7 +305,9 @@ class JobThread(threading.Thread):
                 len(empty_inference),
             )
 
-    def get_or_create_queue(self, user_id: str, max_size: int, queue_dict: dict) -> QueueJob:
+    def get_or_create_queue(
+        self, user_id: str, max_size: int, queue_dict: dict
+    ) -> QueueJob:
         """
         Thread-safe queue creation for per-user queues.
         Creates queue on-demand when user first sends request.
@@ -320,8 +328,12 @@ class JobThread(threading.Thread):
             inference_users_count = len(self.inference_queues)
 
             info_total_queued = sum(q.qsize() for q in self.info_queues.values())
-            management_total_queued = sum(q.qsize() for q in self.management_queues.values())
-            inference_total_queued = sum(q.qsize() for q in self.inference_queues.values())
+            management_total_queued = sum(
+                q.qsize() for q in self.management_queues.values()
+            )
+            inference_total_queued = sum(
+                q.qsize() for q in self.inference_queues.values()
+            )
 
             # Aggregate view across all types (unique users and total queued)
             total_unique_users = len(
@@ -329,7 +341,9 @@ class JobThread(threading.Thread):
                 | set(self.management_queues.keys())
                 | set(self.inference_queues.keys())
             )
-            total_queued = info_total_queued + management_total_queued + inference_total_queued
+            total_queued = (
+                info_total_queued + management_total_queued + inference_total_queued
+            )
 
             return {
                 # Per-user queue stats

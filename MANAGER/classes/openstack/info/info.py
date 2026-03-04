@@ -28,7 +28,10 @@ class OpenstackInfo:
     @property
     def headers(self):
         """Get headers with authentication token"""
-        return {"X-Auth-Token": self.auth.token, "OpenStack-API-Version": "compute 2.53"}
+        return {
+            "X-Auth-Token": self.auth.token,
+            "OpenStack-API-Version": "compute 2.53",
+        }
 
     def execute_request(self, endpoint: str) -> dict:
         """Execute GET request to OpenStack API"""
@@ -79,6 +82,8 @@ class OpenstackInfo:
     def load_single_vm(self, vm_id: str) -> VM:
         config = self.endpoints["vms"]
         service = getattr(self.auth.catalog, config["service"])
-        endpoint = service.endpoint_internal + config["path"].replace("/detail", f"/{vm_id}")
+        endpoint = service.endpoint_internal + config["path"].replace(
+            "/detail", f"/{vm_id}"
+        )
         data = self.execute_request(endpoint)
         return VM.from_id(data.get("server", {}))

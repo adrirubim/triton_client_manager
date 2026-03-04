@@ -14,7 +14,10 @@ if TYPE_CHECKING:
 
 class JobDeletion:
     def __init__(
-        self, triton: "TritonThread", docker: "DockerThread", openstack: "OpenstackThread"
+        self,
+        triton: "TritonThread",
+        docker: "DockerThread",
+        openstack: "OpenstackThread",
     ):
 
         self._vm = JobDeleteVM(openstack)
@@ -35,7 +38,9 @@ class JobDeletion:
         try:
             self._triton.handle(msg_uuid, payload)
         except Exception as e:
-            print(f"[Deletion-{msg_uuid}] ⚠ Triton delete_server failed (continuing): {e}")
+            print(
+                f"[Deletion-{msg_uuid}] ⚠ Triton delete_server failed (continuing): {e}"
+            )
             errors.append(f"triton_delete_server: {e}")
 
         # --- Delete container ---

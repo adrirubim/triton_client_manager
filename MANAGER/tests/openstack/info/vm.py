@@ -111,7 +111,11 @@ class VM:
         )
         host = (
             getattr(s, "hypervisor_hostname", None)
-            or pick(d, "OS-EXT-SRV-ATTR:hypervisor_hostname", "OS_EXT_SRV_ATTR_hypervisor_hostname")
+            or pick(
+                d,
+                "OS-EXT-SRV-ATTR:hypervisor_hostname",
+                "OS_EXT_SRV_ATTR_hypervisor_hostname",
+            )
             or getattr(s, "host", None)
             or pick(d, "OS-EXT-SRV-ATTR:host", "OS_EXT_SRV_ATTR_host")
         )
@@ -195,10 +199,17 @@ class VM:
             created=parse_dt(pick(d, "created", "created_at")),
             updated=parse_dt(pick(d, "updated", "updated_at")),
             launched=parse_dt(
-                pick(d, "OS-SRV-USG:launched_at", "OS_SRV_USG_launched_at", "launched_at")
+                pick(
+                    d, "OS-SRV-USG:launched_at", "OS_SRV_USG_launched_at", "launched_at"
+                )
             ),
             terminated=parse_dt(
-                pick(d, "OS-SRV-USG:terminated_at", "OS_SRV_USG_terminated_at", "terminated_at")
+                pick(
+                    d,
+                    "OS-SRV-USG:terminated_at",
+                    "OS_SRV_USG_terminated_at",
+                    "terminated_at",
+                )
             ),
         )
 
@@ -228,7 +239,9 @@ class VM:
         locked_reason = None
         if locked_bool:
             locked_reason = (
-                getattr(s, "locked_reason", None) or pick(d, "locked_reason") or "Locked"
+                getattr(s, "locked_reason", None)
+                or pick(d, "locked_reason")
+                or "Locked"
             )  # Default if no reason provided
 
         state = State(
@@ -238,7 +251,9 @@ class VM:
             progress=pick(d, "progress"),
             host_status=pick(d, "host_status"),
             locked=locked_reason,
-            volumes_attached=list(volumes_attached) if isinstance(volumes_attached, list) else [],
+            volumes_attached=(
+                list(volumes_attached) if isinstance(volumes_attached, list) else []
+            ),
         )
 
         return VM(

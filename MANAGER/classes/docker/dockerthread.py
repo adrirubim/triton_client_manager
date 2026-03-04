@@ -100,7 +100,9 @@ class DockerThread(threading.Thread):
                 for container_id, new_container in new_containers.items():
                     if container_id in self.dict_containers:
                         old_container = self.dict_containers[container_id]
-                        has_changed, changed_fields = new_container.has_changed(old_container)
+                        has_changed, changed_fields = new_container.has_changed(
+                            old_container
+                        )
 
                         if has_changed:
                             error = DockerContainerStateChanged(
@@ -160,7 +162,10 @@ class DockerThread(threading.Thread):
 
         # --- Delete ---
         self.docker_deletion.handle(
-            ip=vm_ip, force=force, container_id=container_id, remove_volumes=remove_volumes
+            ip=vm_ip,
+            force=force,
+            container_id=container_id,
+            remove_volumes=remove_volumes,
         )
 
         # --- Remove ---

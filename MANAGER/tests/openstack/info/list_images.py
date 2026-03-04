@@ -1,8 +1,9 @@
-from auth import return_token
+from pprint import pprint
+
 import requests
+from auth import return_token
 
 token = return_token()
-from pprint import pprint
 
 nova_url = "https://c.c41.ch:9292/v2"
 

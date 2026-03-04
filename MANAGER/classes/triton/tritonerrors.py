@@ -4,7 +4,9 @@ STATIC_START = "[TritonThread] "
 class TritonServerHealthFailed(Exception):
     def __init__(self, timeout: int):
         self.timeout = timeout
-        super().__init__(f"{STATIC_START}Server failed to become ready within {timeout}s")
+        super().__init__(
+            f"{STATIC_START}Server failed to become ready within {timeout}s"
+        )
 
 
 class TritonModelLoadFailed(Exception):
@@ -26,14 +28,18 @@ class TritonModelNotReady(Exception):
 class TritonConfigDownloadFailed(Exception):
     def __init__(self, reason: str):
         self.reason = reason
-        super().__init__(f"{STATIC_START}Failed to download model config from S3: {reason}")
+        super().__init__(
+            f"{STATIC_START}Failed to download model config from S3: {reason}"
+        )
 
 
 class TritonInferenceFailed(Exception):
     def __init__(self, model_name: str, reason: str = "Unknown"):
         self.model_name = model_name
         self.reason = reason
-        super().__init__(f"{STATIC_START}Inference failed for model '{model_name}': {reason}")
+        super().__init__(
+            f"{STATIC_START}Inference failed for model '{model_name}': {reason}"
+        )
 
 
 class TritonServerStateChanged(Exception):

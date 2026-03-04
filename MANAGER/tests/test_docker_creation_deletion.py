@@ -132,7 +132,12 @@ def test_docker_thread_delete_container_happy_path_and_missing(mock_docker_info_
     container.worker_ip = "10.0.0.8"
     thread.dict_containers = {"cid-1": container}
 
-    data = {"vm_id": "vm-1", "container_id": "cid-1", "force": True, "remove_volumes": True}
+    data = {
+        "vm_id": "vm-1",
+        "container_id": "cid-1",
+        "force": True,
+        "remove_volumes": True,
+    }
     out = thread.delete_container(data.copy())
     thread.docker_deletion.handle.assert_called_once_with(
         ip="10.0.0.8", force=True, container_id="cid-1", remove_volumes=True

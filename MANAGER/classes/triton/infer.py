@@ -34,7 +34,8 @@ class TritonInfer:
 
             if datatype == "BYTES":
                 data = np.array(
-                    [value.encode("utf-8") if isinstance(value, str) else value], dtype=object
+                    [value.encode("utf-8") if isinstance(value, str) else value],
+                    dtype=object,
                 )
             else:
                 data = np.array([value])
@@ -58,7 +59,8 @@ class TritonInfer:
 
             if datatype == "BYTES":
                 data = np.array(
-                    [value.encode("utf-8") if isinstance(value, str) else value], dtype=object
+                    [value.encode("utf-8") if isinstance(value, str) else value],
+                    dtype=object,
                 )
             else:
                 data = np.array([value])
@@ -141,7 +143,9 @@ class TritonInfer:
             grpc_client.async_stream_infer(model_name=model_name, inputs=grpc_inputs)
 
             if not done.wait(timeout=timeout):
-                raise TritonInferenceFailed(model_name, f"Stream timed out after {timeout}s")
+                raise TritonInferenceFailed(
+                    model_name, f"Stream timed out after {timeout}s"
+                )
 
             grpc_client.stop_stream()
 

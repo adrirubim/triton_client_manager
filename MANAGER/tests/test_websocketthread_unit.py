@@ -68,7 +68,9 @@ def test_send_to_client_success(monkeypatch):
 
         return _F()
 
-    monkeypatch.setattr(asyncio, "run_coroutine_threadsafe", fake_run_coroutine_threadsafe)
+    monkeypatch.setattr(
+        asyncio, "run_coroutine_threadsafe", fake_run_coroutine_threadsafe
+    )
 
     assert ws.send_to_client("c1", {"x": 1}) is True
     assert dummy.sent

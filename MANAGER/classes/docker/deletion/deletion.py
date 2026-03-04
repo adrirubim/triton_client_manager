@@ -22,7 +22,8 @@ class DockerDeletion:
         try:
             # --- Connect ---
             client = docker.DockerClient(
-                base_url=f"tcp://{ip}:{self.remote_api_port}", timeout=self.remote_api_timeout
+                base_url=f"tcp://{ip}:{self.remote_api_port}",
+                timeout=self.remote_api_timeout,
             )
             # --- Get ---
             container = client.containers.get(container_id)

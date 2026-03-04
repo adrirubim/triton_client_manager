@@ -28,8 +28,9 @@ def run_smoke(include_ws_client=False):
     configure_logging()
 
     from yaml import safe_load
-    from classes.websocket import WebSocketThread
+
     from classes.job import JobThread
+    from classes.websocket import WebSocketThread
 
     config_dir = os.path.join(os.path.dirname(__file__), "..", "config")
     with open(os.path.join(config_dir, "jobs.yaml"), encoding="utf-8") as f:
@@ -61,10 +62,16 @@ def run_smoke(include_ws_client=False):
 
     try:
         import asyncio
+
         from websockets.asyncio.client import connect as ws_connect
     except ImportError:
         print("[SKIP] websockets not installed; auth/info tests skipped")
-        return {"startup": True, "auth": None, "info": None, "reason": "websockets required"}
+        return {
+            "startup": True,
+            "auth": None,
+            "info": None,
+            "reason": "websockets required",
+        }
 
     results = {"startup": True, "auth": False, "info": False}
 
@@ -86,7 +93,8 @@ def run_smoke(include_ws_client=False):
             await sock.send(json.dumps(info_msg))
             r = json.loads(await sock.recv())
             results["info"] = (
-                r.get("type") == "info_response" and r.get("payload", {}).get("status") == "success"
+                r.get("type") == "info_response"
+                and r.get("payload", {}).get("status") == "success"
             )
 
     asyncio.run(_test())
@@ -123,7 +131,9 @@ if __name__ == "__main__":
     try:
         r = run_smoke(include_ws_client=args.with_ws_client)
         print(json.dumps(r, indent=2))
-        if r.get("auth") is False or (r.get("info") is False and r.get("auth") is not None):
+        if r.get("auth") is False or (
+            r.get("info") is False and r.get("auth") is not None
+        ):
             sys.exit(1)
         if r.get("ws_client") is False:
             sys.exit(1)

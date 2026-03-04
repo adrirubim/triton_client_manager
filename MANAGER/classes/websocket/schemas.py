@@ -65,4 +65,3 @@ class InferencePayload(BaseModel):
 class InferenceMessage(BaseMessage):
     type: Literal["inference"] = "inference"
     payload: InferencePayload
-

@@ -12,7 +12,9 @@ from websockets.asyncio.client import connect
 
 
 async def test_client(
-    user_id: str = "test-client", uri: str = "ws://localhost:8000/ws", keep_alive_sec: float = 10
+    user_id: str = "test-client",
+    uri: str = "ws://localhost:8000/ws",
+    keep_alive_sec: float = 10,
 ):
     """Test client that connects and sends requests"""
 
@@ -35,7 +37,11 @@ async def test_client(
                 return
 
             # Send info request for queue stats (uuid required at top level)
-            info_request = {"type": "info", "uuid": user_id, "payload": {"action": "queue_stats"}}
+            info_request = {
+                "type": "info",
+                "uuid": user_id,
+                "payload": {"action": "queue_stats"},
+            }
             await websocket.send(json.dumps(info_request))
             print(f"[{user_id}] Sent info request")
 
@@ -56,7 +62,9 @@ async def test_client(
         print(f"[{user_id}] Error: {e}")
 
 
-async def test_multiple_clients(uri: str = "ws://localhost:8000/ws", keep_alive_sec: float = 10):
+async def test_multiple_clients(
+    uri: str = "ws://localhost:8000/ws", keep_alive_sec: float = 10
+):
     """Test multiple clients connecting simultaneously"""
     tasks = [
         test_client("alice", uri=uri, keep_alive_sec=keep_alive_sec),

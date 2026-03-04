@@ -5,14 +5,14 @@ Pytest configuration and fixtures for Triton Client Manager tests.
 import os
 import sys
 
+import pytest
+
 # Add MANAGER to path when running pytest from project root or MANAGER
 _here = os.path.dirname(os.path.abspath(__file__))
 _manager = os.path.join(_here, "..")
 for p in (_manager, _here):
     if p not in sys.path:
         sys.path.insert(0, p)
-
-import pytest
 
 
 def _create_mock_thread(name, attrs=None):
@@ -32,8 +32,9 @@ def ws_server():
     yields the WebSocket URI, then stops on teardown.
     """
     from yaml import safe_load
-    from classes.websocket import WebSocketThread
+
     from classes.job import JobThread
+    from classes.websocket import WebSocketThread
 
     config_dir = os.path.join(_manager, "config")
     with open(os.path.join(config_dir, "jobs.yaml"), encoding="utf-8") as f:

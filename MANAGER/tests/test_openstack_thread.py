@@ -46,7 +46,9 @@ def test_openstack_thread_load_and_alert(monkeypatch):
     fake_auth = MagicMock()
     fake_auth.authenticate.return_value = True
     fake_auth.check_and_refresh_token = MagicMock()
-    monkeypatch.setattr("classes.openstack.openstackthread.OpenstackAuth", lambda **_: fake_auth)
+    monkeypatch.setattr(
+        "classes.openstack.openstackthread.OpenstackAuth", lambda **_: fake_auth
+    )
 
     t = OpenstackThread(**kwargs)
 
@@ -104,7 +106,9 @@ def test_openstack_thread_create_and_delete_vm(monkeypatch):
     fake_auth = MagicMock()
     fake_auth.authenticate.return_value = True
     fake_auth.check_and_refresh_token = MagicMock()
-    monkeypatch.setattr("classes.openstack.openstackthread.OpenstackAuth", lambda **_: fake_auth)
+    monkeypatch.setattr(
+        "classes.openstack.openstackthread.OpenstackAuth", lambda **_: fake_auth
+    )
 
     t = OpenstackThread(**kwargs)
 

@@ -21,7 +21,11 @@ class DockerAPIError(Exception):
 
 class DockerContainerStateChanged(Exception):
     def __init__(
-        self, container_id: str, container_name: str, worker_ip: str, changed_fields: list[str]
+        self,
+        container_id: str,
+        container_name: str,
+        worker_ip: str,
+        changed_fields: list[str],
     ):
         self.container_id = container_id
         self.container_name = container_name

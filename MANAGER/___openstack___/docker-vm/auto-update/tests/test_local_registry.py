@@ -5,8 +5,8 @@ Tests connection to local registry on port 5000 and lists all images
 """
 
 import sys
+
 import requests
-from pprint import pprint
 
 
 def test_registry_connection(registry_url="localhost:5000"):
@@ -23,15 +23,15 @@ def test_registry_connection(registry_url="localhost:5000"):
         response = requests.get(version_url, timeout=5)
         response.raise_for_status()
 
-        print(f"[SUCCESS] ✓ Connected to local registry successfully")
-        print(f"[INFO] Registry is responding on port 5000")
-        print(f"[INFO] API Version: v2")
+        print("[SUCCESS] ✓ Connected to local registry successfully")
+        print("[INFO] Registry is responding on port 5000")
+        print("[INFO] API Version: v2")
 
         return True
     except requests.exceptions.ConnectionError:
         print(f"[ERROR] ✗ Cannot connect to registry at {registry_url}")
-        print(f"[INFO] Make sure the registry is running:")
-        print(f"       docker run -d -p 5000:5000 --name registry registry:2")
+        print("[INFO] Make sure the registry is running:")
+        print("       docker run -d -p 5000:5000 --name registry registry:2")
         return False
     except requests.exceptions.RequestException as e:
         print(f"[ERROR] ✗ Failed to connect to registry: {e}")
@@ -93,7 +93,7 @@ def test_repository_tags(registry_url, repositories):
             print(f"\n[INFO] Repository: {repo}")
 
             if not tags:
-                print(f"  [WARNING] No tags found")
+                print("  [WARNING] No tags found")
                 continue
 
             print(f"  [SUCCESS] ✓ Found {len(tags)} tags:")
@@ -112,8 +112,9 @@ def test_repository_tags(registry_url, repositories):
                         # Get content length as approximate size
                         size = len(manifest_response.content)
                         print(f"      Manifest size: {size} bytes")
-                except:
-                    pass  # Skip if manifest fetch fails
+                except requests.exceptions.RequestException:
+                    # Skip manifest errors but continue with other tags
+                    pass
 
         except requests.exceptions.RequestException as e:
             print(f"  [ERROR] ✗ Failed to get tags for {repo}: {e}")
@@ -142,7 +143,7 @@ def test_registry_health(registry_url="localhost:5000"):
         response = requests.get(version_url, timeout=5)
 
         print(f"[INFO] Status Code: {response.status_code}")
-        print(f"[INFO] Response Headers:")
+        print("[INFO] Response Headers:")
 
         important_headers = ["Docker-Distribution-Api-Version", "Content-Type", "Date"]
         for header in important_headers:
@@ -150,7 +151,7 @@ def test_registry_health(registry_url="localhost:5000"):
                 print(f"  - {header}: {response.headers[header]}")
 
         if response.status_code == 200:
-            print(f"[SUCCESS] ✓ Registry is healthy and responding")
+            print("[SUCCESS] ✓ Registry is healthy and responding")
         else:
             print(f"[WARNING] Registry responded with status {response.status_code}")
 

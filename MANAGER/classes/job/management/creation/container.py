@@ -17,7 +17,9 @@ class JobCreateContainer:
 
         # --- Extrapolate DOCKER Data ---
         docker_config: dict = payload.get("docker", {})
-        docker_config["worker_ip"] = vm_ip if vm_ip else payload.get("openstack", {}).get("vm_ip")
+        docker_config["worker_ip"] = (
+            vm_ip if vm_ip else payload.get("openstack", {}).get("vm_ip")
+        )
 
         # --- Random container name if needed ---
         if not docker_config.get("name"):
@@ -40,8 +42,12 @@ class JobCreateContainer:
 
             # --- Environments to access MINIO ---
             docker_config.setdefault("environment", {})
-            docker_config["environment"]["AWS_ACCESS_KEY_ID"] = minio_config["access_key"]
-            docker_config["environment"]["AWS_SECRET_ACCESS_KEY"] = minio_config["secret_key"]
+            docker_config["environment"]["AWS_ACCESS_KEY_ID"] = minio_config[
+                "access_key"
+            ]
+            docker_config["environment"]["AWS_SECRET_ACCESS_KEY"] = minio_config[
+                "secret_key"
+            ]
             docker_config["environment"].setdefault("AWS_DEFAULT_REGION", "us-east-1")
 
         # --- Port mappings ---

@@ -19,7 +19,11 @@ async def test_auth_and_info(ws_server):
         r = json.loads(await sock.recv())
         assert r.get("type") == "auth.ok", r
 
-        info_msg = {"type": "info", "uuid": "pytest-client", "payload": {"action": "queue_stats"}}
+        info_msg = {
+            "type": "info",
+            "uuid": "pytest-client",
+            "payload": {"action": "queue_stats"},
+        }
         await sock.send(json.dumps(info_msg))
         r = json.loads(await sock.recv())
         assert r.get("type") == "info_response", r
@@ -80,7 +84,11 @@ async def test_ws_invalid_type_and_uuid_mismatch(ws_server):
         assert "Invalid type" in err1["payload"]["message"]
 
         # UUID mismatch
-        mismatch = {"type": "info", "uuid": "other", "payload": {"action": "queue_stats"}}
+        mismatch = {
+            "type": "info",
+            "uuid": "other",
+            "payload": {"action": "queue_stats"},
+        }
         await sock.send(json.dumps(mismatch))
         err2 = await _recv_json(sock)
         assert err2["type"] == "error"

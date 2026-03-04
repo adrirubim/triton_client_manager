@@ -35,7 +35,11 @@ class OpenstackAuth:
             verify_ssl: SSL verification - bool or path to certificate file
             token_refresh_buffer_minutes: Minutes before expiration to refresh (default: 10)
         """
-        if not auth_url or not application_credential_id or not application_credential_secret:
+        if (
+            not auth_url
+            or not application_credential_id
+            or not application_credential_secret
+        ):
             raise ValueError(
                 "auth_url, application_credential_id, and application_credential_secret are required"
             )

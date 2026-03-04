@@ -1,9 +1,9 @@
 # list_repo_files.py
-from dataclasses import dataclass, asdict, field
-from huggingface_hub import HfApi
-from pprint import pprint, pformat
-import sys
 import json
+from dataclasses import asdict, dataclass, field
+from pprint import pformat
+
+from huggingface_hub import HfApi
 
 UNSAFE = [".bin", ".pth", ".pt", "/"]
 DF_G = 1024**3
@@ -32,7 +32,9 @@ class RepoInfo:
         return round(bytes_size / DF_G, 2)
 
     @classmethod
-    def retrieve_info(cls, hf_full: str, hf_gguf: str = "", revision: str = "main") -> str:
+    def retrieve_info(
+        cls, hf_full: str, hf_gguf: str = "", revision: str = "main"
+    ) -> str:
         instance = cls(hf_full=hf_full, hf_gguf=hf_gguf, revision=revision)
         instance.execution()
 
@@ -40,7 +42,9 @@ class RepoInfo:
 
     def execution(self):
         api = HfApi()
-        info = api.model_info(repo_id=self.hf_full, revision=self.revision, files_metadata=True)
+        info = api.model_info(
+            repo_id=self.hf_full, revision=self.revision, files_metadata=True
+        )
 
         siblings = info.siblings
         names = [(s.rfilename or "") for s in siblings]
@@ -75,7 +79,7 @@ class RepoInfo:
                 self.hf_gguf = ggufs[0]
 
         # Now iterate once, compute weights
-        PROHIBITED = [".bin", ".pth", ".pt", "/"]  # do NOT include "/"
+        prohibited = [".bin", ".pth", ".pt", "/"]  # do NOT include "/"
         total_bytes = 0
         model_bytes = 0
 
@@ -83,7 +87,7 @@ class RepoInfo:
             name = s.rfilename or ""
             size = int(s.size or 0)
 
-            if any(value in name.lower() for value in PROHIBITED):
+            if any(value in name.lower() for value in prohibited):
                 continue
 
             # --- Weights Gguf ---

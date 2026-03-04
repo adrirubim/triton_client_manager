@@ -42,9 +42,9 @@ class OpenstackThread(threading.Thread):
         self.dict_flavors: dict[str, Flavor] = {}  # ID
         self.dict_networks: dict[str, Network] = {}  # ID
         self.dict_keypairs: dict[str, Keypair] = {}  # NAME
-        self.dict_securities: dict[
-            str, Security
-        ] = {}  # NAME -> Creation VMS ( id was avaliable but not accepted )
+        self.dict_securities: dict[str, Security] = (
+            {}
+        )  # NAME -> Creation VMS ( id was avaliable but not accepted )
 
         # --- Authenticate ---
         self.auth = OpenstackAuth(**kwargs)
@@ -121,7 +121,9 @@ class OpenstackThread(threading.Thread):
             if vm_id in self.dict_vms:
                 has_changed, changed_fields = new_vm.has_changed(self.dict_vms[vm_id])
                 if has_changed:
-                    vm_changes.append(OpenstackVMStateChanged(vm_id, new_vm.name, changed_fields))
+                    vm_changes.append(
+                        OpenstackVMStateChanged(vm_id, new_vm.name, changed_fields)
+                    )
 
         # Atomically swap all dicts in a single lock acquisition
         with self._data_lock:

@@ -1,6 +1,10 @@
 from typing import TYPE_CHECKING, Callable
 
-from classes.docker.dockererrors import DockerAPIError, DockerCreationMissingField, DockerImageNotFound
+from classes.docker.dockererrors import (
+    DockerAPIError,
+    DockerCreationMissingField,
+    DockerImageNotFound,
+)
 from classes.job.joberrors import (
     JobActionNotFound,
     JobContainerCreationFailed,
@@ -8,7 +12,10 @@ from classes.job.joberrors import (
     JobDeletionMissingField,
     JobVMCreationFailed,
 )
-from classes.openstack.openstackerrors import OpenstackCreationMissingKey, OpenstackResourceNotFound
+from classes.openstack.openstackerrors import (
+    OpenstackCreationMissingKey,
+    OpenstackResourceNotFound,
+)
 from classes.triton.tritonerrors import (
     TritonConfigDownloadFailed,
     TritonModelLoadFailed,
@@ -30,13 +37,16 @@ if TYPE_CHECKING:
 ###################################
 class JobManagement:
     """Handles management-type job requests"""
-    def __init__(self,
-                 docker: "DockerThread",
-                 triton: "TritonThread",
-                 openstack: "OpenstackThread",
-                 websocket: Callable[[str, dict], bool],
-                 management_actions_available: list,
-                 **kwargs):
+
+    def __init__(
+        self,
+        docker: "DockerThread",
+        triton: "TritonThread",
+        openstack: "OpenstackThread",
+        websocket: Callable[[str, dict], bool],
+        management_actions_available: list,
+        **kwargs,
+    ):
 
         self.websocket = websocket
         self.management_actions_available = management_actions_available
@@ -46,12 +56,12 @@ class JobManagement:
         self.job_deletion = JobDeletion(triton, docker, openstack)
 
         # Individual steps — reuse sub-handlers from the pipelines
-        self._vm_creator        = self.job_creation._vm
-        self._vm_deleter        = self.job_deletion._vm
+        self._vm_creator = self.job_creation._vm
+        self._vm_deleter = self.job_deletion._vm
         self._container_creator = self.job_creation._container
         self._container_deleter = self.job_deletion._container
-        self._server_creator    = self.job_creation._triton
-        self._server_deleter    = self.job_deletion._triton
+        self._server_creator = self.job_creation._triton
+        self._server_deleter = self.job_deletion._triton
 
     def handle_management(self, msg: dict):
         """Process management request and send response"""
@@ -122,15 +132,28 @@ class JobManagement:
             self.websocket(msg_uuid, response_payload)
 
     # Full pipelines
-    def creation(self, msg_uuid: str, payload: dict):         return self.job_creation.handle(msg_uuid, payload)
-    def deletion(self, msg_uuid: str, payload: dict):         return self.job_deletion.handle(msg_uuid, payload)
+    def creation(self, msg_uuid: str, payload: dict):
+        return self.job_creation.handle(msg_uuid, payload)
+
+    def deletion(self, msg_uuid: str, payload: dict):
+        return self.job_deletion.handle(msg_uuid, payload)
 
     # Individual creation steps
-    def create_vm(self, msg_uuid: str, payload: dict):        return self._vm_creator.handle(msg_uuid, payload)
-    def create_container(self, msg_uuid: str, payload: dict): return self._container_creator.handle(msg_uuid, payload)
-    def create_server(self, msg_uuid: str, payload: dict):    return self._server_creator.handle(msg_uuid, payload)
+    def create_vm(self, msg_uuid: str, payload: dict):
+        return self._vm_creator.handle(msg_uuid, payload)
+
+    def create_container(self, msg_uuid: str, payload: dict):
+        return self._container_creator.handle(msg_uuid, payload)
+
+    def create_server(self, msg_uuid: str, payload: dict):
+        return self._server_creator.handle(msg_uuid, payload)
 
     # Individual deletion steps
-    def delete_server(self, msg_uuid: str, payload: dict):    return self._server_deleter.handle(msg_uuid, payload)
-    def delete_container(self, msg_uuid: str, payload: dict): return self._container_deleter.handle(msg_uuid, payload)
-    def delete_vm(self, msg_uuid: str, payload: dict):        return self._vm_deleter.handle(msg_uuid, payload)
+    def delete_server(self, msg_uuid: str, payload: dict):
+        return self._server_deleter.handle(msg_uuid, payload)
+
+    def delete_container(self, msg_uuid: str, payload: dict):
+        return self._container_deleter.handle(msg_uuid, payload)
+
+    def delete_vm(self, msg_uuid: str, payload: dict):
+        return self._vm_deleter.handle(msg_uuid, payload)

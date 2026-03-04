@@ -53,8 +53,12 @@ class JobInference:
         ):
             raise RuntimeError("TritonThread.triton_infer is not initialized")
 
-        self._http = JobInferenceHttp(self.docker, self.triton.triton_infer, self.triton)
-        self._grpc = JobInferenceGrpc(self.docker, self.triton.triton_infer, self.triton)
+        self._http = JobInferenceHttp(
+            self.docker, self.triton.triton_infer, self.triton
+        )
+        self._grpc = JobInferenceGrpc(
+            self.docker, self.triton.triton_infer, self.triton
+        )
 
     def handle_inference(self, msg: dict):
         """
@@ -79,7 +83,9 @@ class JobInference:
         if protocol not in ("http", "grpc"):
             error = f"Unsupported inference protocol: {protocol!r}"
             logger.warning("JobInference: %s", error)
-            self.websocket(msg_uuid, self._make_payload(msg_uuid, "FAILED", None, error))
+            self.websocket(
+                msg_uuid, self._make_payload(msg_uuid, "FAILED", None, error)
+            )
             return
 
         # Helper used by gRPC handler to stream chunks
@@ -119,7 +125,10 @@ class JobInference:
             self.websocket(
                 msg_uuid,
                 self._make_payload(
-                    msg_uuid, "FAILED", e.model_name if hasattr(e, "model_name") else None, str(e)
+                    msg_uuid,
+                    "FAILED",
+                    e.model_name if hasattr(e, "model_name") else None,
+                    str(e),
                 ),
             )
         except Exception as e:  # noqa: BLE001

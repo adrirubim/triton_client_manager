@@ -4,9 +4,9 @@ from dataclasses import dataclass
 
 import pytest
 
+from classes.job.joberrors import JobDeletionFailed, JobDeletionMissingField
 from classes.job.management.creation.creation import JobCreation
 from classes.job.management.deletion.deletion import JobDeletion
-from classes.job.joberrors import JobDeletionFailed, JobDeletionMissingField
 
 
 @dataclass
@@ -96,7 +96,9 @@ class _DummyDeleteStep:
 
 def test_job_creation_happy_path_executes_all_steps_and_returns_payload():
     """Full JobCreation pipeline: VM + container + Triton server."""
-    creation = JobCreation(triton=None, docker=None, openstack=None)  # dependencies are patched below
+    creation = JobCreation(
+        triton=None, docker=None, openstack=None
+    )  # dependencies are patched below
 
     vm_step = _DummyVM()
     container_step = _DummyContainer()
@@ -190,4 +192,3 @@ def test_job_deletion_collects_errors_and_raises_job_deletion_failed():
     assert len(triton_step.calls) == 1
     assert len(container_step.calls) == 1
     assert len(vm_step.calls) == 1
-

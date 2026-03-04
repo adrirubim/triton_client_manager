@@ -17,7 +17,10 @@ class JobInferenceGrpc:
     """gRPC streaming inference handler."""
 
     def __init__(
-        self, docker: "DockerThread", triton_infer: TritonInfer, triton: "TritonThread" = None
+        self,
+        docker: "DockerThread",
+        triton_infer: TritonInfer,
+        triton: "TritonThread" = None,
     ):
         self.docker = docker
         self.triton_infer = triton_infer
@@ -34,7 +37,9 @@ class JobInferenceGrpc:
 
         server = self.triton.get_server(vm_ip, container_id)
         if not server:
-            raise TritonInferenceFailed(model_name, "No active Triton session for this instance")
+            raise TritonInferenceFailed(
+                model_name, "No active Triton session for this instance"
+            )
 
         output_name = payload.get("request", {}).get("output_name", "output")
 

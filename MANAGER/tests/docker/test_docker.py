@@ -3,18 +3,19 @@ Comprehensive Docker Test Suite
 Tests the complete Docker pipeline: config loading, image discovery, container discovery, and lifecycle
 """
 
+import os
 import socket
 import sys
-import os
-import yaml
 import time
 from dataclasses import dataclass
 from typing import Optional
 
 import pytest
+import yaml
 
-# Add parent directory to path (works from any location)
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+from classes.docker.creation import DockerCreation
+from classes.docker.deletion import DockerDeletion
+from classes.docker.info import DockerInfo
 
 
 def _docker_worker_reachable(host: str, port: int, timeout: float = 2.0) -> bool:
@@ -27,11 +28,6 @@ def _docker_worker_reachable(host: str, port: int, timeout: float = 2.0) -> bool
         return result == 0
     except Exception:
         return False
-
-
-from classes.docker.info import DockerInfo
-from classes.docker.creation import DockerCreation
-from classes.docker.deletion import DockerDeletion
 
 
 # Mock VM class to simulate OpenStack VM structure
@@ -103,10 +99,12 @@ def test_3_container_discovery(config):
 
     docker_info = DockerInfo(config)
     mock_vms = {
-        "vm-001": MockVM(id="vm-001", name="docker-worker-1", address_private="10.50.0.234")
+        "vm-001": MockVM(
+            id="vm-001", name="docker-worker-1", address_private="10.50.0.234"
+        )
     }
 
-    print(f"\n📡 Querying worker VMs...")
+    print("\n📡 Querying worker VMs...")
     print(f"   Worker: 10.50.0.234:{config['remote_api_port']}")
 
     containers_by_ip = docker_info.load_containers(mock_vms)
@@ -157,7 +155,7 @@ def test_4_container_lifecycle(config, mock_vms):
         print("STEP 1: Creating Container")
         print("-" * 60)
 
-        print(f"\n📦 Creating container...")
+        print("\n📦 Creating container...")
         print(f"   Worker: {worker_ip}")
         print(f"   Image: {test_image}")
         print(f"   Name: {test_container_name}")
@@ -186,9 +184,12 @@ def test_4_container_lifecycle(config, mock_vms):
         found = False
         if worker_ip in containers_by_ip:
             for container in containers_by_ip[worker_ip]:
-                if container.id == container_id or container.name == test_container_name:
+                if (
+                    container.id == container_id
+                    or container.name == test_container_name
+                ):
                     found = True
-                    print(f"\n✅ Container verified in list")
+                    print("\n✅ Container verified in list")
                     print(f"   Name: {container.name}")
                     print(f"   Image: {container.image_name}:{container.image_tag}")
                     print(f"   Status: {container.status}")
@@ -196,7 +197,7 @@ def test_4_container_lifecycle(config, mock_vms):
                     break
 
         if not found:
-            print(f"\n⚠️  Container not found in list (may still be starting)")
+            print("\n⚠️  Container not found in list (may still be starting)")
 
         # Step 3: Delete Container
         print("\n" + "-" * 60)
@@ -206,11 +207,14 @@ def test_4_container_lifecycle(config, mock_vms):
         print(f"\n🗑️  Deleting container: {container_id[:12]}")
 
         success = docker_deletion.handle(
-            worker_ip=worker_ip, container_id=container_id, force=True, remove_volumes=False
+            worker_ip=worker_ip,
+            container_id=container_id,
+            force=True,
+            remove_volumes=False,
         )
 
         assert success, "Container deletion failed"
-        print(f"\n✅ Container deleted successfully")
+        print("\n✅ Container deleted successfully")
 
         # Step 4: Verify Container is Gone
         print("\n" + "-" * 60)
@@ -224,19 +228,22 @@ def test_4_container_lifecycle(config, mock_vms):
         still_exists = False
         if worker_ip in containers_by_ip:
             for container in containers_by_ip[worker_ip]:
-                if container.id == container_id or container.name == test_container_name:
+                if (
+                    container.id == container_id
+                    or container.name == test_container_name
+                ):
                     still_exists = True
                     break
 
         assert not still_exists, "Container still exists after deletion"
-        print(f"\n✅ Container successfully removed")
+        print("\n✅ Container successfully removed")
 
     except Exception:
         import traceback
 
         traceback.print_exc()
         if container_id:
-            print(f"\n🧹 Attempting cleanup...")
+            print("\n🧹 Attempting cleanup...")
             try:
                 docker_deletion.handle(worker_ip, container_id, force=True)
                 print("✓ Cleanup successful")
@@ -259,7 +266,9 @@ def main():
     results = []
     config = None
     mock_vms = {
-        "vm-001": MockVM(id="vm-001", name="docker-worker-1", address_private="10.50.0.234")
+        "vm-001": MockVM(
+            id="vm-001", name="docker-worker-1", address_private="10.50.0.234"
+        )
     }
 
     try:

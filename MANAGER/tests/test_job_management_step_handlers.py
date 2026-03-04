@@ -164,4 +164,3 @@ def test_job_delete_steps_delegate_to_underlying_threads():
     assert triton.deleted == [payload]
     assert docker.deleted == [payload]
     assert openstack.deleted_payloads == [payload]
-

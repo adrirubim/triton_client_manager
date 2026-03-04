@@ -5,9 +5,9 @@ Shows exactly what format messages arrive in
 
 import asyncio
 import json
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-import uvicorn
 
+import uvicorn
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
 app = FastAPI()
 
@@ -26,12 +26,12 @@ async def websocket_endpoint(websocket: WebSocket):
         print("\n[STEP 1] Waiting for auth message...")
         raw_auth = await websocket.receive_text()
 
-        print(f"\n📥 RAW MESSAGE RECEIVED:")
+        print("\n📥 RAW MESSAGE RECEIVED:")
         print(f"   Type: {type(raw_auth)}")
         print(f"   Content: {raw_auth}")
 
         auth_data = json.loads(raw_auth)
-        print(f"\n📦 PARSED MESSAGE:")
+        print("\n📦 PARSED MESSAGE:")
         print(f"   Type: {type(auth_data)}")
         print(f"   Content: {json.dumps(auth_data, indent=2)}")
 
@@ -47,7 +47,7 @@ async def websocket_endpoint(websocket: WebSocket):
             await websocket.close()
             return
 
-        print(f"\n✅ AUTH SUCCESS")
+        print("\n✅ AUTH SUCCESS")
         print(f"   Client ID: {client_id}")
 
         # Send auth confirmation
@@ -59,23 +59,23 @@ async def websocket_endpoint(websocket: WebSocket):
 
         raw_message = await websocket.receive_text()
 
-        print(f"\n📥 RAW MESSAGE RECEIVED:")
+        print("\n📥 RAW MESSAGE RECEIVED:")
         print(f"   Type: {type(raw_message)}")
         print(f"   Content: {raw_message}")
 
         message = json.loads(raw_message)
-        print(f"\n📦 PARSED MESSAGE (before adding user_id):")
+        print("\n📦 PARSED MESSAGE (before adding user_id):")
         print(f"   Type: {type(message)}")
         print(f"   Content: {json.dumps(message, indent=2)}")
 
         # Add user_id (this is what WebSocketThread does)
         message["user_id"] = client_id
 
-        print(f"\n🎯 FINAL MESSAGE (what JobThread.on_event receives):")
+        print("\n🎯 FINAL MESSAGE (what JobThread.on_event receives):")
         print(f"   Type: {type(message)}")
         print(f"   Content: {json.dumps(message, indent=2)}")
 
-        print(f"\n📊 MESSAGE STRUCTURE:")
+        print("\n📊 MESSAGE STRUCTURE:")
         print(f"   message['type'] = {message.get('type')}")
         print(f"   message['user_id'] = {message.get('user_id')}")
         print(f"   message['payload'] = {json.dumps(message.get('payload'), indent=2)}")
@@ -90,10 +90,10 @@ async def websocket_endpoint(websocket: WebSocket):
             },
         }
         await websocket.send_text(json.dumps(response))
-        print(f"\n✅ Response sent to client")
+        print("\n✅ Response sent to client")
 
         # Keep connection alive
-        print(f"\n⏳ Keeping connection alive...")
+        print("\n⏳ Keeping connection alive...")
         await asyncio.sleep(5)
 
     except WebSocketDisconnect:

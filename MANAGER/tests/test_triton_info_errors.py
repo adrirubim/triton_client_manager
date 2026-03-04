@@ -49,4 +49,3 @@ def test_triton_info_metadata_error_paths():
 
     client.get_model_metadata.side_effect = RuntimeError("model meta error")
     assert info.get_model_metadata("10.0.0.1", "model-1") == {}
-
