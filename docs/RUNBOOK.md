@@ -18,6 +18,7 @@ Operations and deployment guidance for Triton Client Manager.
 - [SLOs, Alerts, and Dashboards](#slos-alerts-and-dashboards)
 - [Deployment Examples](#deployment-examples)
 - [Backup and Restore](#backup-and-restore)
+ - [Deploying to Kubernetes](#deploying-to-kubernetes)
 
 ---
 
@@ -659,4 +660,95 @@ tar xzf triton_client_manager-config-YYYY-MM-DD.tar.gz -C /var/www/triton_client
 ```
 
 - Restart the service / Deployment so it reloads the configuration.
+ 
+## Deploying to Kubernetes
 
+This section describes how to deploy Triton Client Manager to Kubernetes using the reference manifests under `k8s/` and how to verify that the Horizontal Pod Autoscaler (HPA) is working as expected.
+
+### Manifests overview (`k8s/`)
+
+The `k8s/` directory contains a minimal but production‑oriented example:
+
+- `k8s/deployment.yaml`
+  - `Deployment` for `triton-client-manager` with:
+    - Container image (for example `ghcr.io/triton-client-manager/triton-client-manager:latest`).
+    - `readinessProbe` on `GET /ready`.
+    - `livenessProbe` on `GET /health`.
+    - Resource `requests`/`limits` for CPU and memory.
+  - `HorizontalPodAutoscaler` (`triton-client-manager-hpa`) targeting the Deployment:
+    - `minReplicas` / `maxReplicas` for the manager.
+    - CPU utilization target (for example `averageUtilization: 70`).
+- `k8s/service.yaml`
+  - `Service` exposing the manager pods on port `80` (or `8000`) and targeting container port `8000`.
+  - Label selector `app: triton-client-manager`, shared with the Deployment and Ingress.
+- `k8s/ingress.yaml`
+  - `Ingress` for `triton-client-manager`:
+    - Host rule (for example `tcm.example.com`).
+    - Path `/` routing to the `triton-client-manager` Service on HTTP.
+    - NGINX annotations enabling WebSocket support and appropriate timeouts.
+
+Treat these manifests as a starting point: copy them into your own repo and adjust image, resources, annotations and labels to match your cluster conventions.
+
+### Applying the manifests
+
+From the project root:
+
+```bash
+kubectl apply -f k8s/
+```
+
+This command will:
+
+- Create or update the `Deployment`, `Service`, `Ingress` and `HorizontalPodAutoscaler` resources.
+- Keep them in sync across subsequent changes (you can re‑apply safely after edits).
+
+Typical follow‑up checks:
+
+```bash
+kubectl get deploy triton-client-manager
+kubectl get svc triton-client-manager
+kubectl get ingress triton-client-manager
+kubectl get pods -l app=triton-client-manager
+```
+
+Once pods are `Ready`, you should be able to:
+
+- Hit `/health` and `/ready` via the Service/Ingress.
+- Connect your WebSocket client to the ingress endpoint (for example `wss://tcm.example.com/ws`).
+- Scrape `/metrics` from the manager using your Prometheus scrape config.
+
+### Verifying HPA and autoscaling
+
+The reference Deployment includes an `autoscaling/v2` `HorizontalPodAutoscaler` that scales `triton-client-manager` replicas based on CPU utilization.
+
+To inspect the HPA:
+
+```bash
+kubectl get hpa triton-client-manager-hpa
+kubectl describe hpa triton-client-manager-hpa
+```
+
+The `describe` output should show:
+
+- Target Deployment (`scaleTargetRef`).
+- Current and target CPU utilization.
+- Current number of replicas and desired replicas.
+
+To exercise autoscaling in a non‑production cluster:
+
+1. Ensure you have metrics in place (for example `metrics-server` in a managed Kubernetes cluster).
+2. Generate sustained load against the WebSocket endpoint (for example using the Python SDK quickstart or a small load script).
+3. Watch the HPA and pods:
+
+   ```bash
+   kubectl get hpa triton-client-manager-hpa -w
+   kubectl get pods -l app=triton-client-manager -w
+   ```
+
+4. After a few minutes under load, the HPA should increase the number of replicas up to `maxReplicas`.
+5. When load drops, replicas should gradually scale back down to `minReplicas`.
+
+You can correlate autoscaling behaviour with application metrics (`/metrics`) and your Prometheus/Grafana dashboard:
+
+- Check that per‑instance metrics aggregate correctly as replicas scale.
+- Validate that backpressure metrics and queue sizes respond as expected when more replicas are added.

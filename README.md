@@ -13,6 +13,7 @@
 
 ## 📋 Table of Contents
 
+- [Operational Quickstart](#operational-quickstart)
 - [Overview](#overview)
 - [Features](#features)
 - [Tech Stack](#tech-stack)
@@ -23,13 +24,59 @@
 - [CI/CD](#cicd)
 - [Testing](#testing)
 - [Architecture](#architecture)
-- [Project Status](#project-status)
+- [Release Status](#release-status)
 - [Default Users](#default-users-development)
 - [Useful Commands](#useful-commands)
 - [Before Pushing to GitHub](#before-pushing-to-github)
 - [Contributing](#contributing)
 - [Author](#author)
 - [License](#license)
+
+---
+
+<a id="operational-quickstart"></a>
+## ⚙️ Operational Quickstart
+
+Use these `make` targets from the **repository root** as the single source of entry for running, validating, and deploying Triton Client Manager:
+
+| Command           | Purpose                                                           | Notes                                                                                 |
+| ----------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `make test`       | **Full validation** (pytest + smoke + SDK contract tests)        | Runs the full Python test suite under `MANAGER/`, including WebSocket SDK contracts. |
+| `make demo`       | **Multi-replica scaling demo with NGINX**                        | Starts `docker-compose.multi-node.yml` (two manager replicas behind an NGINX LB).     |
+| `make monitor`    | **SRE observability stack (Prometheus/Grafana)**                 | Brings up the monitoring stack in `monitoring/docker-compose.yml`.                   |
+| `make k8s-deploy` | **Production-style Kubernetes deployment (Deployment + HPA etc.)** | Applies manifests from `k8s/` and prepares the cluster for autoscaling validation.   |
+
+These commands are designed so that any **developer or SRE** can get from clone to:
+
+- A validated runtime (`make test`),
+- A horizontal-scaling demo (`make demo`),
+- A full observability stack (`make monitor`),
+- And a Kubernetes deployment with HPA (`make k8s-deploy`)
+
+with **one command per scenario**.
+
+For deeper operational details and configuration options, see:
+
+- **Runbook:** [docs/RUNBOOK.md](docs/RUNBOOK.md)
+- **Configuration reference:** [docs/CONFIGURATION.md](docs/CONFIGURATION.md)
+
+### Operational entrypoints diagram
+
+```mermaid
+graph TD
+    User([Developer / SRE]) -->|make test| CI[Full Validation (CI-equivalent)]
+    User -->|make demo| MultiNode[Local Multi-Replica Scaling (NGINX)]
+    User -->|make monitor| Obs[Observability Stack (Prometheus/Grafana)]
+    User -->|make k8s-deploy| K8s[Production-style Kubernetes Cluster]
+    
+    subgraph "Triton Client Manager v1.0.0"
+        CI -.-> SDK[Python SDK Contract Tests]
+        MultiNode --> Manager1[Manager Replica 1]
+        MultiNode --> Manager2[Manager Replica 2]
+        Obs --> Metrics[/Metrics Endpoint/]
+        K8s --> HPA[Horizontal Pod Autoscaler]
+    end
+```
 
 ---
 
@@ -234,7 +281,7 @@ All documentation lives under [docs/](docs/). The main index is [docs/README.md]
 | Section          | Links                                                                                                                                                    |
 | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Architecture** | [ARCHITECTURE](docs/ARCHITECTURE.md) · [API_CONTRACTS](docs/API_CONTRACTS.md) · [VERSION_STACK](docs/VERSION_STACK.md)                                  |
-| **Operations**   | [RUNBOOK](docs/RUNBOOK.md) · [CONFIGURATION](docs/CONFIGURATION.md)                                                                                     |
+| **Operations**   | **[RUNBOOK](docs/RUNBOOK.md)** · **[CONFIGURATION](docs/CONFIGURATION.md)**                                                                             |
 | **Development**  | [payload_examples/](MANAGER/payload_examples/) — JSON examples for management and inference payloads                                                    |
 | **Testing**      | [TESTING](docs/TESTING.md)                                                                                                                               |
 | **Support**      | [TROUBLESHOOTING](docs/TROUBLESHOOTING.md) · [CHANGELOG_INTERNAL](docs/CHANGELOG_INTERNAL.md)                                                           |
@@ -349,20 +396,14 @@ For in-depth diagrams and contracts, see [ARCHITECTURE](docs/ARCHITECTURE.md) an
 
 ---
 
-<a id="project-status"></a>
-## 📊 Project Status
+<a id="release-status"></a>
+## 📊 Release Status
 
-**Overall Status:** In active development. Architecture and core flows (auth, info, management, HTTP inference) are stable; advanced observability, gRPC streaming workflows and richer auth/multi-tenant support are planned.
+- **Current release:** `v1.0.0` — **STABLE**
+- **Changelog:** see [CHANGELOG.md](CHANGELOG.md) for highlights and upgrade notes.
+- **Roadmap completion:** the internal **13-stage project roadmap** has been fully completed and verified (CI, DX, observability, security, SDKs, horizontal scaling).
 
-| Aspect        | Status      | Notes                                                          |
-| ------------- | ----------- | -------------------------------------------------------------- |
-| Security      | ✅ Solid     | Application credentials for OpenStack; config isolation        |
-| Operations    | ✅ Stable    | Threaded startup/shutdown; smoke and regression tests         |
-| Code Quality  | ✅ Good      | Clear separation between WebSocket, job, and infra layers     |
-| Testing       | ✅ Good      | Smoke + regression + WebSocket integration                    |
-| Documentation | ✅ Complete  | [docs/](docs/) covers architecture, config, testing, troubleshooting |
-
-See [CHANGELOG_INTERNAL](docs/CHANGELOG_INTERNAL.md) for detailed engineering changes.
+This repository now represents the **1.0.0 product line** for Triton Client Manager; future changes will follow semantic versioning and be documented in the changelog.
 
 ---
 
@@ -482,5 +523,5 @@ MIT — See [LICENSE](LICENSE).
 
 ---
 
-**Last Updated:** March 2026 · **Status:** In Development 🚧 · **Stack:** [docs/VERSION_STACK.md](docs/VERSION_STACK.md)
+**Last Updated:** March 2026 · **Status:** Stable (v1.0.0) ✅ · **Stack:** [docs/VERSION_STACK.md](docs/VERSION_STACK.md)
 
