@@ -24,7 +24,7 @@
 - [CI/CD](#cicd)
 - [Testing](#testing)
 - [Architecture](#architecture)
-- [Release Status](#release-status)
+- [Project status](#project-status)
 - [Default Users](#default-users-development)
 - [Useful Commands](#useful-commands)
 - [Before Pushing to GitHub](#before-pushing-to-github)
@@ -404,8 +404,8 @@ For in-depth diagrams and contracts, see [ARCHITECTURE](docs/ARCHITECTURE.md) an
 
 ---
 
-<a id="release-status"></a>
-## 📊 Release Status
+<a id="project-status"></a>
+## 📊 Project status
 
 - **Current release:** `v1.0.0` — **STABLE**
 - **Changelog:** see [CHANGELOG.md](CHANGELOG.md) for highlights and upgrade notes.
