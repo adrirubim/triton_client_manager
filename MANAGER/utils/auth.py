@@ -19,7 +19,12 @@ import time
 from typing import Any, Dict, Optional, Tuple
 
 import jwt
-from jwt import ExpiredSignatureError, InvalidAudienceError, InvalidIssuerError, PyJWKClient
+from jwt import (
+    ExpiredSignatureError,
+    InvalidAudienceError,
+    InvalidIssuerError,
+    PyJWKClient,
+)
 
 
 def _b64url_decode(data: str) -> bytes:
