@@ -141,7 +141,7 @@ The system exposes inference endpoints (HTTP and gRPC) and manages per-user job 
 - ✅ **Internal changelog** — [CHANGELOG_INTERNAL](docs/CHANGELOG_INTERNAL.md) tracks notable engineering changes
 - ✅ **Observability stack** — Sample Prometheus + Grafana setup with a ready‑to‑use dashboard (`monitoring/`, `grafana/tcm_dashboard.json`)
 
-## 👥 Use cases & personas
+### 👥 Target users & use cases
 
 - **Plataformas internas de MLOps (enterprise)**: equipos de plataforma que necesitan orquestar OpenStack, Docker y Triton para dar servicio de inferencia a muchos equipos internos, con colas por usuario/tenant y métricas listas para SRE.
 - **Labs de IA y departamentos de innovación**: grupos que prototipan modelos y necesitan un entorno reproducible y observable para probar nuevos modelos en Triton sin pelearse con la infraestructura cada vez.
