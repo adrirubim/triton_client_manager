@@ -265,7 +265,7 @@ class JobThread(threading.Thread):
             if queue:
                 queue.put_nowait(msg)
 
-        except Exception as e:
+        except Exception:
             # Queue full (or other queue-level error) -> backpressure metric
             if msg_type in {"info", "management", "inference"}:
                 observe_job_rejected(msg_type)
