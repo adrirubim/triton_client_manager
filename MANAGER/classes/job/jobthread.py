@@ -256,14 +256,10 @@ class JobThread(threading.Thread):
                     queue_dict=self.inference_queues,
                 )
             else:
-                logger.error(
-                    "Unknown message type for incoming message",
-                    extra={
-                        "client_uuid": msg_uuid,
-                        "job_id": "-",
-                        "job_type": msg_type or "unknown",
-                    },
-                )
+                # Intentionally avoid logging user identifiers or raw message
+                # contents here; we only record that an unexpected type reached
+                # the dispatcher.
+                logger.error("Unknown message type for incoming message")
                 queue = None
 
             if queue:
@@ -274,15 +270,9 @@ class JobThread(threading.Thread):
             if msg_type in {"info", "management", "inference"}:
                 observe_job_rejected(msg_type)
 
-            logger.warning(
-                "Queue full for incoming message (backpressure activated)",
-                extra={
-                    "client_uuid": msg_uuid,
-                    "job_id": "-",
-                    "job_type": msg_type or "unknown",
-                    "queue_error": str(e),
-                },
-            )
+            # Avoid logging user identifiers or raw exception messages; the
+            # corresponding Prometheus metric already captures the rejection.
+            logger.warning("Queue full for incoming message (backpressure activated)")
 
     # --------------- Queue Related ---------------
     def fair_process_queues(
@@ -405,14 +395,10 @@ class JobThread(threading.Thread):
         with self.queue_lock:
             if user_id not in queue_dict:
                 queue_dict[user_id] = QueueJob(maxsize=max_size)
-                logger.info(
-                    "Created per-user queue",
-                    extra={
-                        "client_uuid": user_id,
-                        "job_id": "-",
-                        "job_type": "queue_create",
-                    },
-                )
+                # Do not log the concrete user identifier here; only that a
+                # queue was created. More detailed per-user traces should be
+                # added in upstream systems if required.
+                logger.info("Created per-user queue")
             return queue_dict[user_id]
 
     # ------------ INFO ------------
