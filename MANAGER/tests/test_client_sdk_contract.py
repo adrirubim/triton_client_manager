@@ -12,7 +12,7 @@ server (`ws_server` fixture) to validate that:
 
 import pytest
 
-from _______WEBSOCKET.sdk import AuthContext, TcmWebSocketClient
+from _______WEBSOCKET.sdk import AuthContext, TcmWebSocketClient, quickstart_queue_stats
 
 
 def _make_auth_ctx() -> AuthContext:
@@ -114,18 +114,6 @@ async def test_error_contract_for_invalid_type(ws_server):
     message = (resp.get("payload") or {}).get("message", "")
     # Contract from docs/WEBSOCKET_API.md → "Invalid type 'unknown'. Must be one of: [...]"
     assert "Invalid type 'unknown'" in message, message
-
-"""
-Tests de contrato para el SDK WebSocket (`_______WEBSOCKET.sdk`).
-
-Objetivo: garantizar que el quickstart documentado funciona contra el servidor
-de pruebas (`ws_server`) y que el contrato `auth` + `info.queue_stats` se
-mantiene alineado con `docs/WEBSOCKET_API.md`.
-"""
-
-import pytest
-
-from _______WEBSOCKET.sdk import AuthContext, TcmWebSocketClient, quickstart_queue_stats
 
 
 @pytest.mark.asyncio

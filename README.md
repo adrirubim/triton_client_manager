@@ -64,17 +64,17 @@ For deeper operational details and configuration options, see:
 
 ```mermaid
 graph TD
-    User([Developer / SRE]) -->|make test| CI[Full Validation (CI-equivalent)]
-    User -->|make demo| MultiNode[Local Multi-Replica Scaling (NGINX)]
-    User -->|make monitor| Obs[Observability Stack (Prometheus/Grafana)]
-    User -->|make k8s-deploy| K8s[Production-style Kubernetes Cluster]
+    User(["Developer / SRE"]) -->|make test| CI["Full Validation (CI-equivalent)"]
+    User -->|make demo| MultiNode["Local Multi-Replica Scaling (NGINX)"]
+    User -->|make monitor| Obs["Observability Stack (Prometheus & Grafana)"]
+    User -->|make k8s-deploy| K8s["Production-style Kubernetes Cluster"]
     
     subgraph "Triton Client Manager v1.0.0"
-        CI -.-> SDK[Python SDK Contract Tests]
-        MultiNode --> Manager1[Manager Replica 1]
-        MultiNode --> Manager2[Manager Replica 2]
-        Obs --> Metrics[/Metrics Endpoint/]
-        K8s --> HPA[Horizontal Pod Autoscaler]
+        CI -.-> SDK["Python SDK Contract Tests"]
+        MultiNode --> Manager1["Manager Replica 1"]
+        MultiNode --> Manager2["Manager Replica 2"]
+        Obs --> Metrics["Metrics Endpoint (/metrics)"]
+        K8s --> HPA["Horizontal Pod Autoscaler"]
     end
 ```
 
