@@ -141,6 +141,14 @@ The system exposes inference endpoints (HTTP and gRPC) and manages per-user job 
 - ✅ **Internal changelog** — [CHANGELOG_INTERNAL](docs/CHANGELOG_INTERNAL.md) tracks notable engineering changes
 - ✅ **Observability stack** — Sample Prometheus + Grafana setup with a ready‑to‑use dashboard (`monitoring/`, `grafana/tcm_dashboard.json`)
 
+## 👥 Use cases & personas
+
+- **Plataformas internas de MLOps (enterprise)**: equipos de plataforma que necesitan orquestar OpenStack, Docker y Triton para dar servicio de inferencia a muchos equipos internos, con colas por usuario/tenant y métricas listas para SRE.
+- **Labs de IA y departamentos de innovación**: grupos que prototipan modelos y necesitan un entorno reproducible y observable para probar nuevos modelos en Triton sin pelearse con la infraestructura cada vez.
+- **SaaS de inferencia multi‑tenant**: productos que ofrecen inferencia como servicio a múltiples clientes y necesitan aislamiento por tenant, rate limiting, autenticación por roles y una API WebSocket estable + SDK oficial.
+- **Equipos SRE / Observabilidad**: organizaciones que ya tienen Prometheus/Grafana y buscan un orquestador con métricas y dashboards serios desde el día 1 (colas, backpressure, tiempos por tipo de job, alertas recomendadas).
+- **Integradores backend/frontend**: equipos que solo quieren “hablar con Triton” sin leer el código del manager: consumen la API WebSocket (`/ws`) y el SDK `tcm-client` para lanzar `auth`, `info.queue_stats`, `management` e `inference` con contratos claros.
+
 ---
 
 <a id="tech-stack"></a>
