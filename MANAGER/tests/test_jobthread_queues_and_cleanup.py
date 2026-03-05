@@ -86,7 +86,9 @@ def test_jobthread_on_message_logs_and_counts_when_queue_is_full(caplog, monkeyp
     jt.on_message("u1", {"uuid": "u1", "type": "info", "payload": {}})
     after = _get_rejected_count("info")
 
-    assert any("Queue full for user" in rec.message for rec in caplog.records)
+    # We only assert on the stable prefix; the exact wording after "Queue full"
+    # may evolve as we harden logs, but the intent (backpressure warning) must remain.
+    assert any("Queue full" in rec.message for rec in caplog.records)
     assert after == before + 1
 
 

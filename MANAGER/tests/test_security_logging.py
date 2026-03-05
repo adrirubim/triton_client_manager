@@ -160,4 +160,3 @@ def test_no_secrets_logged_when_inference_queue_is_full(caplog) -> None:
     log_text = "\n".join(record.getMessage() for record in caplog.records)
 
     assert SECRET_TOKEN not in log_text, "Sensitive token leaked into logs (inference)"
-
