@@ -527,46 +527,23 @@ docker run -d \
 
 ### Kubernetes
 
-Minimal deployment snippet:
+Reference manifests live under `k8s/`:
 
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: triton-client-manager
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: triton-client-manager
-  template:
-    metadata:
-      labels:
-        app: triton-client-manager
-    spec:
-      containers:
-        - name: manager
-          image: your-registry/triton-client-manager:latest
-          ports:
-            - containerPort: 8000
-          volumeMounts:
-            - name: config
-              mountPath: /app/config
-          readinessProbe:
-            httpGet:
-              path: /ready
-              port: 8000
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: 8000
-      volumes:
-        - name: config
-          configMap:
-            name: triton-client-manager-config
+- `k8s/deployment.yaml` — Deployment + HPA (`triton-client-manager-hpa`).
+- `k8s/service.yaml` — ClusterIP Service exposing port 80 → container 8000.
+- `k8s/ingress.yaml` — NGINX Ingress with WebSocket support.
+
+Apply them from the repo root:
+
+```bash
+kubectl apply -f k8s/
 ```
 
-Expose via a `Service` (type `ClusterIP`/`LoadBalancer`) as needed.
+Then:
+
+- `kubectl get deploy triton-client-manager`
+- `kubectl get svc triton-client-manager`
+- `kubectl get ingress triton-client-manager`
 
 ### Horizontal scaling and multi-region
 

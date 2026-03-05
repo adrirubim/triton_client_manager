@@ -1,5 +1,37 @@
 # WebSocket API – Triton Client Manager
 
+Este archivo actúa como **alias y punto de entrada** al contrato oficial de la API WebSocket del Triton Client Manager.
+
+La **fuente de verdad canónica** del contrato (formatos de mensaje, ejemplos y errores) vive en:
+
+- `docs/API_CONTRACTS.md`
+
+Ahí encontrarás:
+
+- Formato de mensaje estándar:
+  - Campos obligatorios: `uuid`, `type`, `payload`.
+  - Tipos soportados: `auth`, `info`, `management`, `inference`.
+- Secciones detalladas para:
+  - `Auth` (incluyendo payload con `token` y bloque `client`).
+  - `Info` (por ejemplo `info.queue_stats`).
+  - `Management` (creación y borrado con payloads planos y anidados).
+  - `Inference` (campos requeridos y ejemplo de payload).
+- Contrato de errores:
+  - Estructura `{"type": "error", "payload": {"message": "..."}}`.
+  - Códigos de cierre WebSocket (por ejemplo `1008`, `1009`) y causas típicas.
+
+Cuando en este repositorio veas referencias a `docs/WEBSOCKET_API.md` (por ejemplo, en:
+
+- `docs/internal/PROJECT_STATES.md`
+- `MANAGER/_______WEBSOCKET/README.md`
+- Comentarios en `MANAGER/tests/test_client_sdk_contract.py`
+
+debes entenderlas como un alias directo a `docs/API_CONTRACTS.md`.
+
+En caso de duda, **siempre considera `API_CONTRACTS.md` como el contrato más actualizado** y sincroniza tus integraciones y tests de contrato con ese archivo.
+
+# WebSocket API – Triton Client Manager
+
 Contract of the WebSocket API exposed at `/ws`.
 
 ---

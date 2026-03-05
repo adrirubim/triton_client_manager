@@ -444,6 +444,46 @@ cd MANAGER
 .venv/bin/python -m unittest tests.test_regression -v
 ```
 
+### Official SDKs (Python)
+
+The repository includes a lightweight Python SDK under `MANAGER/_______WEBSOCKET/sdk.py`,
+validated by contract tests (`MANAGER/tests/test_client_sdk_contract.py`).
+
+Until a public PyPI package is published, you can install it locally in editable
+mode from the repo root:
+
+```bash
+cd MANAGER
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt -r requirements-test.txt
+pip install -e .
+```
+
+Then use the SDK in your own code:
+
+```python
+from _______WEBSOCKET.sdk import AuthContext, TcmWebSocketClient
+
+
+async def main() -> None:
+    ctx = AuthContext(
+        uuid="my-frontend-1",
+        token="opaque-or-jwt-token",
+        sub="user-123",
+        tenant_id="tenant-abc",
+        roles=["inference", "management"],
+    )
+
+    async with TcmWebSocketClient("ws://127.0.0.1:8000/ws", ctx) as client:
+        await client.auth()
+        info = await client.info_queue_stats()
+        print(info)
+```
+
+> Once `tcm-client` (or the final SDK name) is published to PyPI, this section
+> can be updated to recommend `pip install tcm-client` instead of `pip install -e .`.
+
 ### Compilation Check
 
 ```bash

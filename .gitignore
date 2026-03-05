@@ -45,6 +45,3 @@ Thumbs.db
 
 # Coverage / local infra (do not commit)
 MANAGER/.coverage
-docker-compose.multi-node.yml
-k8s/
-nginx/

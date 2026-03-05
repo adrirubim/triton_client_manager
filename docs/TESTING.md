@@ -97,6 +97,22 @@ cd MANAGER
 .venv/bin/python tests/smoke_runtime.py --with-ws-client
 ```
 
+## Security logging
+
+Minimal automated check to ensure that sensitive values in payloads are **not**
+leaked into logs under backpressure scenarios (`info`, `management`,
+`inference` queues llenas):
+
+```bash
+cd MANAGER
+. .venv/bin/activate
+python -m pytest tests/test_security_logging.py -v
+```
+
+This suite (`tests/test_security_logging.py`) uses synthetic "secrets" in the
+payload and asserts that they never appear in log messages emitted by
+`JobThread` when queues are full.
+
 ## Coverage
 
 To run the full pytest suite with coverage over the core modules (`classes`, `utils`, `client_manager`) and see a terminal summary:

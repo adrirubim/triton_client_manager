@@ -1,0 +1,45 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: triton-client-manager
+  labels:
+    app: triton-client-manager
+spec:
+  type: ClusterIP
+  selector:
+    app: triton-client-manager
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8000
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: triton-client-manager
+  labels:
+    app: triton-client-manager
+spec:
+  type: ClusterIP
+  selector:
+    app: triton-client-manager
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8000
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: triton-client-manager
+  labels:
+    app: triton-client-manager
+spec:
+  selector:
+    app: triton-client-manager
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+  type: ClusterIP
+

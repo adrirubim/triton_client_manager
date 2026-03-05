@@ -1,0 +1,62 @@
+version: "3.9"
+
+services:
+  tcm-manager-1:
+    image: ghcr.io/triton-client-manager/triton-client-manager:latest
+    container_name: tcm-manager-1
+    environment:
+      - TCM_ENV=production
+    ports:
+      - "8001:8000"
+
+  tcm-manager-2:
+    image: ghcr.io/triton-client-manager/triton-client-manager:latest
+    container_name: tcm-manager-2
+    environment:
+      - TCM_ENV=production
+    ports:
+      - "8002:8000"
+
+  nginx:
+    image: nginx:stable
+    container_name: tcm-nginx
+    depends_on:
+      - tcm-manager-1
+      - tcm-manager-2
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+
+version: "3.9"
+
+services:
+  manager1:
+    image: your-registry/triton-client-manager:latest
+    container_name: tcm-manager-1
+    environment:
+      - PYTHONUNBUFFERED=1
+    ports:
+      - "8001:8000"
+    depends_on: []
+
+  manager2:
+    image: your-registry/triton-client-manager:latest
+    container_name: tcm-manager-2
+    environment:
+      - PYTHONUNBUFFERED=1
+    ports:
+      - "8002:8000"
+    depends_on: []
+
+  nginx:
+    image: nginx:alpine
+    container_name: tcm-nginx-lb
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - manager1
+      - manager2
+
