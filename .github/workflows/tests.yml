@@ -36,12 +36,26 @@ jobs:
           python -m py_compile client_manager.py
           python -m compileall -q classes utils
 
-      - name: Run unit tests with coverage
+      - name: Run smoke test (with WebSocket client)
         working-directory: MANAGER
         env:
           PYTHONPATH: .
         run: |
-          coverage run -m pytest
-          coverage xml
-          coverage report
+          python tests/smoke_runtime.py --with-ws-client
+
+      - name: Run regression tests
+        working-directory: MANAGER
+        env:
+          PYTHONPATH: .
+        run: |
+          python -m unittest tests.test_regression -v
+
+      - name: Run pytest suite with coverage
+        working-directory: MANAGER
+        env:
+          PYTHONPATH: .
+        run: |
+          pytest tests/ -v \
+            --cov=classes --cov=utils --cov=client_manager \
+            --cov-report=xml --cov-report=term-missing
 

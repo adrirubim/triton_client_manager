@@ -17,6 +17,13 @@ auth:
   issuer:
   audience:
   leeway_seconds: 60
+  # Optional JWT verification settings (used in strict mode):
+  # - jwks_url: URL of a JWKS endpoint for RSA/ECDSA keys.
+  # - public_key_pem: PEM-encoded public key (or shared secret for HS* in dev).
+  # - algorithms: list of allowed algorithms (e.g. ["RS256", "ES256"]).
+  jwks_url:
+  public_key_pem:
+  algorithms: []
 
 # Optional per-client rate limiting (lightweight, in-memory).
 # Set to 0 to disable each limit.

@@ -18,6 +18,9 @@ import json
 import time
 from typing import Any, Dict, Optional, Tuple
 
+import jwt
+from jwt import ExpiredSignatureError, InvalidAudienceError, InvalidIssuerError, PyJWKClient
+
 
 def _b64url_decode(data: str) -> bytes:
     """Decode a base64url string without requiring padding."""
@@ -81,6 +84,55 @@ def validate_token(
     if not token:
         return False, "Missing token in auth payload"
 
+    jwks_url = cfg.get("jwks_url")
+    public_key_pem = cfg.get("public_key_pem")
+    algorithms = cfg.get("algorithms") or ["RS256", "ES256", "HS256"]
+    audience = cfg.get("audience")
+    expected_iss = cfg.get("issuer")
+    leeway = int(cfg.get("leeway_seconds", 60))
+    required_claims = cfg.get("required_claims") or []
+
+    def _validate_required_claims(claims: Dict[str, Any]) -> Tuple[bool, str]:
+        for name in required_claims:
+            if name not in claims:
+                return False, f"Missing required claim: '{name}'"
+        return True, ""
+
+    # Cryptographic validation path when key material is configured.
+    if jwks_url or public_key_pem:
+        try:
+            if jwks_url:
+                jwks_client = PyJWKClient(jwks_url)
+                signing_key = jwks_client.get_signing_key_from_jwt(token)
+                key = signing_key.key
+            else:
+                key = public_key_pem
+
+            claims = jwt.decode(
+                token,
+                key=key,
+                algorithms=algorithms,
+                audience=audience,
+                issuer=expected_iss,
+                leeway=leeway,
+                options={"require": required_claims},
+            )
+        except ExpiredSignatureError:
+            return False, "Token has expired"
+        except InvalidIssuerError:
+            return False, "Invalid token issuer"
+        except InvalidAudienceError:
+            return False, "Invalid token audience"
+        except Exception as exc:
+            return False, f"Invalid token: {exc}"
+
+        ok, err = _validate_required_claims(claims)
+        if not ok:
+            return ok, err
+        return True, ""
+
+    # Fallback: strict mode without key material – preserve previous behaviour
+    # (no signature verification, only payload/claims checks).
     # Decode payload without verifying signature.
     try:
         claims = _decode_jwt_payload(token)
@@ -88,10 +140,9 @@ def validate_token(
         return False, "Invalid token format"
 
     # Enforce required claims.
-    required_claims = cfg.get("required_claims") or []
-    for name in required_claims:
-        if name not in claims:
-            return False, f"Missing required claim: '{name}'"
+    ok, err = _validate_required_claims(claims)
+    if not ok:
+        return ok, err
 
     # exp: unix timestamp; allow small clock skew.
     if "exp" in claims:
@@ -99,13 +150,11 @@ def validate_token(
             exp = float(claims["exp"])
         except (TypeError, ValueError):
             return False, "Invalid 'exp' claim"
-        leeway = int(cfg.get("leeway_seconds", 60))
         now = time.time()
         if now > exp + leeway:
             return False, "Token has expired"
 
     # iss: expected issuer if configured.
-    expected_iss = cfg.get("issuer")
     if expected_iss is not None:
         iss = claims.get("iss")
         if iss != expected_iss:

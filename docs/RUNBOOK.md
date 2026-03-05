@@ -337,6 +337,31 @@ At minimum, we recommend a Grafana dashboard with panels for:
 An example dashboard JSON is provided at `grafana/tcm_dashboard.json`. You can import it
 directly into Grafana and then customize it for your environment.
 
+## Local Monitoring Stack
+
+To experiment with metrics and the Grafana dashboard locally, you can use the
+Docker Compose stack under `monitoring/`:
+
+```bash
+cd monitoring
+docker compose up -d
+```
+
+Requirements:
+
+- Triton Client Manager corriendo en el host en `0.0.0.0:8000` (por ejemplo con
+  `MANAGER/dev_server.py`).
+- Docker Desktop o Docker con soporte para `host.docker.internal` (en Linux
+  puro puedes sustituir el hostname en `prometheus.yml` por la IP del host).
+
+Una vez levantado el stack:
+
+- Accede a Prometheus en `http://localhost:9090` y verifica que el job
+  `triton-client-manager` scrapea `/metrics`.
+- Accede a Grafana en `http://localhost:3000` (user/password por defecto
+  `admin`/`admin`), crea un datasource Prometheus apuntando a
+  `http://prometheus:9090` e importa `grafana/tcm_dashboard.json`.
+
 ### Day 2 operations checklist
 
 When responding to incidents or degradation, use this checklist:
@@ -367,6 +392,45 @@ When responding to incidents or degradation, use this checklist:
 6. **Post‑incident**
    - Capture a short summary: root cause, impact, and which SLOs were touched.
    - Consider updating alerts, dashboards, or configuration to detect similar issues earlier.
+
+## Multi-Replica Validation Procedure
+
+To validate horizontal scaling behaviour using Docker Compose:
+
+1. Build a manager image:
+
+   ```bash
+   docker build -t your-registry/triton-client-manager:latest .
+   ```
+
+2. Start the multi-node environment:
+
+   ```bash
+   docker compose -f docker-compose.multi-node.yml up -d
+   ```
+
+3. Run the SDK quickstart against the NGINX load balancer:
+
+   ```bash
+   cd MANAGER
+   .venv/bin/python -c "from _______WEBSOCKET.sdk import run_quickstart; run_quickstart('ws://127.0.0.1:8000/ws')"
+   ```
+
+   - Verify that you receive a valid `info_response`.
+
+4. Simulate a failover:
+
+   ```bash
+   docker stop tcm-manager-1
+   ```
+
+   - Re-run the SDK quickstart and confirm that the `auth` + `info.queue_stats`
+     flow still works via `tcm-manager-2`.
+
+5. If you are also running the monitoring stack (`monitoring/docker-compose.yml`):
+
+   - Check in Prometheus that metrics from both instances aggregate correctly
+     (for example `tcm_ws_connections_total` and `tcm_queue_total_queued`).
 
 ## Health and Readiness Probes
 

@@ -51,19 +51,32 @@ If you discover a security vulnerability in this project, please report it **res
 
 ### WebSocket auth tokens
 
-- The WebSocket entrypoint (`/ws`) accepts an `auth` message whose `payload.token` is an **opaque or JWT-like token** issued by your IdP.
-- The runtime exposes two modes, configured via `MANAGER/config/websocket.yaml`:
-  - `auth.mode: "simple"` (por defecto): la capa de servidor **no** valida claims del token y lo trata como opaco. Úsalo solo en desarrollo o cuando la validación se haga aguas arriba (por ejemplo, API gateway).
-  - `auth.mode: "strict"`: el servidor exige token y valida su estructura y claims básicos (`exp`, `aud`, `iss` si se configuran).
+- The WebSocket entrypoint (`/ws`) accepts an `auth` message whose
+  `payload.token` is a JWT-like token issued by your IdP.
+- The runtime exposes two high‑level modes, configured via
+  `MANAGER/config/websocket.yaml`:
+  - `auth.mode: "simple"` (por defecto): la capa de servidor trata el token
+    como opaco y sólo puede exigir su presencia (`require_token`). Úsalo en
+    desarrollo o cuando la validación criptográfica se haga aguas arriba (API
+    gateway, IdP, backend).
+  - `auth.mode: "strict"`: el servidor exige token y valida su estructura,
+    claims básicos (`exp`, `aud`, `iss` si se configuran) y, opcionalmente, su
+    firma si se proporciona material de clave.
 - En modo estricto:
-  - El token debe seguir el formato JWT (`header.payload.signature`); **la firma no se valida** en este proyecto por defecto.
-  - Se validan los claims configurados en `auth.required_claims` y:
-    - `exp` (expiración) debe ser mayor que el tiempo actual (con `auth.leeway_seconds` de margen).
-    - `iss` y `aud` deben coincidir con `auth.issuer` y `auth.audience` si se especifican.
-  - Los tokens inválidos o expirados producen un error tipo `error` y el cierre del WebSocket con código `1008`.
-- Para entornos regulados, se recomienda:
-  - Validar criptográficamente la firma del token en un **servicio de auth centralizado** (IdP, API gateway o backend corporativo).
-  - Usar Triton Client Manager detrás de esa capa y configurar `auth.mode: "strict"` únicamente para reforzar claims (exp/iss/aud) y no como única línea de defensa.
+  - Si **no** se configuran `jwks_url` ni `public_key_pem`, `utils.auth.validate_token`
+    valida únicamente la semántica de claims (formato, `exp`, `iss`, `aud`).
+  - Si se configura `jwks_url` (JWKS) o `public_key_pem` (clave pública RSA/ECDSA
+    o secreto HS* para dev), `validate_token` usa PyJWT para:
+    - Verificar criptográficamente la firma del token.
+    - Restringir algoritmos a `auth.algorithms` (por ejemplo `["RS256","ES256"]`).
+    - Enforzar `exp`, `aud`, `iss` y `required_claims`.
+  - Los tokens inválidos, expirados o con firma no válida producen un mensaje
+    de error tipo `error` y el cierre del WebSocket con código `1008`.
+- Para entornos regulados:
+  - Se recomienda mantener un **IdP o API gateway centralizado** como fuente de
+    verdad de autenticación y usar Triton Client Manager detrás de esa capa.
+  - `auth.mode: "strict"` + `jwks_url`/`public_key_pem` sirve como refuerzo
+    adicional (defensa en profundidad), no como única línea de defensa.
 
 ---
 

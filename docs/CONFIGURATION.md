@@ -65,21 +65,24 @@ auth:
   issuer: null          # expected `iss` claim (optional)
   audience: null        # expected `aud` claim (optional)
   leeway_seconds: 60    # allowed clock skew for `exp`
+  jwks_url: null        # optional JWKS endpoint for RSA/ECDSA keys
+  public_key_pem: null  # optional PEM-encoded public key (or HS* secret in dev)
+  algorithms: []        # e.g. ["RS256", "ES256"], defaults to ["RS256","ES256","HS256"]
 ```
 
-- **simple**: no validación local de claims; el token se trata como opaco y se
-  asume que se ha validado aguas arriba (API gateway, IdP, backend).
-- **strict**: se requiere token y se valida que:
-  - Existan las claims indicadas en `required_claims`.
-  - `exp` (si existe) no esté expirado (con `leeway_seconds` de margen).
-  - `iss`/`aud` coincidan con `issuer`/`audience` si se configuran.
-- En ambos modos, el bloque `client` se valida estructuralmente y se usa para
-  autorización (`roles`).
-
-> Nota: la firma del JWT **no** se valida en este proyecto por defecto. Para
-> entornos regulados, se recomienda validar tokens criptográficamente en un
-> servicio/IdP centralizado y usar `auth` solo como refuerzo de políticas
-> locales.
+- **simple**: no local claim validation; the token is treated as opaque and is
+  assumed to have been validated upstream (API gateway, IdP, backend).
+- **strict** without keys (`jwks_url` / `public_key_pem` empty): a token is
+  required and only the **claim semantics** are validated:
+  - All claims listed in `required_claims` must be present.
+  - `exp` (if present) must not be expired (with `leeway_seconds` of clock
+    skew).
+  - `iss` / `aud` must match `issuer` / `audience` if configured.
+- **strict with keys** (`jwks_url` or `public_key_pem` configured): in addition
+  to the above, `utils.auth.validate_token` cryptographically verifies the JWT
+  signature using PyJWT, restricting algorithms to `algorithms`.
+- In all modes, the `client` block is validated structurally and is used for
+  authorization (`roles`).
 
 ### `websocket.yaml` – rate_limits
 
@@ -89,19 +92,45 @@ rate_limits:
   auth_failures_per_minute_per_client: 0
 ```
 
-- `messages_per_second_per_client`: máximo de mensajes permitidos por segundo y
-  por `uuid` de cliente. `0` desactiva el límite.
-- `auth_failures_per_minute_per_client`: número máximo de intentos de `auth`
-  fallidos permitidos por minuto y cliente antes de cerrar la conexión. `0`
-  desactiva el límite.
+- `messages_per_second_per_client`: maximum number of messages allowed per
+  second and per client `uuid`. `0` disables the limit.
+- `auth_failures_per_minute_per_client`: maximum number of failed `auth`
+  attempts allowed per minute and client before the connection is closed. `0`
+  disables the limit.
 
-Cuando se supera un límite:
+When a limit is exceeded:
 
-- El servidor envía un mensaje de error de tipo `error` con un texto
-  descriptivo.
-- La conexión se cierra con código `1008`.
-- Se incrementan las métricas:
+- The server sends an `error` message with a descriptive text.
+- The connection is closed with code `1008`.
+- The following metrics are incremented:
   - `tcm_rate_limit_violations_total{scope="messages"|"auth"}`.
+
+## Distributed rate limiting strategy
+
+The rate limiting defined in `websocket.yaml` is **lightweight and
+per-instance**:
+
+- Limits are applied in memory and only affect the replica that receives the
+  connection.
+- In multi‑replica / multi‑region deployments, it is recommended to delegate
+  flood and abuse control to a shared layer:
+
+Typical options:
+
+- **API Gateway / Ingress controller** (Kong, NGINX, Envoy, Traefik):
+  - Apply limits by IP, `tenant_id`, or route (`/ws`) before traffic reaches
+    the manager.
+  - Use rate-limiting plugins/modules backed by Redis or another shared store.
+- **Dedicated rate-limiting service**:
+  - A microservice that maintains global counters in Redis/Memcached and
+    exposes a simple API (`/check_limit`) that the gateway or backend can call.
+
+In these scenarios:
+
+- Configure `rate_limits` in `websocket.yaml` primarily as a **last line of
+  defense** per `uuid`, keeping more aggressive limits in the gateway layer.
+- Clearly document in your infrastructure which component is the “source of
+  truth” for limits (gateway vs backend) and how they coordinate.
 
 ## OpenStack (auth_url, env vars)
 

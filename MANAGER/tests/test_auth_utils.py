@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 import time
 
+import jwt
+
 from utils.auth import _b64url_decode, _decode_jwt_payload, validate_token
 
 
@@ -73,3 +75,42 @@ def test_validate_token_expired_and_valid():
     )
     assert ok is True
     assert err == ""
+
+
+def test_validate_token_with_symmetric_key_signature():
+    now = int(time.time())
+    payload = {"sub": "user-1", "exp": now + 120}
+    secret = "super-secret-key"
+    token = jwt.encode(payload, secret, algorithm="HS256")
+
+    ok, err = validate_token(
+        token,
+        {
+            "mode": "strict",
+            "require_token": True,
+            "public_key_pem": secret,
+            "algorithms": ["HS256"],
+            "required_claims": ["sub", "exp"],
+        },
+    )
+    assert ok is True
+    assert err == ""
+
+
+def test_validate_token_with_wrong_signature_fails():
+    now = int(time.time())
+    payload = {"sub": "user-1", "exp": now + 120}
+    token = jwt.encode(payload, "right-key", algorithm="HS256")
+
+    ok, err = validate_token(
+        token,
+        {
+            "mode": "strict",
+            "require_token": True,
+            "public_key_pem": "wrong-key",
+            "algorithms": ["HS256"],
+            "required_claims": ["sub", "exp"],
+        },
+    )
+    assert ok is False
+    assert "Invalid token" in err or "signature" in err

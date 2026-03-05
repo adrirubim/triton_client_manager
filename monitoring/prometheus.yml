@@ -1,5 +1,17 @@
 global:
   scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: "triton-client-manager"
+    static_configs:
+      - targets:
+          # Assumes the manager is running on the host on port 8000.
+          # On Docker Desktop / WSL, host.docker.internal resuelve al host.
+          - "host.docker.internal:8000"
+
+global:
+  scrape_interval: 15s
 
 scrape_configs:
   - job_name: "triton-client-manager"
