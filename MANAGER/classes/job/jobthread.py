@@ -257,8 +257,7 @@ class JobThread(threading.Thread):
                 )
             else:
                 logger.error(
-                    "Unknown message type: %s",
-                    msg_type,
+                    "Unknown message type for incoming message",
                     extra={
                         "client_uuid": msg_uuid,
                         "job_id": "-",
@@ -276,14 +275,12 @@ class JobThread(threading.Thread):
                 observe_job_rejected(msg_type)
 
             logger.warning(
-                "Queue full for user %s, type %s: %s",
-                msg_uuid,
-                msg_type,
-                e,
+                "Queue full for incoming message (backpressure activated)",
                 extra={
                     "client_uuid": msg_uuid,
                     "job_id": "-",
                     "job_type": msg_type or "unknown",
+                    "queue_error": str(e),
                 },
             )
 
@@ -329,13 +326,12 @@ class JobThread(threading.Thread):
                 continue
             except Exception as e:
                 logger.exception(
-                    "Processing queue for user %s: %s",
-                    user_id,
-                    e,
+                    "Error processing per-user queue",
                     extra={
                         "client_uuid": user_id,
                         "job_id": "-",
                         "job_type": "queue_process",
+                        "queue_error": str(e),
                     },
                 )
 
@@ -410,8 +406,7 @@ class JobThread(threading.Thread):
             if user_id not in queue_dict:
                 queue_dict[user_id] = QueueJob(maxsize=max_size)
                 logger.info(
-                    "Created queue for user: %s",
-                    user_id,
+                    "Created per-user queue",
                     extra={
                         "client_uuid": user_id,
                         "job_id": "-",

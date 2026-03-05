@@ -2,7 +2,6 @@ import logging
 
 from classes.job.jobthread import JobThread
 
-
 SECRET_TOKEN = "SECRET_TOKEN_TEST_123"
 
 
