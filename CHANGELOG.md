@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Milestone
 
-- All **13 internal project states** have been completed and verified, covering CI, DX, observability, security, SDKs and horizontal scalability. The roadmap defined in `docs/internal/PROJECT_STATES.md` is now fully realized for the initial product line.
+- All **13 internal project states** have been completed and verified, covering CI, DX, observability, security, SDKs and horizontal scalability. The internal roadmap for this first product line is now fully realized.
 
 ### Highlights
 
