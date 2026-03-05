@@ -416,7 +416,7 @@ This repository now represents the **1.0.0 product line** for Triton Client Mana
 ---
 
 <a id="default-users-development"></a>
-## 👥 Default Users (development)
+## ⚠️ Default users (development)
 
 Triton Client Manager does **not** ship with fixed default users. Authentication and authorization are typically handled by the upstream system that connects via WebSocket.
 
