@@ -1,40 +1,42 @@
-# Triton Client Manager – WebSocket SDK (cliente)
+# Triton Client Manager – WebSocket SDK (client)
 
-Pequeño SDK y ejemplos para integradores que quieran hablar con el WebSocket de
-Triton Client Manager sin leer el código del servidor.
-
----
-
-## Módulos
-
-- `client.py`: cliente interactivo muy simple para pruebas manuales (`auth` vacío + `info.queue_stats`).
-- `sdk.py`: SDK ligero pensado para integradores y tests de contrato.
+Small SDK and examples for integrators that want to talk to the Triton Client
+Manager WebSocket without reading the server code.
 
 ---
 
-## Quickstart (copiar/pegar y ejecutar)
+## Modules
 
-Con el manager corriendo (por ejemplo en modo dev con `dev_server.py` en el puerto 8000):
+- `client.py`: very simple interactive client for manual tests (empty `auth` +
+  `info.queue_stats`).
+- `sdk.py`: lightweight SDK intended for integrators and contract tests.
+
+---
+
+## Quickstart (copy/paste and run)
+
+With the manager running (for example in dev mode with `dev_server.py` on port
+`8000`):
 
 ```bash
 cd MANAGER
 .venv/bin/python -c "from _______WEBSOCKET.sdk import run_quickstart; run_quickstart('ws://127.0.0.1:8000/ws')"
 ```
 
-Este comando:
+This command:
 
-1. Abre una conexión WebSocket a `ws://127.0.0.1:8000/ws`.
-2. Envía un mensaje `auth` con:
+1. Opens a WebSocket connection to `ws://127.0.0.1:8000/ws`.
+2. Sends an `auth` message with:
    - `uuid`: `sdk-quickstart-client`
    - `payload.client.sub`: `user-sdk`
    - `payload.client.tenant_id`: `tenant-sdk`
    - `payload.client.roles`: `['inference', 'management']`
-3. Envía un mensaje `info` con `payload.action = "queue_stats"`.
-4. Imprime la respuesta JSON de `info_response` por stdout.
+3. Sends an `info` message with `payload.action = "queue_stats"`.
+4. Prints the JSON `info_response` to stdout.
 
 ---
 
-## Uso desde código Python
+## Usage from Python code
 
 ```python
 import asyncio
@@ -64,11 +66,14 @@ if __name__ == "__main__":
 
 ---
 
-## Tests de contrato
+## Contract tests
 
-El SDK se valida con `pytest` en `tests/test_client_sdk_contract.py`, que:
+The SDK is validated with `pytest` in `tests/test_client_sdk_contract.py`,
+which:
 
-- Inicia un servidor de pruebas con `ws_server` (mocks para OpenStack/Docker/Triton).
-- Usa `TcmWebSocketClient` para ejecutar el flujo `auth` + `info.queue_stats`.
-- Comprueba que la respuesta cumple el contrato documentado en `docs/WEBSOCKET_API.md`.
+- Starts a test server with `ws_server` (mocks for OpenStack/Docker/Triton).
+- Uses `TcmWebSocketClient` to run the `auth` + `info.queue_stats` flow.
+- Verifies that the response matches the contract documented in
+  `docs/WEBSOCKET_API.md`.
 
+     

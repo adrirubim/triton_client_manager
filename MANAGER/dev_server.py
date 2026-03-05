@@ -1,17 +1,18 @@
 """
-Modo desarrollo para Triton Client Manager.
+Development mode entrypoint for Triton Client Manager.
 
-Arranca únicamente los hilos necesarios para desarrollo local:
-- JobThread (colas, backpressure, métricas).
-- WebSocketThread (endpoint /ws y /metrics vía FastAPI).
+Starts only the threads needed for local development:
+- JobThread (queues, backpressure, metrics).
+- WebSocketThread (`/ws` and `/metrics` via FastAPI).
 
-No inicializa OpenStack, Docker ni Triton reales para evitar dependencias
-externas. En su lugar inyecta "backends" de prueba ligeros que permiten:
-- Probar autenticación WebSocket.
-- Consultar `info.queue_stats`.
-- Generar métricas para Prometheus/Grafana de forma estable.
+It does **not** initialise real OpenStack, Docker or Triton backends to avoid
+external dependencies. Instead it injects lightweight dummy backends that let
+you:
+- Test WebSocket authentication.
+- Query `info.queue_stats`.
+- Generate stable metrics for Prometheus / Grafana.
 
-Uso:
+Usage:
     cd MANAGER
     .venv/bin/python dev_server.py
 """
@@ -35,20 +36,20 @@ logger = logging.getLogger(__name__)
 @dataclass
 class DevBackend:
     """
-    Backend "dummy" para modo desarrollo.
+    Minimal dummy backend for development mode.
 
-    Proporciona solo los atributos mínimos esperados por los handlers de jobs.
-    Si en algún momento se invocan métodos no soportados, se lanza un error
-    claro para que el desarrollador sepa que está usando una ruta aún no
-    implementada en modo dev.
+    Provides only the minimum attributes expected by job handlers. If a method
+    that is not supported in dev mode is called, a clear error is raised so
+    the developer knows they are hitting a code path that is not yet supported
+    in this mode.
     """
 
     name: str
 
     def __getattr__(self, item: str):
         raise NotImplementedError(
-            f"'{self.name}' no implementa '{item}' en modo dev. "
-            "Usa servicios reales o extiende DevBackend para este caso."
+            f"'{self.name}' does not implement '{item}' in dev mode. "
+            "Use real services or extend DevBackend for this use case."
         )
 
 
@@ -58,27 +59,27 @@ def _load_yaml(path: str) -> dict:
 
 
 def main() -> None:
-    # Aseguramos que el cwd es MANAGER para rutas relativas de config
+    # Ensure CWD is MANAGER so config relative paths resolve correctly
     here = os.path.dirname(os.path.abspath(__file__))
     os.chdir(here)
 
-    # Logging estructurado coherente con el resto del proyecto
+    # Structured logging consistent with the rest of the project
     configure_logging()
     logger.info(
         "Starting Triton Client Manager in DEV mode",
         extra={"client_uuid": "-", "job_id": "-", "job_type": "dev_startup"},
     )
 
-    # Carga de configuración mínima necesaria para dev
+    # Load minimal configuration needed for dev
     config_job = _load_yaml(os.path.join("config", "jobs.yaml"))
     config_ws = _load_yaml(os.path.join("config", "websocket.yaml"))
 
-    # Backends de prueba (sin OpenStack/Docker/Triton reales)
+    # Dummy backends (no real OpenStack/Docker/Triton)
     docker_backend = DevBackend(name="DockerDevBackend")
     openstack_backend = DevBackend(name="OpenstackDevBackend")
     triton_backend = DevBackend(name="TritonDevBackend")
 
-    # Wiring de JobThread y WebSocketThread
+    # Wire JobThread and WebSocketThread
     job = JobThread(**config_job)
     job.docker = docker_backend
     job.openstack = openstack_backend
@@ -100,7 +101,7 @@ def main() -> None:
         )
     job.websocket = websocket.send_to_client
 
-    # Arranque de hilos
+    # Start threads
     job.start()
     websocket.start()
 

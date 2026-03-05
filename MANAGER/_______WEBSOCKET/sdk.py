@@ -1,15 +1,15 @@
 """
-Pequeño SDK cliente para Triton Client Manager (WebSocket).
+Small client SDK for Triton Client Manager (WebSocket).
 
-Objetivos:
-- Encapsular la conexión WebSocket (`/ws`).
-- Proporcionar métodos de alto nivel:
+Goals:
+- Encapsulate the WebSocket connection (`/ws`).
+- Provide high-level methods:
   - `auth(...)`
   - `info_queue_stats()`
   - `management_creation(...)`
   - `inference_http(...)`
 
-Pensado para integradores (backends/servicios) y para tests de contrato.
+Intended for integrators (backends/services) and contract tests.
 """
 
 from __future__ import annotations
@@ -35,9 +35,9 @@ class AuthContext:
 
 class TcmWebSocketClient:
     """
-    Cliente WebSocket de alto nivel.
+    High-level WebSocket client.
 
-    Uso típico:
+    Typical usage:
 
         async with TcmWebSocketClient("ws://127.0.0.1:8000/ws", auth_ctx) as client:
             await client.auth()
@@ -47,7 +47,8 @@ class TcmWebSocketClient:
     def __init__(self, uri: str, auth_ctx: AuthContext):
         self._uri = uri
         self._auth_ctx = auth_ctx
-        # No tipado estricto para evitar dependencias de versión de websockets
+        # Do not use strict typing here to avoid hard-coupling to a specific
+        # websockets library version.
         self._sock: Optional[Any] = None
 
     async def __aenter__(self) -> "TcmWebSocketClient":
@@ -69,7 +70,7 @@ class TcmWebSocketClient:
         return json.loads(raw)
 
     async def auth(self) -> JsonDict:
-        """Envía el mensaje de auth según el contrato estándar."""
+        """Send the auth message following the standard contract."""
         payload: JsonDict = {}
         if any(
             [
@@ -99,7 +100,7 @@ class TcmWebSocketClient:
         return resp
 
     async def info_queue_stats(self) -> JsonDict:
-        """Solicita `info.queue_stats` y devuelve el payload de respuesta."""
+        """Request `info.queue_stats` and return the response payload."""
         msg: JsonDict = {
             "uuid": self._auth_ctx.uuid,
             "type": "info",
@@ -114,9 +115,9 @@ class TcmWebSocketClient:
         self, action: str = "creation", **kwargs: Any
     ) -> JsonDict:
         """
-        Envía un mensaje de tipo `management` genérico.
+        Send a generic `management` message.
 
-        Solo garantiza el contrato básico de respuesta (`status` en payload).
+        Only the basic response contract is guaranteed (`status` in payload).
         """
         msg: JsonDict = {
             "uuid": self._auth_ctx.uuid,
@@ -130,7 +131,7 @@ class TcmWebSocketClient:
 
     async def inference_http(self, model_name: str, inputs: JsonDict) -> JsonDict:
         """
-        Envía una petición de inferencia HTTP mínima.
+        Send a minimal HTTP inference request.
         """
         msg: JsonDict = {
             "uuid": self._auth_ctx.uuid,
@@ -148,10 +149,10 @@ class TcmWebSocketClient:
 
 async def quickstart_queue_stats(uri: str) -> JsonDict:
     """
-    Quickstart de referencia:
-    - Conecta.
-    - Hace auth con un rol de ejemplo.
-    - Pide `info.queue_stats`.
+    Reference quickstart:
+    - Connect.
+    - Perform auth with an example role set.
+    - Request `info.queue_stats`.
     """
     ctx = AuthContext(
         uuid="sdk-quickstart-client",
@@ -167,7 +168,7 @@ async def quickstart_queue_stats(uri: str) -> JsonDict:
 
 def run_quickstart(uri: str) -> None:
     """
-    Punto de entrada sincrónico para el quickstart.
+    Synchronous entrypoint for the quickstart.
     """
     result = asyncio.run(quickstart_queue_stats(uri))
     print(json.dumps(result, indent=2))

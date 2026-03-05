@@ -243,9 +243,9 @@ Messages of type `management` create and delete resources (VMs, containers, Trit
   "type": "management",
   "payload": {
     "action": "creation",
-    "openstack": { /* parámetros de VM */ },
-    "docker": { /* parámetros de contenedor */ },
-    "minio": { /* parámetros de almacenamiento */ }
+    "openstack": { /* VM parameters */ },
+    "docker": { /* container parameters */ },
+    "minio": { /* storage parameters */ }
   }
 }
 ```
@@ -315,7 +315,7 @@ Inference responses always have `type: "inference"` and reuse the client `uuid`.
   "type": "inference",
   "uuid": "frontend-123",
   "payload": {
-    "data": { /* datos devueltos o error */ },
+    "data": { /* returned data or error */ },
     "status": "COMPLETED",
     "model_name": "example-model"
   }
@@ -361,7 +361,7 @@ In all these cases, the error message has the form:
 {
   "type": "error",
   "payload": {
-    "message": "<descripción legible del error>"
+    "message": "<human‑readable error description>"
   }
 }
 ```
@@ -416,7 +416,7 @@ An external integrator (frontend, other service) should, at minimum, follow this
 
 For functional client examples, see:
 
-- `MANAGER/_______WEBSOCKET/client.py` — cliente mínimo interactivo.
-- `MANAGER/_______WEBSOCKET/sdk.py` — SDK ligero (`TcmWebSocketClient`) y helpers de quickstart.
-- `MANAGER/_______WEBSOCKET/README.md` — quickstart “copiar/pegar y ejecutar” usando el SDK.
+- `MANAGER/_______WEBSOCKET/client.py` — minimal interactive client.
+- `MANAGER/_______WEBSOCKET/sdk.py` — lightweight SDK (`TcmWebSocketClient`) and quickstart helpers.
+- `MANAGER/_______WEBSOCKET/README.md` — “copy/paste and run” quickstart using the SDK.
 

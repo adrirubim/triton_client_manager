@@ -75,18 +75,19 @@ Dependencies are set by `ClientManager.setup()`:
 
 ### Auth and hardening
 
-- El mensaje `auth` puede incluir:
-  - `payload.token`: token emitido por tu IdP (opaco o JWT-like).
-  - `payload.client`: bloque con `sub`, `tenant_id`, `roles`.
-- El servidor:
-  - Valida estructuralmente el bloque `client`.
-  - Opcionalmente valida claims del token según `websocket.yaml` → `auth`
+- The `auth` message may include:
+  - `payload.token`: token issued by your IdP (opaque or JWT-like).
+  - `payload.client`: block with `sub`, `tenant_id`, `roles`.
+- The server:
+  - Validates the `client` block structurally.
+  - Optionally validates token claims according to `websocket.yaml` → `auth`
     (`exp`, `aud`, `iss`, etc.).
-  - Asocia el `uuid` autenticado con el contexto `_auth` (`sub`, `tenant_id`,
-    `roles`), que se propaga a `JobThread` para decisiones de autorización.
-- Rate limiting ligero (en memoria) se aplica por `uuid` cuando se configura
-  en `websocket.yaml` → `rate_limits` (mensajes por segundo, reintentos fallidos
-  de `auth` por minuto).
+  - Associates the authenticated `uuid` with the internal `_auth` context
+    (`sub`, `tenant_id`, `roles`), which is propagated to `JobThread` for
+    authorization decisions.
+- Lightweight in‑memory rate limiting is applied per `uuid` when configured in
+  `websocket.yaml` → `rate_limits` (messages per second, failed `auth`
+  attempts per minute).
 
 ## JobThread Routing
 
@@ -151,20 +152,20 @@ High-level design:
 
 ### Horizontal scaling and multi-region overview
 
-- **Stateless control plane:** cada instancia de Triton Client Manager mantiene
-  solo colas y caches en memoria; el estado real vive en OpenStack, Docker y
+- **Stateless control plane:** each Triton Client Manager instance keeps only
+  in‑memory queues and caches; the real state lives in OpenStack, Docker, and
   Triton.
-- **Multi-réplica (una región):**
-  - Varias réplicas pueden ejecutarse detrás de un balanceador.
-  - Las colas por `uuid` son locales a cada réplica: si un cliente reconecta a
-    otra instancia, se crean nuevas colas para ese `uuid`.
-  - Para minimizar sorpresas:
-    - Usa `uuid` por sesión de conexión.
-    - O configura afinidad de sesión en el LB cuando necesites estabilidad
-      fuerte por conexión.
-- **Multi-región:**
-  - Despliega un conjunto Manager + Triton + OpenStack/Docker por región.
-  - Usa routing geográfico o por tenant para enviar el tráfico al cluster
-    adecuado.
-  - Mantén las dependencias (Triton, VMs) en la misma región que el Manager
-    para evitar latencias innecesarias.
+- **Multi-replica (single region):**
+  - Multiple replicas can run behind a load balancer.
+  - Per‑`uuid` queues are local to each replica: if a client reconnects to a
+    different instance, new queues are created for that `uuid`.
+  - To minimise surprises:
+    - Use a connection‑scoped `uuid` for each WebSocket session.
+    - Or configure session affinity on the load balancer when you need strong
+      stickiness per connection.
+- **Multi-region:**
+  - Deploy a Manager + Triton + OpenStack/Docker stack per region.
+  - Use geographic or tenant‑based routing to send traffic to the appropriate
+    cluster.
+  - Keep dependencies (Triton, VMs) in the same region as the Manager to avoid
+    unnecessary latency.

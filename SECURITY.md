@@ -55,28 +55,30 @@ If you discover a security vulnerability in this project, please report it **res
   `payload.token` is a JWT-like token issued by your IdP.
 - The runtime exposes two high‑level modes, configured via
   `MANAGER/config/websocket.yaml`:
-  - `auth.mode: "simple"` (por defecto): la capa de servidor trata el token
-    como opaco y sólo puede exigir su presencia (`require_token`). Úsalo en
-    desarrollo o cuando la validación criptográfica se haga aguas arriba (API
-    gateway, IdP, backend).
-  - `auth.mode: "strict"`: el servidor exige token y valida su estructura,
-    claims básicos (`exp`, `aud`, `iss` si se configuran) y, opcionalmente, su
-    firma si se proporciona material de clave.
-- En modo estricto:
-  - Si **no** se configuran `jwks_url` ni `public_key_pem`, `utils.auth.validate_token`
-    valida únicamente la semántica de claims (formato, `exp`, `iss`, `aud`).
-  - Si se configura `jwks_url` (JWKS) o `public_key_pem` (clave pública RSA/ECDSA
-    o secreto HS* para dev), `validate_token` usa PyJWT para:
-    - Verificar criptográficamente la firma del token.
-    - Restringir algoritmos a `auth.algorithms` (por ejemplo `["RS256","ES256"]`).
-    - Enforzar `exp`, `aud`, `iss` y `required_claims`.
-  - Los tokens inválidos, expirados o con firma no válida producen un mensaje
-    de error tipo `error` y el cierre del WebSocket con código `1008`.
-- Para entornos regulados:
-  - Se recomienda mantener un **IdP o API gateway centralizado** como fuente de
-    verdad de autenticación y usar Triton Client Manager detrás de esa capa.
-  - `auth.mode: "strict"` + `jwks_url`/`public_key_pem` sirve como refuerzo
-    adicional (defensa en profundidad), no como única línea de defensa.
+  - `auth.mode: "simple"` (default): the server treats the token as opaque and
+    can only require its presence (`require_token`). Use this in development
+    or when cryptographic validation happens upstream (API gateway, IdP,
+    backend).
+  - `auth.mode: "strict"`: the server requires a token and validates its
+    structure, basic claims (`exp`, `aud`, `iss` if configured) and,
+    optionally, its signature when key material is provided.
+- In strict mode:
+  - If **neither** `jwks_url` nor `public_key_pem` is configured,
+    `utils.auth.validate_token` validates only claim semantics (shape, `exp`,
+    `iss`, `aud`).
+  - If `jwks_url` (JWKS) or `public_key_pem` (RSA/ECDSA public key or HS*
+    secret for dev) is configured, `validate_token` uses PyJWT to:
+    - Verify the token signature cryptographically.
+    - Restrict algorithms to `auth.algorithms` (for example
+      `["RS256","ES256"]`).
+    - Enforce `exp`, `aud`, `iss` and `required_claims`.
+  - Invalid, expired, or incorrectly signed tokens produce an `error` message
+    and close the WebSocket with code `1008`.
+- For regulated environments:
+  - Keep a **central IdP or API gateway** as the primary source of
+    authentication truth and run Triton Client Manager behind that layer.
+  - `auth.mode: "strict"` + `jwks_url` / `public_key_pem` should be treated as
+    an additional defence‑in‑depth layer, not the only line of defence.
 
 ---
 
@@ -96,15 +98,25 @@ If you discover a security vulnerability in this project, please report it **res
 
 ### Auditability and incident response
 
-- Los logs se generan con formato estructurado (`uuid`, `job`, `type`) y pueden enriquecerse con identidad (`sub`, `tenant_id`, `roles`) procedente del payload de `auth`.
-- Buenas prácticas para auditoría:
-  - Correlacionar actividades usando el `uuid` de WebSocket (`client_uuid`), el `job_id` y, cuando aplique, los campos de identidad propagados.
-  - Usar las métricas Prometheus `tcm_auth_failures_total{reason=...}` y `tcm_rate_limit_violations_total{scope=...}` para detectar patrones de abuso de autenticación o flood de mensajes.
-- Flujo recomendado al investigar un incidente de seguridad:
-  1. Identificar el `uuid`, `sub` o `tenant_id` implicados a partir de los sistemas aguas arriba.
-  2. Filtrar logs por `uuid=<client_uuid>` y, si se registran, por `tenant_id`/`roles` en los mensajes relevantes.
-  3. Revisar métricas históricas de:
-     - `tcm_auth_failures_total` (motivos de fallo de auth).
-     - `tcm_rate_limit_violations_total` (posibles floods).
-     - Colas y backpressure (`tcm_queue_*`, `tcm_jobs_rejected_total`).
-  4. Tomar medidas correctivas (revocar credenciales en el IdP, bloquear IPs a nivel de red, ajustar límites de rate limiting) y documentar el incidente según las políticas de tu organización.
+- Logs are generated in a structured format (`uuid`, `job`, `type`) and can be
+  enriched with identity (`sub`, `tenant_id`, `roles`) coming from the `auth`
+  payload.
+- Good practices for auditability:
+  - Correlate activity using the WebSocket `uuid` (`client_uuid`), the
+    `job_id`, and, when applicable, any propagated identity fields.
+  - Use Prometheus metrics `tcm_auth_failures_total{reason=...}` and
+    `tcm_rate_limit_violations_total{scope=...}` to detect patterns of auth
+    abuse or message floods.
+- Recommended flow when investigating a security incident:
+  1. Identify the relevant `uuid`, `sub`, or `tenant_id` from upstream
+     systems.
+  2. Filter logs by `uuid=<client_uuid>` and, if present, by `tenant_id` /
+     `roles` in relevant messages.
+  3. Review historical metrics for:
+     - `tcm_auth_failures_total` (auth failure reasons).
+     - `tcm_rate_limit_violations_total` (possible floods).
+     - Queue and backpressure metrics (`tcm_queue_*`,
+       `tcm_jobs_rejected_total`).
+  4. Take corrective action (revoke credentials in the IdP, block IPs at the
+     network layer, adjust rate‑limit thresholds) and document the incident in
+     line with your organisation’s policies.
