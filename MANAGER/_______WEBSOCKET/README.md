@@ -36,7 +36,7 @@ This command:
 
 ---
 
-## Usage from Python code
+## Usage from Python code (from the repo)
 
 ```python
 import asyncio
@@ -55,6 +55,49 @@ async def main() -> None:
     )
 
     async with TcmWebSocketClient(uri, auth_ctx) as client:
+        await client.auth()
+        info = await client.info_queue_stats()
+        print(info)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+## Usage from Python code (installed package)
+
+You can also install the SDK as a package (`tcm-client`) from TestPyPI and use
+the top-level import:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+
+python -m pip install --upgrade pip
+python -m pip install \
+  --index-url https://test.pypi.org/simple/ \
+  --extra-index-url https://pypi.org/simple \
+  tcm-client
+```
+
+```python
+import asyncio
+
+from tcm_client import AuthContext, TcmWebSocketClient
+
+
+async def main() -> None:
+    uri = "ws://127.0.0.1:8000/ws"
+
+    ctx = AuthContext(
+        uuid="sdk-quickstart-client",
+        token="opaque-or-jwt-token",
+        sub="user-sdk",
+        tenant_id="tenant-sdk",
+        roles=["inference", "management"],
+    )
+
+    async with TcmWebSocketClient(uri, ctx) as client:
         await client.auth()
         info = await client.info_queue_stats()
         print(info)

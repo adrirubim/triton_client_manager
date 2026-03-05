@@ -446,27 +446,35 @@ cd MANAGER
 
 ### Official SDKs (Python)
 
-The repository includes a lightweight Python SDK under `MANAGER/_______WEBSOCKET/sdk.py`,
-validated by contract tests (`MANAGER/tests/test_client_sdk_contract.py`).
+An official Python SDK is published for talking to the Triton Client Manager WebSocket API.
 
-Until a public PyPI package is published, you can install it locally in editable
-mode from the repo root:
+- **Package name:** `tcm-client`  
+- **Index (current):** TestPyPI (`https://test.pypi.org/simple/`) – ready to be mirrored to PyPI when desired.
+
+Install from TestPyPI (preferring TestPyPI and falling back to PyPI for dependencies):
 
 ```bash
-cd MANAGER
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt -r requirements-test.txt
-pip install -e .
+
+python -m pip install --upgrade pip
+python -m pip install \
+  --index-url https://test.pypi.org/simple/ \
+  --extra-index-url https://pypi.org/simple \
+  tcm-client
 ```
 
 Then use the SDK in your own code:
 
 ```python
-from _______WEBSOCKET.sdk import AuthContext, TcmWebSocketClient
+import asyncio
+
+from tcm_client import AuthContext, TcmWebSocketClient
 
 
 async def main() -> None:
+    uri = "ws://127.0.0.1:8000/ws"
+
     ctx = AuthContext(
         uuid="my-frontend-1",
         token="opaque-or-jwt-token",
@@ -475,14 +483,19 @@ async def main() -> None:
         roles=["inference", "management"],
     )
 
-    async with TcmWebSocketClient("ws://127.0.0.1:8000/ws", ctx) as client:
+    async with TcmWebSocketClient(uri, ctx) as client:
         await client.auth()
         info = await client.info_queue_stats()
         print(info)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
 ```
 
-> Once `tcm-client` (or the final SDK name) is published to PyPI, this section
-> can be updated to recommend `pip install tcm-client` instead of `pip install -e .`.
+The SDK is validated by contract tests (`MANAGER/tests/test_client_sdk_contract.py`) and mirrors the
+runtime behavior of the internal client in `MANAGER/_______WEBSOCKET/sdk.py`. For full API contract
+details, see `docs/API_CONTRACTS.md` / `docs/WEBSOCKET_API.md`.
 
 ### Compilation Check
 
