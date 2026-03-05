@@ -5,3 +5,21 @@ valid_types:
   - "info"
   - "management"
   - "inference"
+max_message_bytes: 65536
+
+# Optional auth hardening configuration.
+# - mode: "simple"  -> no token claims enforced (default for dev/tests)
+# - mode: "strict"  -> token required and validated according to claims below
+auth:
+  mode: "simple"
+  require_token: false
+  required_claims: []
+  issuer:
+  audience:
+  leeway_seconds: 60
+
+# Optional per-client rate limiting (lightweight, in-memory).
+# Set to 0 to disable each limit.
+rate_limits:
+  messages_per_second_per_client: 0
+  auth_failures_per_minute_per_client: 0

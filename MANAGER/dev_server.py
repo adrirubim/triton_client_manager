@@ -84,11 +84,20 @@ def main() -> None:
     job.openstack = openstack_backend
     job.triton = triton_backend
 
+    ws_cfg = dict(config_ws)
+    auth_cfg = ws_cfg.pop("auth", None)
+    rate_cfg = ws_cfg.pop("rate_limits", None)
+
     websocket = WebSocketThread(
-        **config_ws,
+        **ws_cfg,
         on_message=job.on_message,
         get_queue_stats=job.get_queue_stats,
     )
+    if auth_cfg or rate_cfg:
+        websocket.set_auth_and_rate_limits(
+            auth_config=auth_cfg,
+            rate_limit_config=rate_cfg,
+        )
     job.websocket = websocket.send_to_client
 
     # Arranque de hilos

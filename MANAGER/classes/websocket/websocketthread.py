@@ -2,12 +2,16 @@ import asyncio
 import json
 import logging
 import threading
+import time
 from typing import Callable, Dict, List, Optional
 
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
+from utils.auth import validate_token
 from utils.metrics import (
+    AUTH_FAILURES_TOTAL,
+    RATE_LIMIT_VIOLATIONS_TOTAL,
     WS_CONNECTIONS_TOTAL,
     WS_DISCONNECTIONS_TOTAL,
     WS_ERRORS_TOTAL,
@@ -52,11 +56,20 @@ class WebSocketThread(threading.Thread):
         self.max_message_bytes = max_message_bytes
         self.get_queue_stats = get_queue_stats
 
+        # Auth / rate limiting configuration (optional, from websocket.yaml).
+        self.auth_config: Dict = {}
+        self.rate_limit_config: Dict = {}
+
         # Store active connections: {client_id: WebSocket}
         self.clients: Dict[str, WebSocket] = {}
         # Store auth context per client_id: {client_id: {"sub": ..., "tenant_id": ..., "roles": [...]}}
         self.client_auth: Dict[str, dict] = {}
         self.clients_lock = threading.Lock()
+
+        # In‑memory rate limiting structures (per client UUID).
+        self._rate_lock = threading.Lock()
+        self._msg_timestamps: Dict[str, List[float]] = {}
+        self._auth_fail_timestamps: Dict[str, List[float]] = {}
 
         # FastAPI app
         self.app = FastAPI()
@@ -130,6 +143,64 @@ class WebSocketThread(threading.Thread):
         except Exception as e:
             logger.error("Failed to send error: %s", e)
 
+    def set_auth_and_rate_limits(
+        self,
+        auth_config: Optional[Dict] = None,
+        rate_limit_config: Optional[Dict] = None,
+    ) -> None:
+        """Configure auth and rate limiting behavior.
+
+        This is kept separate from __init__ to remain backwards compatible
+        with existing call sites that only pass host/port/valid_types.
+        """
+        self.auth_config = auth_config or {}
+        self.rate_limit_config = rate_limit_config or {}
+
+    def _check_message_rate(self, client_id: str) -> bool:
+        """Apply simple per-client message rate limiting if configured."""
+        limit = self.rate_limit_config.get("messages_per_second_per_client") or 0
+        if limit <= 0:
+            return True
+
+        now = time.time()
+        window = 1.0
+
+        with self._rate_lock:
+            timestamps = self._msg_timestamps.setdefault(client_id, [])
+            cutoff = now - window
+            timestamps = [t for t in timestamps if t >= cutoff]
+            if len(timestamps) >= limit:
+                self._msg_timestamps[client_id] = timestamps
+                RATE_LIMIT_VIOLATIONS_TOTAL.labels(scope="messages").inc()
+                return False
+            timestamps.append(now)
+            self._msg_timestamps[client_id] = timestamps
+        return True
+
+    def _record_auth_failure(self, client_id: str) -> bool:
+        """Record an auth failure and enforce per-client limits if configured."""
+        limit = (
+            self.rate_limit_config.get(
+                "auth_failures_per_minute_per_client",
+            )
+            or 0
+        )
+        now = time.time()
+        window = 60.0
+
+        with self._rate_lock:
+            timestamps = self._auth_fail_timestamps.setdefault(client_id, [])
+            cutoff = now - window
+            timestamps = [t for t in timestamps if t >= cutoff]
+            timestamps.append(now)
+            self._auth_fail_timestamps[client_id] = timestamps
+
+            if limit > 0 and len(timestamps) > limit:
+                RATE_LIMIT_VIOLATIONS_TOTAL.labels(scope="auth").inc()
+                return False
+
+        return True
+
     async def _handle_client(self, websocket: WebSocket):
         """Handle individual client connection"""
         client_id = None
@@ -194,12 +265,32 @@ class WebSocketThread(threading.Thread):
                     or not isinstance(tenant_id, str)
                     or not isinstance(roles, list)
                 ):
+                    AUTH_FAILURES_TOTAL.labels(reason="invalid_payload").inc()
                     await self._send_error(
                         websocket,
                         "Invalid auth payload: expected 'client.sub', 'client.tenant_id', and 'client.roles'",
                     )
                     await websocket.close(code=1008)
                     return
+
+            # Optional token validation (claims-level, no signature verification).
+            token = payload.get("token")
+            ok, token_error = validate_token(token, self.auth_config)
+            if not ok:
+                AUTH_FAILURES_TOTAL.labels(reason="token").inc()
+                if not self._record_auth_failure(client_id):
+                    await self._send_error(
+                        websocket,
+                        "Too many failed auth attempts for this client",
+                    )
+                    await websocket.close(code=1008)
+                    return
+                await self._send_error(
+                    websocket,
+                    f"Invalid token: {token_error}",
+                )
+                await websocket.close(code=1008)
+                return
 
             # Check if client already connected
             with self.clients_lock:
@@ -269,7 +360,17 @@ class WebSocketThread(threading.Thread):
                         websocket,
                         f"UUID mismatch. Expected '{client_id}', got '{message['uuid']}'",
                     )
-                    continue  # Don't close connection, just skip this message
+                    await websocket.close(code=1008)
+                    break
+
+                # Rate limiting: messages per client (if enabled).
+                if not self._check_message_rate(client_id):
+                    await self._send_error(
+                        websocket,
+                        "Rate limit exceeded for this client (messages per second)",
+                    )
+                    await websocket.close(code=1008)
+                    break
 
                 # Attach auth context (if any) so downstream components can enforce roles/limits
                 if client_id:

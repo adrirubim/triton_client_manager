@@ -65,8 +65,7 @@ The recommended payload shape is:
 
 - `uuid` (string): stable identifier for the client within this connection.
 - `payload.token` (string): authentication token (for example, JWT or API key) issued
-  by your identity provider. Triton Client Manager treats it as opaque and focuses on
-  the `client` block for authorization decisions.
+  by your identity provider.
 - `payload.client.sub` (string): subject / user id.
 - `payload.client.tenant_id` (string): tenant / project identifier.
 - `payload.client.roles` (array of strings): roles granted to the client. Typical
@@ -80,13 +79,42 @@ The server validates that:
 - `payload` is an object.
 - If `client` is present, it contains `sub`, `tenant_id`, and `roles` (list of
   strings).
+- Depending on configuration (`MANAGER/config/websocket.yaml` → `auth`), it may
+  also enforce that `payload.token` is present and that it includes certain
+  claims (`exp`, `aud`, `iss`).
 
-If the structure is invalid, the server responds with an error and closes the
-connection.
+If the structure is invalid, or the token does not meet the configured policy,
+the server responds with an error and closes the connection (close code `1008`).
 
 > Backwards compatibility: for local tests and smoke flows, an empty payload
 > (`"payload": {}`) is still accepted and treated as an unauthenticated client
 > with no special roles. In that mode, only basic `info` calls are expected.
+> This corresponds to `auth.mode: "simple"` in `websocket.yaml`.
+
+##### Token validation modes
+
+The WebSocket server supports two high-level modes:
+
+- **Simple mode** (`auth.mode: "simple"`, default):
+  - `payload.token` is treated as opaque.
+  - No local claim validation is performed; it is assumed that an upstream
+    IdP/gateway already validated the token.
+  - `payload.client` is still validated structurally and used for authorization
+    (`roles`).
+
+- **Strict mode** (`auth.mode: "strict"`):
+  - `payload.token` is required (unless `auth.require_token` is explicitly set
+    to `false`).
+  - The server parses the JWT payload and enforces:
+    - Presence of all claims listed in `auth.required_claims`.
+    - `exp` (if present) is not expired (with `auth.leeway_seconds` seconds of
+      allowed clock skew).
+    - `iss` and `aud` (if configured) match `auth.issuer` and
+      `auth.audience`.
+  - **Important:** the signature of the token is *not* validated by default in
+    this project. In production, you should still validate tokens
+    criptographically (for example, in a gateway or auth service) and use
+    strict mode as an extra layer to enforce local policies on claims.
 
 #### Successful response
 
@@ -127,6 +155,17 @@ connection.
     "type": "error",
     "payload": {
       "message": "Invalid auth payload: expected 'client.sub', 'client.tenant_id', and 'client.roles'"
+    }
+  }
+  ```
+
+- Invalid or expired token (in strict mode, exact message depends on the root cause):
+
+  ```json
+  {
+    "type": "error",
+    "payload": {
+      "message": "Invalid token: Token has expired"
     }
   }
   ```

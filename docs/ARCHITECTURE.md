@@ -73,6 +73,21 @@ Dependencies are set by `ClientManager.setup()`:
 4. Subsequent messages: `info`, `management`, `inference`
 5. Each message requires `uuid`, `type`, `payload`
 
+### Auth and hardening
+
+- El mensaje `auth` puede incluir:
+  - `payload.token`: token emitido por tu IdP (opaco o JWT-like).
+  - `payload.client`: bloque con `sub`, `tenant_id`, `roles`.
+- El servidor:
+  - Valida estructuralmente el bloque `client`.
+  - Opcionalmente valida claims del token según `websocket.yaml` → `auth`
+    (`exp`, `aud`, `iss`, etc.).
+  - Asocia el `uuid` autenticado con el contexto `_auth` (`sub`, `tenant_id`,
+    `roles`), que se propaga a `JobThread` para decisiones de autorización.
+- Rate limiting ligero (en memoria) se aplica por `uuid` cuando se configura
+  en `websocket.yaml` → `rate_limits` (mensajes por segundo, reintentos fallidos
+  de `auth` por minuto).
+
 ## JobThread Routing
 
 | Message type | Handler | Notes |
@@ -133,3 +148,23 @@ High-level design:
 | **Working directory** | `client_manager.py` loads `config/*.yaml` relative to CWD; run from `MANAGER` so `config/` is resolvable |
 | **Backpressure** | `JobThread` uses `BoundedThreadPoolExecutor` and per‑user bounded queues; if queues or executors fill, jobs are rejected and warnings are logged — monitor `/metrics` gauges for saturation |
 | **Metrics collection** | `/metrics` calls `get_queue_stats`; failures in stats collection are swallowed to keep the endpoint available, but may temporarily expose stale zeros for some gauges |
+
+### Horizontal scaling and multi-region overview
+
+- **Stateless control plane:** cada instancia de Triton Client Manager mantiene
+  solo colas y caches en memoria; el estado real vive en OpenStack, Docker y
+  Triton.
+- **Multi-réplica (una región):**
+  - Varias réplicas pueden ejecutarse detrás de un balanceador.
+  - Las colas por `uuid` son locales a cada réplica: si un cliente reconecta a
+    otra instancia, se crean nuevas colas para ese `uuid`.
+  - Para minimizar sorpresas:
+    - Usa `uuid` por sesión de conexión.
+    - O configura afinidad de sesión en el LB cuando necesites estabilidad
+      fuerte por conexión.
+- **Multi-región:**
+  - Despliega un conjunto Manager + Triton + OpenStack/Docker por región.
+  - Usa routing geográfico o por tenant para enviar el tráfico al cluster
+    adecuado.
+  - Mantén las dependencias (Triton, VMs) en la misma región que el Manager
+    para evitar latencias innecesarias.

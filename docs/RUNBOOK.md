@@ -216,6 +216,14 @@ Use this endpoint to monitor:
 - WebSocket connections, disconnections, messages by type, and errors.
 - Jobs rejected due to backpressure and job processing times by type.
 
+Additional security-related metrics:
+
+- `tcm_auth_failures_total{reason=...}` — total auth failures, split by reason
+  (for example, `invalid_payload`, `token`).
+- `tcm_rate_limit_violations_total{scope=...}` — total rate limit violations,
+  split by scope (`"messages"` para flood de mensajes; `"auth"` para demasiados
+  intentos fallidos de autenticación).
+
 ### Operational playbooks (backpressure and dependency failures)
 
 #### Queues saturated / backpressure active
@@ -353,7 +361,7 @@ When responding to incidents or degradation, use this checklist:
 5. **Do you need to scale?**
    - If backpressure is sustained and dependencies are healthy:
      - Scale Triton workers (more pods/VMs).
-     - Scale Triton Client Manager replicas.
+     - Scale Triton Client Manager replicas (see section *Horizontal scaling and multi-region* below).
      - Adjust `max_workers_*` and queue sizes carefully (see `docs/CONFIGURATION.md`).
 
 6. **Post‑incident**
@@ -481,6 +489,71 @@ spec:
 ```
 
 Expose via a `Service` (type `ClusterIP`/`LoadBalancer`) as needed.
+
+### Horizontal scaling and multi-region
+
+Triton Client Manager is **stateless by design**: all estado persistente vive en
+OpenStack, Docker y Triton. Cada réplica mantiene únicamente:
+
+- Colas en memoria por `uuid` de cliente.
+- Caches locales de VMs, contenedores y servidores Triton.
+- Conexiones WebSocket activas con sus propios clientes.
+
+Recomendaciones para escalar a varias réplicas y regiones:
+
+- **Multi-réplica en una región:**
+  - Ejecuta varias réplicas del Deployment anterior (`spec.replicas > 1`) detrás
+    de un `Service` o balanceador de carga.
+  - Cada réplica mantiene sus propias colas por `uuid`. Si un mismo `uuid`
+    reconecta contra otra réplica, se crearán colas nuevas para ese cliente en
+    esa réplica; los jobs en cola en la réplica anterior no se migran.
+  - Para flujos sensibles al estado, se recomienda:
+    - Usar `uuid` efímeros por conexión.
+    - O bien configurar *sticky sessions* a nivel de LB para mantener el mismo
+      cliente en la misma réplica mientras dure la sesión.
+  - Las métricas Prometheus deben agregarse por `job`/`instance` para obtener
+    una vista de clúster; el dashboard de ejemplo (`grafana/tcm_dashboard.json`)
+    puede adaptarse añadiendo filtros por etiqueta de instancia.
+
+- **Multi-región:**
+  - Despliegue recomendado: **Manager + Triton + recursos OpenStack/Docker por
+    región**.
+  - Estrategias típicas de enrutado:
+    - DNS geolocalizado (cada cliente se conecta al cluster de su región).
+    - Routing explícito por tenant/región en la capa de backend que abre la
+      conexión WebSocket (por ejemplo, `tenant_id` → endpoint regional).
+  - Consideraciones de latencia:
+    - Mantén al cliente lo más cerca posible de la región donde vive Triton y
+      los VMs/containers correspondientes.
+    - Para frontends globales, es preferible que el servicio backend que abre
+      `/ws` esté en la misma región que el cluster de Triton/Manager.
+
+#### Manual validation in scaled deployments
+
+Para validar un despliegue multi-réplica/multi-región sin tests distribuidos
+automáticos:
+
+1. **Multi-réplica (una región):**
+   - Despliega al menos 2 réplicas del Deployment de Kubernetes o 2 contenedores
+     idénticos detrás de un mismo balanceador.
+   - Conecta varios clientes (por ejemplo, usando `MANAGER/tests/ws_client_test.py`
+     o el SDK `TcmWebSocketClient`) y verifica:
+     - Que `auth` + `info.queue_stats` funciona de forma consistente.
+     - Que las métricas de cada instancia (`tcm_ws_connections_total`,
+       `tcm_queue_total_queued`, etc.) se agregan correctamente en Prometheus.
+   - Mata una réplica (por ejemplo, `kubectl delete pod ...`) y confirma que los
+     clientes pueden reconectar y seguir usando `auth` + `info.queue_stats` vía
+     otra réplica.
+
+2. **Multi-región:**
+   - Despliega al menos dos clusters independientes (Manager + Triton +
+     OpenStack/Docker) en regiones distintas.
+   - Configura un mecanismo de routing (DNS geolocalizado o lógica de backend)
+     que envíe cada cliente al cluster de su región.
+   - Verifica, para un mismo `tenant_id`, que:
+     - Todas las operaciones de `management`/`inference` asociadas a ese tenant
+       se dirigen al cluster esperado.
+     - La latencia observada es coherente con la distancia cliente‑región.
 
 ## Backup and Restore
 

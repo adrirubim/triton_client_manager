@@ -45,11 +45,21 @@ class ClientManager:
         self.docker = DockerThread(self.config_docker)
         self.openstack = OpenstackThread(**self.config_openstack)
         self.triton = TritonThread(self.config_triton)
+        # WebSocket server configuration (auth/rate limits are optional keys).
+        ws_cfg = dict(self.config_websocket)
+        auth_cfg = ws_cfg.pop("auth", None)
+        rate_cfg = ws_cfg.pop("rate_limits", None)
+
         self.websocket = WebSocketThread(
-            **self.config_websocket,
+            **ws_cfg,
             on_message=self.job.on_message,
             get_queue_stats=self.job.get_queue_stats,
         )
+        if auth_cfg or rate_cfg:
+            self.websocket.set_auth_and_rate_limits(
+                auth_config=auth_cfg,
+                rate_limit_config=rate_cfg,
+            )
 
         # --- Params for communication ---
         self.job.docker = self.docker

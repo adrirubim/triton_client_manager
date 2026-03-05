@@ -52,6 +52,56 @@ Reference for `MANAGER/config/*.yaml`.
 | `port` | Listen port (e.g. `8000`) |
 | `valid_types` | Allowed message types: `auth`, `info`, `management`, `inference` |
 | `max_message_bytes` | Hard limit for incoming WebSocket messages in bytes (default `65536`); messages larger than this are rejected with an error payload and close code `1009` |
+| `auth` | Auth hardening configuration (see below) |
+| `rate_limits` | Lightweight per-client rate limiting (see below) |
+
+### `websocket.yaml` – auth
+
+```yaml
+auth:
+  mode: "simple"        # or "strict"
+  require_token: false  # if true, token is required even in simple mode
+  required_claims: []   # e.g. ["exp", "aud", "iss"]
+  issuer: null          # expected `iss` claim (optional)
+  audience: null        # expected `aud` claim (optional)
+  leeway_seconds: 60    # allowed clock skew for `exp`
+```
+
+- **simple**: no validación local de claims; el token se trata como opaco y se
+  asume que se ha validado aguas arriba (API gateway, IdP, backend).
+- **strict**: se requiere token y se valida que:
+  - Existan las claims indicadas en `required_claims`.
+  - `exp` (si existe) no esté expirado (con `leeway_seconds` de margen).
+  - `iss`/`aud` coincidan con `issuer`/`audience` si se configuran.
+- En ambos modos, el bloque `client` se valida estructuralmente y se usa para
+  autorización (`roles`).
+
+> Nota: la firma del JWT **no** se valida en este proyecto por defecto. Para
+> entornos regulados, se recomienda validar tokens criptográficamente en un
+> servicio/IdP centralizado y usar `auth` solo como refuerzo de políticas
+> locales.
+
+### `websocket.yaml` – rate_limits
+
+```yaml
+rate_limits:
+  messages_per_second_per_client: 0
+  auth_failures_per_minute_per_client: 0
+```
+
+- `messages_per_second_per_client`: máximo de mensajes permitidos por segundo y
+  por `uuid` de cliente. `0` desactiva el límite.
+- `auth_failures_per_minute_per_client`: número máximo de intentos de `auth`
+  fallidos permitidos por minuto y cliente antes de cerrar la conexión. `0`
+  desactiva el límite.
+
+Cuando se supera un límite:
+
+- El servidor envía un mensaje de error de tipo `error` con un texto
+  descriptivo.
+- La conexión se cierra con código `1008`.
+- Se incrementan las métricas:
+  - `tcm_rate_limit_violations_total{scope="messages"|"auth"}`.
 
 ## OpenStack (auth_url, env vars)
 

@@ -159,3 +159,69 @@ async def test_handle_client_rejects_invalid_auth_payload(monkeypatch):
     await ws._handle_client(dummy)
     assert hasattr(dummy, "closed_code")
     assert dummy.closed_code == 1008
+
+
+@pytest.mark.asyncio
+async def test_handle_client_rejects_invalid_token_in_strict_mode():
+    ws = WebSocketThread(
+        host="127.0.0.1",
+        port=0,
+        valid_types=["auth", "info"],
+        on_message=lambda *_args, **_kwargs: None,
+    )
+    ws.set_auth_and_rate_limits(
+        auth_config={"mode": "strict", "require_token": True},
+        rate_limit_config=None,
+    )
+
+    dummy = _DummyWebSocket()
+
+    async def accept():
+        return None
+
+    # auth message without token -> should be rejected in strict mode
+    async def recv_text_no_token():
+        return json.dumps(
+            {
+                "uuid": "u",
+                "type": "auth",
+                "payload": {
+                    "client": {
+                        "sub": "user",
+                        "tenant_id": "tenant",
+                        "roles": ["inference"],
+                    }
+                },
+            }
+        )
+
+    dummy.accept = accept
+    dummy.receive_text = recv_text_no_token
+
+    await ws._handle_client(dummy)
+    assert hasattr(dummy, "closed_code")
+    assert dummy.closed_code == 1008
+    # Last sent error should mention invalid token
+    assert dummy.sent
+    last_error = json.loads(dummy.sent[-1])
+    assert last_error["type"] == "error"
+    assert "Invalid token" in last_error["payload"]["message"]
+
+
+def test_message_rate_limiter_basic():
+    ws = WebSocketThread(
+        host="127.0.0.1",
+        port=0,
+        valid_types=["info"],
+        on_message=lambda *_args, **_kwargs: None,
+    )
+    ws.set_auth_and_rate_limits(
+        auth_config=None,
+        rate_limit_config={"messages_per_second_per_client": 1},
+    )
+
+    client_id = "c1"
+    # First message should be allowed
+    assert ws._check_message_rate(client_id) is True
+    # Second message within the same second should be rejected
+    assert ws._check_message_rate(client_id) is False

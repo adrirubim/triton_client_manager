@@ -52,7 +52,13 @@ def ws_server():
     job.triton = mock_triton
     job.websocket = None
 
-    ws = WebSocketThread(**config_ws, on_message=job.on_message)
+    ws_cfg = dict(config_ws)
+    auth_cfg = ws_cfg.pop("auth", None)
+    rate_cfg = ws_cfg.pop("rate_limits", None)
+
+    ws = WebSocketThread(**ws_cfg, on_message=job.on_message)
+    if auth_cfg or rate_cfg:
+        ws.set_auth_and_rate_limits(auth_config=auth_cfg, rate_limit_config=rate_cfg)
     job.websocket = ws.send_to_client
 
     job.start()

@@ -48,11 +48,17 @@ def run_smoke(include_ws_client=False):
     job.triton = mock_triton
     job.websocket = None
 
+    ws_cfg = dict(config_ws)
+    auth_cfg = ws_cfg.pop("auth", None)
+    rate_cfg = ws_cfg.pop("rate_limits", None)
+
     ws = WebSocketThread(
-        **config_ws,
+        **ws_cfg,
         on_message=job.on_message,
         get_queue_stats=job.get_queue_stats,
     )
+    if auth_cfg or rate_cfg:
+        ws.set_auth_and_rate_limits(auth_config=auth_cfg, rate_limit_config=rate_cfg)
     job.websocket = ws.send_to_client
 
     job.start()

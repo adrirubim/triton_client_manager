@@ -35,6 +35,20 @@ WS_ERRORS_TOTAL = Counter(
     registry=registry,
 )
 
+AUTH_FAILURES_TOTAL = Counter(
+    "tcm_auth_failures_total",
+    "Total WebSocket auth failures (invalid payload or token)",
+    ["reason"],
+    registry=registry,
+)
+
+RATE_LIMIT_VIOLATIONS_TOTAL = Counter(
+    "tcm_rate_limit_violations_total",
+    "Total rate limit violations observed in WebSocket handling",
+    ["scope"],
+    registry=registry,
+)
+
 # Job / backpressure metrics
 JOBS_REJECTED_TOTAL = Counter(
     "tcm_jobs_rejected_total",
