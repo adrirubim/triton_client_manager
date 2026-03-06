@@ -1,4 +1,62 @@
 """
+Contract tests for the Python WebSocket SDK used against the local ws_server.
+
+These tests ensure that the examples in sdk/README.md and
+MANAGER/_______WEBSOCKET/README.md remain valid against the actual server
+implementation and the contract documented in docs/WEBSOCKET_API.md.
+"""
+
+import pytest
+
+from _______WEBSOCKET.sdk import (
+    AuthContext,
+    TcmWebSocketClient,
+    quickstart_queue_stats,
+)
+
+
+@pytest.mark.asyncio
+async def test_client_sdk_contract_auth_and_info_queue_stats(ws_server):
+    """
+    End‑to‑end: auth + info.queue_stats using TcmWebSocketClient.
+    """
+    uri = ws_server
+    ctx = AuthContext(
+        uuid="sdk-contract-client",
+        token="opaque-or-jwt-token",
+        sub="user-contract",
+        tenant_id="tenant-contract",
+        roles=["inference", "management"],
+    )
+
+    async with TcmWebSocketClient(uri, ctx) as client:
+        await client.auth()
+        info = await client.info_queue_stats()
+
+    assert info.get("type") == "info_response"
+    payload = info.get("payload", {})
+    assert payload.get("status") == "success"
+    assert payload.get("request_type") == "queue_stats"
+    data = payload.get("data", {})
+    # Shape is documented en docs/WEBSOCKET_API.md; aquí solo comprobamos que
+    # existe un mínimo de campos representativos.
+    assert "total_queued" in data
+    assert "executor_info_available" in data
+
+
+@pytest.mark.asyncio
+async def test_client_sdk_quickstart_queue_stats_helper(ws_server):
+    """
+    The quickstart helper used in docs (quickstart_queue_stats) must also work
+    end‑to‑end against ws_server.
+    """
+    result = await quickstart_queue_stats(ws_server)
+    assert result.get("type") == "info_response"
+    payload = result.get("payload", {})
+    assert payload.get("status") == "success"
+    assert payload.get("request_type") == "queue_stats"
+
+"""
 Contract tests for the WebSocket SDK (`_______WEBSOCKET.sdk`).
 
 These tests exercise `TcmWebSocketClient` against the real test WebSocket

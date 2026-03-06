@@ -1,8 +1,9 @@
 """Authentication helpers for WebSocket auth hardening.
 
-This module is intentionally lightweight and focuses on **token structure and
-claims validation**, not on cryptographic verification. It is designed to be
-extended or swapped for project‑specific IdP integrations.
+This module focuses on token structure and claims validation and can
+optionally perform cryptographic verification when JWKS/PEM configuration
+is provided. It is designed to be extended or swapped for project‑specific
+IdP integrations.
 
 Main goals:
 
@@ -10,8 +11,6 @@ Main goals:
 - Enforce basic claims such as `exp`, `aud`, `iss` when configured.
 - Avoid logging or exposing raw tokens.
 """
-
-from __future__ import annotations
 
 import base64
 import json
