@@ -77,10 +77,11 @@ def test_validate_token_expired_and_valid():
     assert err == ""
 
 
+# HS256 keys must be >= 32 bytes to avoid PyJWT InsecureKeyLengthWarning (RFC 7518).
 def test_validate_token_with_symmetric_key_signature():
     now = int(time.time())
     payload = {"sub": "user-1", "exp": now + 120}
-    secret = "super-secret-key"
+    secret = "super-secret-key-for-hs256-test-32-bytes"
     token = jwt.encode(payload, secret, algorithm="HS256")
 
     ok, err = validate_token(
@@ -100,14 +101,16 @@ def test_validate_token_with_symmetric_key_signature():
 def test_validate_token_with_wrong_signature_fails():
     now = int(time.time())
     payload = {"sub": "user-1", "exp": now + 120}
-    token = jwt.encode(payload, "right-key", algorithm="HS256")
+    right_key = "right-key-for-hs256-test-32-bytes!!!!"
+    wrong_key = "wrong-key-for-hs256-test-32-bytes!!!!"
+    token = jwt.encode(payload, right_key, algorithm="HS256")
 
     ok, err = validate_token(
         token,
         {
             "mode": "strict",
             "require_token": True,
-            "public_key_pem": "wrong-key",
+            "public_key_pem": wrong_key,
             "algorithms": ["HS256"],
             "required_claims": ["sub", "exp"],
         },

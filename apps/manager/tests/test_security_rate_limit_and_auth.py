@@ -50,8 +50,8 @@ def test_validate_token_strict_with_invalid_signature_auth_fail_reason() -> None
     validate_token en modo strict con `public_key_pem`/HS256 rechaza tokens
     firmados con un secreto distinto y devuelve un mensaje coherente.
     """
-    # Token firmado con un secreto "incorrecto"
-    wrong_secret = "wrong-secret"
+    # Token firmado con un secreto "incorrecto" (>= 32 bytes para evitar InsecureKeyLengthWarning).
+    wrong_secret = "wrong-secret-for-hs256-test-32-bytes"
     payload = {
         "sub": "user-1",
         "aud": "tcm",
@@ -67,7 +67,7 @@ def test_validate_token_strict_with_invalid_signature_auth_fail_reason() -> None
         "issuer": "https://idp.example.com/",
         "audience": "tcm",
         # Se espera este secreto; al usar otro para firmar, la firma será inválida.
-        "public_key_pem": "expected-secret",
+        "public_key_pem": "expected-secret-for-hs256-32-bytes!!",
         "algorithms": ["HS256"],
     }
 
@@ -111,7 +111,7 @@ async def test_auth_failures_in_strict_mode_increment_counters() -> None:
         "required_claims": ["exp", "aud", "iss"],
         "issuer": "https://idp.example.com/",
         "audience": "tcm",
-        "public_key_pem": "expected-secret",
+        "public_key_pem": "expected-secret-for-hs256-32-bytes!!",
         "algorithms": ["HS256"],
     }
     ws.set_auth_and_rate_limits(
@@ -119,7 +119,7 @@ async def test_auth_failures_in_strict_mode_increment_counters() -> None:
         rate_limit_config={"auth_failures_per_minute_per_client": 1},
     )
 
-    wrong_secret = "wrong-secret"
+    wrong_secret = "wrong-secret-for-hs256-test-32-bytes"
     payload = {
         "sub": "user-1",
         "aud": "tcm",

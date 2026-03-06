@@ -45,3 +45,4 @@ Thumbs.db
 
 # Coverage / local infra (do not commit)
 apps/manager/.coverage
+apps/manager/coverage.xml

@@ -1,11 +1,11 @@
 """
-Synchronize the vendored (repo-internal) WebSocket SDK wrapper with the packaged SDK.
+Synchronize the repo-internal WebSocket SDK wrapper with the packaged SDK.
 
 Source of truth:
   - sdk/src/tcm_client/sdk.py
 
-Vendored wrapper (used by repo tests and internal examples):
-  - apps/manager/_______WEBSOCKET/sdk.py
+Wrapper (used by repo tests and internal examples when tcm_client is not installed):
+  - apps/manager/ws_sdk/sdk.py
 
 Usage:
   python3 scripts/sync_sdk.py
@@ -38,7 +38,8 @@ import sys
 from pathlib import Path
 
 # Make `tcm_client` importable from the repo checkout without installation.
-_repo_root = Path(__file__).resolve().parents[2]
+# This file lives at apps/manager/ws_sdk/sdk.py -> repo root is parents[3].
+_repo_root = Path(__file__).resolve().parents[3]
 _sdk_src = _repo_root / "sdk" / "src"
 sys.path.insert(0, str(_sdk_src))
 
@@ -73,7 +74,7 @@ def main() -> int:
 
     repo_root = Path(__file__).resolve().parents[1]
     src = repo_root / "sdk" / "src" / "tcm_client" / "sdk.py"
-    dest = repo_root / "apps" / "manager" / "_______WEBSOCKET" / "sdk.py"
+    dest = repo_root / "apps" / "manager" / "ws_sdk" / "sdk.py"
 
     if not src.exists():
         raise SystemExit(f"Source not found: {src}")

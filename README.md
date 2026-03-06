@@ -112,7 +112,7 @@ The system exposes inference endpoints (HTTP and gRPC) and manages per-user job 
 
 - ✅ **WebSocket auth** — Top-level `uuid` required in the first `auth` message
 - ✅ **Type validation** — Strict validation for `info`, `management`, and `inference` message types
-- ✅ **Config isolation** — YAML config files loaded from `apps/manager/config/`, never committed with secrets
+- ✅ **Config isolation** — YAML config files loaded from [apps/manager/config/](apps/manager/config/), never committed with secrets
 - ✅ **OpenStack credentials** — Application credentials used for Keystone auth (ID + secret)
 - ✅ **Token management** — Proactive token refresh and region-aware service catalog (`Catalog` helper)
 - ✅ **Graceful shutdown** — uvicorn server shutdown via `server.should_exit = True`
@@ -129,7 +129,7 @@ The system exposes inference endpoints (HTTP and gRPC) and manages per-user job 
 ### 🧠 Inference Workflows
 
 - ✅ **HTTP inference** — Single request/response via Triton HTTP client
-- ✅ **gRPC inference** — Streaming support via Triton gRPC client (planned/experimental; see `docs/ARCHITECTURE.md`)
+- ✅ **gRPC inference** — Streaming support via Triton gRPC client (planned/experimental; see [ARCHITECTURE](docs/ARCHITECTURE.md))
 - ✅ **Routing by IDs** — Uses `vm_id` and `container_id` for routing (aligned with Triton server registration)
 - ✅ **Payload examples** — Sample management and inference payloads in [apps/manager/payload_examples/](apps/manager/payload_examples/)
 
@@ -139,7 +139,7 @@ The system exposes inference endpoints (HTTP and gRPC) and manages per-user job 
 - ✅ **Regression tests** — Contracts for DI, deletion normalization, auth, and inference examples
 - ✅ **Smoke test** — Validates startup, WebSocket auth, and `queue_stats` with mocks
 - ✅ **Internal changelog** — [CHANGELOG_INTERNAL](docs/CHANGELOG_INTERNAL.md) tracks notable engineering changes
-- ✅ **Observability stack** — Sample Prometheus + Grafana setup with a ready‑to‑use dashboard (`infra/monitoring/`, `infra/grafana/tcm_dashboard.json`)
+- ✅ **Observability stack** — Sample Prometheus + Grafana setup with a ready‑to‑use dashboard ([infra/monitoring/](infra/monitoring/), [infra/grafana/tcm_dashboard.json](infra/grafana/tcm_dashboard.json))
 
 ### 👥 Target users & use cases
 
@@ -501,9 +501,9 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
-The SDK is validated by contract tests (`apps/manager/tests/test_client_sdk_contract.py`) and mirrors the
-runtime behavior of the internal client in `apps/manager/ws_sdk/sdk.py`. For full API contract
-details, see `docs/API_CONTRACTS.md` / `docs/WEBSOCKET_API.md`.
+The SDK is validated by contract tests ([apps/manager/tests/test_client_sdk_contract.py](apps/manager/tests/test_client_sdk_contract.py)) and mirrors the
+runtime behavior of the internal client in [apps/manager/ws_sdk/sdk.py](apps/manager/ws_sdk/sdk.py). For full API contract
+details, see [API_CONTRACTS](docs/API_CONTRACTS.md) / [WEBSOCKET_API](docs/WEBSOCKET_API.md).
 
 ### Compilation Check
 
@@ -518,14 +518,14 @@ cd apps/manager
 From the repository root:
 
 ```bash
-cd monitoring
+cd infra/monitoring
 docker compose up -d
 ```
 
 Then:
 
 - Prometheus UI at `http://localhost:9090`
-- Grafana UI at `http://localhost:3000` (import `infra/grafana/tcm_dashboard.json` and point it to the `prometheus` data source)
+- Grafana UI at `http://localhost:3000` (import [infra/grafana/tcm_dashboard.json](infra/grafana/tcm_dashboard.json) and point it to the `prometheus` data source)
 
 ---
 
