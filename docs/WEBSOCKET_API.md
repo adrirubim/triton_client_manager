@@ -1,38 +1,38 @@
 # WebSocket API – Triton Client Manager
 
-Este archivo actúa como **alias y punto de entrada** al contrato oficial de la API WebSocket del Triton Client Manager.
+Contract of the WebSocket API exposed at `/ws`.
 
-La **fuente de verdad canónica** del contrato (formatos de mensaje, ejemplos y errores) vive en:
+This file acts as an **alias and entry point** to the official WebSocket API
+contract for Triton Client Manager. The **canonical source of truth** for the
+contract (message formats, examples, and errors) lives in:
 
 - `docs/API_CONTRACTS.md`
 
-Ahí encontrarás:
+There you will find:
 
-- Formato de mensaje estándar:
-  - Campos obligatorios: `uuid`, `type`, `payload`.
-  - Tipos soportados: `auth`, `info`, `management`, `inference`.
-- Secciones detalladas para:
-  - `Auth` (incluyendo payload con `token` y bloque `client`).
-  - `Info` (por ejemplo `info.queue_stats`).
-  - `Management` (creación y borrado con payloads planos y anidados).
-  - `Inference` (campos requeridos y ejemplo de payload).
-- Contrato de errores:
-  - Estructura `{"type": "error", "payload": {"message": "..."}}`.
-  - Códigos de cierre WebSocket (por ejemplo `1008`, `1009`) y causas típicas.
+- Standard message format:
+  - Required fields: `uuid`, `type`, `payload`.
+  - Supported types: `auth`, `info`, `management`, `inference`.
+- Detailed sections for:
+  - `Auth` (including payload with `token` and `client` block).
+  - `Info` (for example `info.queue_stats`).
+  - `Management` (creation and deletion with flat and nested payloads).
+  - `Inference` (required fields and example payload).
+- Error contract:
+  - Structure `{"type": "error", "payload": {"message": "..."}}`.
+  - WebSocket close codes (for example `1008`, `1009`) and typical causes.
 
-Cuando en este repositorio veas referencias a `docs/WEBSOCKET_API.md` (por ejemplo, en:
+When you see references to `docs/WEBSOCKET_API.md` in this repository (for example in):
 
 - `docs/internal/PROJECT_STATES.md`
 - `MANAGER/_______WEBSOCKET/README.md`
-- Comentarios en `MANAGER/tests/test_client_sdk_contract.py`
+- Comments in `MANAGER/tests/test_client_sdk_contract.py`
 
-debes entenderlas como un alias directo a `docs/API_CONTRACTS.md`.
+you should treat them as a direct alias to `docs/API_CONTRACTS.md`.
 
-En caso de duda, **siempre considera `API_CONTRACTS.md` como el contrato más actualizado** y sincroniza tus integraciones y tests de contrato con ese archivo.
-
-# WebSocket API – Triton Client Manager
-
-Contract of the WebSocket API exposed at `/ws`.
+When in doubt, **always consider `API_CONTRACTS.md` as the most up‑to‑date
+contract** and keep your integrations and contract tests in sync with that
+file.
 
 ---
 
@@ -451,4 +451,40 @@ For functional client examples, see:
 - `MANAGER/_______WEBSOCKET/client.py` — minimal interactive client.
 - `MANAGER/_______WEBSOCKET/sdk.py` — lightweight SDK (`TcmWebSocketClient`) and quickstart helpers.
 - `MANAGER/_______WEBSOCKET/README.md` — “copy/paste and run” quickstart using the SDK.
+
+---
+
+## 5. SDK (Python) quick reference
+
+When using the official Python SDK (`tcm-client`), the minimal flow described
+above can be expressed as:
+
+```python
+import asyncio
+
+from tcm_client import AuthContext, TcmWebSocketClient
+
+
+async def main() -> None:
+    uri = "ws://127.0.0.1:8000/ws"
+
+    ctx = AuthContext(
+        uuid="frontend-123",
+        token="opaque-or-jwt-token",
+        sub="user-123",
+        tenant_id="tenant-abc",
+        roles=["inference", "management"],
+    )
+
+    async with TcmWebSocketClient(uri, ctx) as client:
+        # 1) Auth
+        await client.auth()
+
+        # 2) info.queue_stats
+        info = await client.info_queue_stats()
+        print(info)
+```
+
+For management and inference flows, refer to the examples in `sdk/README.md`,
+which build directly on the JSON contracts described in this file.
 

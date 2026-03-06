@@ -132,6 +132,37 @@ In these scenarios:
 - Clearly document in your infrastructure which component is the “source of
   truth” for limits (gateway vs backend) and how they coordinate.
 
+### Example: compliance-grade auth + rate limits
+
+For regulated environments, a typical `websocket.yaml` fragment might look like:
+
+```yaml
+auth:
+  mode: "strict"
+  require_token: true
+  required_claims: ["exp", "aud", "iss", "sub"]
+  issuer: "https://idp.example.com/"
+  audience: "tcm"
+  leeway_seconds: 60
+  # Corporate JWKS endpoint for RSA/ECDSA keys (preferred)
+  jwks_url: "https://idp.example.com/.well-known/jwks.json"
+  # Or a PEM-encoded public key / HS* secret for dev:
+  public_key_pem: null
+  algorithms: ["RS256"]
+
+rate_limits:
+  messages_per_second_per_client: 20
+  auth_failures_per_minute_per_client: 5
+```
+
+In this setup:
+
+- Tokens are validated criptographically via JWKS and must contain the required
+  claims.
+- Per-replica limits act as a **defence-in-depth** layer on top of global
+  limits enforced by your API Gateway / Ingress using a shared backend
+  (typically Redis).
+
 ## OpenStack (auth_url, env vars)
 
 If `auth_url` returns 404, try alternative paths: `/identity/v3/auth/tokens`, `/v3`, or ask your OpenStack admin.

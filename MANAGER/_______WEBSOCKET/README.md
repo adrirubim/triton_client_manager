@@ -106,17 +106,32 @@ async def main() -> None:
 if __name__ == "__main__":
     asyncio.run(main())
 ```
+---
+
+## API overview
+
+`TcmWebSocketClient` in this internal module exposes the same methods as the
+`tcm-client` package built from `sdk/`:
+
+| Method | Description |
+| ------ | ----------- |
+| `auth()` | Sends the initial `auth` message (`token` + `client` block) and waits for `auth.ok`. |
+| `info_queue_stats()` | Sends an `info` message with `action: "queue_stats"` and returns the full `info_response`. |
+| `management_creation(action="creation", **kwargs)` | Sends a `management` message with the given `action` and the specific fields (`openstack`, `docker`, `minio`, etc.). |
+| `inference_http(model_name, inputs)` | Sends a minimal HTTP inference request for `model_name` with the `inputs` dictionary. |
+
+See `docs/WEBSOCKET_API.md` / `docs/API_CONTRACTS.md` for the detailed payload
+contracts.
 
 ---
 
 ## Contract tests
 
-The SDK is validated with `pytest` in `tests/test_client_sdk_contract.py`,
+The SDK is validated with `pytest` in `MANAGER/tests/test_client_sdk_contract.py`,
 which:
 
-- Starts a test server with `ws_server` (mocks for OpenStack/Docker/Triton).
+- Starts a test server with the `ws_server` fixture (mocks for
+  OpenStack/Docker/Triton).
 - Uses `TcmWebSocketClient` to run the `auth` + `info.queue_stats` flow.
 - Verifies that the response matches the contract documented in
   `docs/WEBSOCKET_API.md`.
-
-     
