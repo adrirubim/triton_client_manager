@@ -1,8 +1,8 @@
 """
-Test WebSocket client to connect to the WebSocketThread server.
+WebSocket client helper for manual testing and integration scenarios.
 
 Usage:
-    python tests/ws_client_test.py
+    python -m devtools.ws_client
 """
 
 import asyncio
@@ -16,8 +16,7 @@ async def test_client(
     uri: str = "ws://localhost:8000/ws",
     keep_alive_sec: float = 10,
 ):
-    """Test client that connects and sends requests"""
-
+    """Test client that connects and sends requests."""
     try:
         async with connect(uri) as websocket:
             print(f"[{user_id}] Connected to server")
@@ -65,7 +64,7 @@ async def test_client(
 async def test_multiple_clients(
     uri: str = "ws://localhost:8000/ws", keep_alive_sec: float = 10
 ):
-    """Test multiple clients connecting simultaneously"""
+    """Test multiple clients connecting simultaneously."""
     tasks = [
         test_client("alice", uri=uri, keep_alive_sec=keep_alive_sec),
         test_client("bob", uri=uri, keep_alive_sec=keep_alive_sec),
@@ -78,9 +77,5 @@ if __name__ == "__main__":
     print("Starting WebSocket client test...")
     print("Make sure the server is running first!")
     print("-" * 50)
-
-    # Run single client test
-    # asyncio.run(test_client("test_user"))
-
-    # Run multiple clients test
     asyncio.run(test_multiple_clients())
+

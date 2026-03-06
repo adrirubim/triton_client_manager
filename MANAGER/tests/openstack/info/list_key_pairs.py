@@ -1,6 +1,7 @@
 from pprint import pprint
 
 import requests
+
 from auth import return_token
 
 token = return_token()
@@ -21,3 +22,4 @@ response.raise_for_status()
 # Parse response
 data = response.json()
 pprint(data["keypairs"][0]["keypair"]["public_key"][0])
+

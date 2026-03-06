@@ -9,7 +9,7 @@ import sys
 
 _here = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_here, ".."))
-sys.path.insert(0, _here)  # for ws_client_test when using --with-ws-client
+sys.path.insert(0, _here)  # keep tests/ importable for smoke flows
 
 
 def _create_mock_thread(name, attrs=None):
@@ -110,7 +110,7 @@ def run_smoke(include_ws_client=False):
     asyncio.run(_test())
 
     if include_ws_client:
-        from ws_client_test import test_multiple_clients
+        from devtools.ws_client import test_multiple_clients
 
         uri = f"ws://127.0.0.1:{port}/ws"
         try:
@@ -133,7 +133,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--with-ws-client",
         action="store_true",
-        help="Run ws_client_test multi-client scenario as part of smoke",
+        help="Run devtools.ws_client multi-client scenario as part of smoke",
     )
     args = parser.parse_args()
 

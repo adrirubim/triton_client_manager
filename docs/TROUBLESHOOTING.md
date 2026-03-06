@@ -66,7 +66,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-If you use `tests/ws_client_test.py` or `_______WEBSOCKET/client.py`, ensure test dependencies are installed:
+If you use `devtools/ws_client.py` or `_______WEBSOCKET/client.py`, ensure test dependencies are installed:
 
 ```bash
 cd MANAGER

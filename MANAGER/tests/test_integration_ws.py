@@ -43,7 +43,7 @@ async def test_auth_and_info(ws_server):
 
 async def test_multiple_clients(ws_server):
     """Multiple clients can connect and exchange messages concurrently."""
-    from ws_client_test import test_multiple_clients as run_multiple_clients
+    from devtools.ws_client import test_multiple_clients as run_multiple_clients
 
     await run_multiple_clients(uri=ws_server, keep_alive_sec=0.5)
 

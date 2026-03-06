@@ -1,6 +1,7 @@
 from pprint import pprint
 
 import requests
+
 from auth import return_token
 
 token = return_token()
@@ -19,6 +20,8 @@ response = requests.get(
 response.raise_for_status()
 pprint(response.json())
 exit()
+
 # Parse response
 data = response.json()
 pprint(data)
+

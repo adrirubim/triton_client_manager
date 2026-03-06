@@ -591,7 +591,7 @@ automated tests:
 1. **Multi-replica (single region):**
    - Deploy at least 2 replicas of the Kubernetes Deployment or 2 identical
      containers behind the same load balancer.
-   - Connect several clients (for example using `MANAGER/tests/ws_client_test.py`
+   - Connect several clients (for example using `MANAGER/devtools/ws_client.py`
      or the `TcmWebSocketClient` SDK) and verify:
      - That `auth` + `info.queue_stats` behave consistently.
      - That metrics from each instance (`tcm_ws_connections_total`,
