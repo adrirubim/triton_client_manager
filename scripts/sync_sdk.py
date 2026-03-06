@@ -38,7 +38,7 @@ import sys
 from pathlib import Path
 
 # Make `tcm_client` importable from the repo checkout without installation.
-_repo_root = Path(__file__).resolve().parents[3]
+_repo_root = Path(__file__).resolve().parents[2]
 _sdk_src = _repo_root / "sdk" / "src"
 sys.path.insert(0, str(_sdk_src))
 
