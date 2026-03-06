@@ -1,7 +1,6 @@
 from pprint import pprint
 
 import requests
-
 from auth import return_token
 
 token = return_token()
