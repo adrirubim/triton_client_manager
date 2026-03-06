@@ -66,7 +66,18 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-If you use `tests/ws_client_test.py` or `_______WEBSOCKET/client.py`, add: `pip install websockets` (not in requirements.txt).
+If you use `tests/ws_client_test.py` or `_______WEBSOCKET/client.py`, ensure test dependencies are installed:
+
+```bash
+cd MANAGER
+pip install -r requirements-test.txt
+```
+
+If you want the minimal dependency only (without installing the full test stack), install `websockets` directly:
+
+```bash
+python3 -m pip install websockets
+```
 
 ## Python 3.12 Dataclass Field Order
 

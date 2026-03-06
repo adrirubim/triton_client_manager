@@ -308,10 +308,10 @@ GitHub Actions (or any other CI) should run tests and basic checks on every push
 cd MANAGER
 
 pip install -r requirements.txt
-python -m py_compile client_manager.py
-python -m compileall -q classes utils
-python tests/smoke_runtime.py
-python -m unittest tests.test_regression -v
+python3 -m py_compile client_manager.py
+python3 -m compileall -q classes utils
+python3 tests/smoke_runtime.py
+python3 -m unittest tests.test_regression -v
 ```
 
 You can mirror this flow in workflows such as [tests.yml](.github/workflows/tests.yml) and [lint.yml](.github/workflows/lint.yml) to keep the main branch healthy.
@@ -509,8 +509,8 @@ details, see `docs/API_CONTRACTS.md` / `docs/WEBSOCKET_API.md`.
 
 ```bash
 cd MANAGER
-python -m py_compile client_manager.py
-python -m compileall -q classes utils
+.venv/bin/python -m py_compile client_manager.py
+.venv/bin/python -m compileall -q classes utils
 ```
 
 ### Monitoring stack (Prometheus + Grafana)
@@ -539,8 +539,8 @@ cd MANAGER
 .venv/bin/python tests/smoke_runtime.py --with-ws-client
 .venv/bin/python -m unittest tests.test_regression -v
 .venv/bin/pytest tests/test_integration_ws.py -v  # optional but recommended
-python -m py_compile client_manager.py
-python -m compileall -q classes utils
+.venv/bin/python -m py_compile client_manager.py
+.venv/bin/python -m compileall -q classes utils
 ```
 
 All steps should pass before you push to GitHub and open a PR.

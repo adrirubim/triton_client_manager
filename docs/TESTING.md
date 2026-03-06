@@ -101,7 +101,7 @@ cd MANAGER
 
 Minimal automated check to ensure that sensitive values in payloads are **not**
 leaked into logs under backpressure scenarios (`info`, `management`,
-`inference` queues llenas):
+`inference` queues full):
 
 ```bash
 cd MANAGER

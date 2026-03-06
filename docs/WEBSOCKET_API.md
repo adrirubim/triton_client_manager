@@ -160,10 +160,16 @@ The WebSocket server supports two high-level modes:
       allowed clock skew).
     - `iss` and `aud` (if configured) match `auth.issuer` and
       `auth.audience`.
-  - **Important:** the signature of the token is *not* validated by default in
-    this project. In production, you should still validate tokens
-    criptographically (for example, in a gateway or auth service) and use
-    strict mode as an extra layer to enforce local policies on claims.
+  - Signature validation depends on configuration:
+    - If neither `jwks_url` nor `public_key_pem` is configured, strict mode
+      validates **claim semantics only** (presence of required claims, `exp`,
+      `iss`, `aud` when configured).
+    - If `jwks_url` (JWKS) or `public_key_pem` (public key / shared secret for
+      HS* in dev) is configured, the server verifies the JWT signature
+      cryptographically (via PyJWT) and restricts algorithms to
+      `auth.algorithms`.
+  - In production, it is still recommended to validate tokens upstream (API
+    gateway / IdP) and treat strict mode as defence-in-depth.
 
 #### Successful response
 

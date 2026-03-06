@@ -154,8 +154,8 @@ black --check .
 .venv/bin/pytest --cov=classes --cov=utils --cov=client_manager --cov-report=html
 
 # 5. Compilation
-python -m py_compile client_manager.py
-python -m compileall -q classes utils
+.venv/bin/python -m py_compile client_manager.py
+.venv/bin/python -m compileall -q classes utils
 ```
 
 CI pipelines (for example, GitHub Actions) should at minimum run the regression suite and a subset of pytest on pull requests.

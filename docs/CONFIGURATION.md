@@ -157,7 +157,7 @@ rate_limits:
 
 In this setup:
 
-- Tokens are validated criptographically via JWKS and must contain the required
+- Tokens are validated cryptographically via JWKS and must contain the required
   claims.
 - Per-replica limits act as a **defence-in-depth** layer on top of global
   limits enforced by your API Gateway / Ingress using a shared backend

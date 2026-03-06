@@ -60,8 +60,8 @@ Alternative: `python tests/smoke_runtime.py --with-ws-client` (standalone, no py
 
 ```bash
 cd MANAGER
-python -m py_compile client_manager.py
-python -m compileall -q classes utils
+.venv/bin/python -m py_compile client_manager.py
+.venv/bin/python -m compileall -q classes utils
 ```
 
 Continuous integration should run at least the regression suite and a subset of pytest on pull requests. Smoke and integration tests are recommended locally before pushing.

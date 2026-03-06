@@ -77,4 +77,6 @@ See [triton-inference-server/client#869](https://github.com/triton-inference-ser
 
 ## WebSocket Implementation
 
-We use `ws="wsproto"` in uvicorn to avoid `DeprecationWarning` from `websockets.legacy` (uvicorn's default implementation still uses the deprecated API). Client tests use `websockets.asyncio.client.connect`.
+We use `ws="wsproto"` in uvicorn to avoid `DeprecationWarning` from `websockets.legacy` (uvicorn's default implementation still uses the deprecated API).
+
+**Client-side note:** depending on the installed `websockets` version and layout, the import path for `connect` may vary. In this repository we use `from websockets.client import connect` in tests for compatibility, and the packaged SDK includes a fallback between `websockets.asyncio.client` and `websockets.client`.
