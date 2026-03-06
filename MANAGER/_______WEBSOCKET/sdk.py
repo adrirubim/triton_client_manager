@@ -19,7 +19,11 @@ import json
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
-from websockets.client import connect
+try:
+    # Prefer the modern asyncio client API when available.
+    from websockets.asyncio.client import connect  # type: ignore[attr-defined]
+except ModuleNotFoundError:  # pragma: no cover - fallback for older layouts
+    from websockets.client import connect  # type: ignore[no-redef]
 
 JsonDict = Dict[str, Any]
 
@@ -129,7 +133,13 @@ class TcmWebSocketClient:
         }
         return await self._send(msg)
 
-    async def inference_http(self, model_name: str, inputs: JsonDict) -> JsonDict:
+    async def inference_http(
+        self,
+        vm_id: str,
+        container_id: str,
+        model_name: str,
+        inputs: list[JsonDict],
+    ) -> JsonDict:
         """
         Send a minimal HTTP inference request.
         """
@@ -137,11 +147,11 @@ class TcmWebSocketClient:
             "uuid": self._auth_ctx.uuid,
             "type": "inference",
             "payload": {
+                "vm_id": vm_id,
+                "container_id": container_id,
                 "model_name": model_name,
-                "request": {
-                    "protocol": "http",
-                    "inputs": inputs,
-                },
+                "inputs": inputs,
+                "request": {"protocol": "http"},
             },
         }
         return await self._send(msg)

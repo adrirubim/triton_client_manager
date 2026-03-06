@@ -118,12 +118,86 @@ if __name__ == "__main__":
 | `auth()` | Sends the initial `auth` message (`token` + `client` block) and waits for `auth.ok`. |
 | `info_queue_stats()` | Sends an `info` message with `action: "queue_stats"` and returns the full `info_response`. |
 | `management_creation(action="creation", **kwargs)` | Sends a `management` message with the given `action` and the specific fields (`openstack`, `docker`, `minio`, etc.). |
-| `inference_http(model_name, inputs)` | Sends a minimal HTTP inference request for `model_name` with the `inputs` dictionary. |
+| `inference_http(vm_id, container_id, model_name, inputs)` | Sends an HTTP inference request routed by `vm_id` + `container_id` with typed `inputs` entries. |
 
 See `docs/WEBSOCKET_API.md` / `docs/API_CONTRACTS.md` for the detailed payload
 contracts.
 
 ---
+
+## Examples (management + inference)
+
+The quickstart focuses on `auth + info.queue_stats`. For other flows, use the
+same client:
+
+### Management (deletion, flat payload)
+
+```python
+import asyncio
+
+from _______WEBSOCKET.sdk import AuthContext, TcmWebSocketClient
+
+
+async def main() -> None:
+    uri = "ws://127.0.0.1:8000/ws"
+    ctx = AuthContext(
+        uuid="sdk-deletion-client",
+        token="opaque-or-jwt-token",
+        sub="user-deletion",
+        tenant_id="tenant-mgmt",
+        roles=["management"],
+    )
+
+    async with TcmWebSocketClient(uri, ctx) as client:
+        await client.auth()
+        resp = await client.management_creation(
+            action="deletion",
+            vm_id="openstack-vm-uuid",
+            container_id="docker-container-id",
+            vm_ip="10.0.0.10",
+        )
+        print(resp)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+### Inference (HTTP)
+
+```python
+import asyncio
+
+from _______WEBSOCKET.sdk import AuthContext, TcmWebSocketClient
+
+
+async def main() -> None:
+    uri = "ws://127.0.0.1:8000/ws"
+    ctx = AuthContext(
+        uuid="sdk-inference-client",
+        token="opaque-or-jwt-token",
+        sub="user-inference",
+        tenant_id="tenant-inf",
+        roles=["inference"],
+    )
+
+    async with TcmWebSocketClient(uri, ctx) as client:
+        await client.auth()
+        inputs = [
+            {"name": "input_0", "type": "TYPE_FP32", "dims": 4, "value": [1.0, 2.0, 3.0, 4.0]},
+        ]
+        resp = await client.inference_http(
+            vm_id="openstack-vm-uuid",
+            container_id="docker-container-id",
+            model_name="example-model",
+            inputs=inputs,
+        )
+        print(resp)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
 
 ## Contract tests
 

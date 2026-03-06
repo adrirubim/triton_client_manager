@@ -95,6 +95,23 @@ The recommended payload shape is:
 }
 ```
 
+**SDK equivalent (Python):**
+
+```python
+from tcm_client import AuthContext, TcmWebSocketClient
+
+ctx = AuthContext(
+    uuid="frontend-123",
+    token="opaque-or-jwt-token",
+    sub="user-123",
+    tenant_id="tenant-abc",
+    roles=["inference", "management"],
+)
+
+async with TcmWebSocketClient(uri, ctx) as client:
+    await client.auth()
+```
+
 - `uuid` (string): stable identifier for the client within this connection.
 - `payload.token` (string): authentication token (for example, JWT or API key) issued
   by your identity provider.
@@ -223,6 +240,13 @@ Allows querying system information, starting with queue statistics.
 }
 ```
 
+**SDK equivalent (Python):**
+
+```python
+info = await client.info_queue_stats()
+print(info)
+```
+
 **Successful response (`info_response`):**
 
 ```json
@@ -282,6 +306,18 @@ Messages of type `management` create and delete resources (VMs, containers, Trit
 }
 ```
 
+**SDK equivalent (Python):**
+
+```python
+resp = await client.management_creation(
+    action="creation",
+    openstack={...},
+    docker={...},
+    minio={...},
+)
+print(resp)
+```
+
 **Standard response:**
 
 The server reuses the original `type` and `uuid`, but normalizes `payload`:
@@ -327,15 +363,29 @@ Inference requests use messages of type `inference`. The server orchestrates the
   "uuid": "frontend-123",
   "type": "inference",
   "payload": {
+    "vm_id": "openstack-vm-uuid",
+    "container_id": "docker-container-id",
     "model_name": "example-model",
-    "request": {
-      "protocol": "http",
-      "inputs": {
-        "input_1": [1.0, 2.0, 3.0]
-      }
-    }
+    "inputs": [
+      {"name": "input_0", "type": "TYPE_FP32", "dims": 4, "value": [1.0, 2.0, 3.0, 4.0]}
+    ],
+    "request": {"protocol": "http"}
   }
 }
+```
+
+**SDK equivalent (Python):**
+
+```python
+inputs = [
+    {"name": "input_0", "type": "TYPE_FP32", "dims": 4, "value": [1.0, 2.0, 3.0, 4.0]},
+]
+resp = await client.inference_http(
+    vm_id="openstack-vm-uuid",
+    container_id="docker-container-id",
+    model_name="example-model",
+    inputs=inputs,
+)
 ```
 
 **Typical responses:**

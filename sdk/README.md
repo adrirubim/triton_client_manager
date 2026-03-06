@@ -61,7 +61,7 @@ main WebSocket flows:
 | `auth()` | Sends the initial `auth` message (with `token` + `client` block when provided) and expects an `auth.ok` response. |
 | `info_queue_stats()` | Sends an `info` message with `action: "queue_stats"` and returns the full `info_response`. |
 | `management_creation(action=\"creation\", **kwargs)` | Sends a `management` message; you pass the `action` and any OpenStack/Docker/MinIO fields via `kwargs`. |
-| `inference_http(model_name, inputs)` | Sends a minimal HTTP inference request with the given `model_name` and `inputs` dict. |
+| `inference_http(vm_id, container_id, model_name, inputs)` | Sends an HTTP inference request routed to a specific Triton server (`vm_id` + `container_id`) with typed `inputs` entries. |
 
 The low-level JSON contracts for these flows are documented in
 `docs/WEBSOCKET_API.md` / `docs/API_CONTRACTS.md`.
@@ -117,6 +117,47 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
+### Management – deletion flow (flat payload)
+
+Deletion accepts both nested (`openstack.vm_id`, `docker.container_id`) and flat fields. This example shows the flat form:
+
+```python
+import asyncio
+
+from tcm_client import AuthContext, TcmWebSocketClient
+
+
+async def main() -> None:
+    uri = "ws://127.0.0.1:8000/ws"
+    ctx = AuthContext(
+        uuid="sdk-deletion-client",
+        token="opaque-or-jwt-token",
+        sub="user-deletion",
+        tenant_id="tenant-mgmt",
+        roles=["management"],
+    )
+
+    async with TcmWebSocketClient(uri, ctx) as client:
+        await client.auth()
+
+        resp = await client.management_creation(
+            action="deletion",
+            vm_id="openstack-vm-uuid",
+            container_id="docker-container-id",
+            vm_ip="10.0.0.10",
+        )
+
+        payload = resp.get("payload", {})
+        if payload.get("status") is True:
+            print("Management deletion OK:", payload.get("data"))
+        else:
+            print("Management deletion FAILED:", payload.get("data"))
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
 ### Inference – HTTP flow
 
 ```python
@@ -138,10 +179,15 @@ async def main() -> None:
     async with TcmWebSocketClient(uri, ctx) as client:
         await client.auth()
 
-        inputs = {
-            "input_0": [1.0, 2.0, 3.0, 4.0],
-        }
-        resp = await client.inference_http("example-model", inputs)
+        inputs = [
+            {"name": "input_0", "type": "TYPE_FP32", "dims": 4, "value": [1.0, 2.0, 3.0, 4.0]},
+        ]
+        resp = await client.inference_http(
+            vm_id="openstack-vm-uuid",
+            container_id="docker-container-id",
+            model_name="example-model",
+            inputs=inputs,
+        )
         payload = resp.get("payload", {})
 
         status = payload.get("status")
@@ -154,6 +200,23 @@ async def main() -> None:
 
 if __name__ == "__main__":
     asyncio.run(main())
+```
+
+## Error handling and reconnect guidance
+
+- The server can respond with `{"type": "error", "payload": {"message": "..."}}` on protocol and policy failures.
+- `TcmWebSocketClient` raises `RuntimeError` when a response doesn't match the expected flow (for example, `auth()` not returning `auth.ok`).
+
+Recommended pattern:
+
+```python
+try:
+    async with TcmWebSocketClient(uri, ctx) as client:
+        await client.auth()
+        info = await client.info_queue_stats()
+except Exception as exc:
+    # Log and reconnect with backoff in your integration.
+    print("SDK call failed:", exc)
 ```
 
 For full API contract details (message format, types and examples), see the
