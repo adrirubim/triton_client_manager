@@ -73,7 +73,7 @@ def run_smoke(include_ws_client=False):
     try:
         import asyncio
 
-        from websockets.asyncio.client import connect as ws_connect
+        from websockets.client import connect as ws_connect
     except ImportError:
         print("[SKIP] websockets not installed; auth/info tests skipped")
         return {

@@ -185,7 +185,7 @@ async def test_auth_failures_in_strict_mode_increment_counters() -> None:
     assert ws2.sent
     last_error_2 = json.loads(ws2.sent[-1])
     assert last_error_2["type"] == "error"
-    assert "Too many failed auth attempts for this client" in last_error_2["payload"][
-        "message"
-    ]
-
+    assert (
+        "Too many failed auth attempts for this client"
+        in last_error_2["payload"]["message"]
+    )

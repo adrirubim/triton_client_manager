@@ -11,7 +11,7 @@ import asyncio
 import json
 from typing import Any, Dict
 
-from websockets.asyncio.client import connect
+from websockets.client import connect
 
 
 async def test_client() -> None:

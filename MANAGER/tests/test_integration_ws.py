@@ -7,7 +7,7 @@ Run: cd MANAGER && pytest tests/test_integration_ws.py -v
 import json
 
 import pytest
-from websockets.asyncio.client import connect
+from websockets.client import connect
 
 
 async def test_auth_and_info(ws_server):
