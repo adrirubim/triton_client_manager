@@ -14,7 +14,7 @@ Describe how you verified the changes (commands, scenarios, configs).
 
 ```bash
 # Example
-cd MANAGER
+cd apps/manager
 .venv/bin/python tests/smoke_runtime.py
 .venv/bin/python -m unittest tests.test_regression -v
 ```

@@ -3,11 +3,11 @@ import time
 
 from yaml import safe_load
 
-from classes.docker import DockerThread
-from classes.job import JobThread  # -> Conccurent multiple threads (LOTS of REQUESTS)
-from classes.openstack import OpenstackThread
-from classes.triton import TritonThread
-from classes.websocket import WebSocketThread
+from tcm.docker import DockerThread
+from tcm.job import JobThread  # -> Conccurent multiple threads (LOTS of REQUESTS)
+from tcm.openstack import OpenstackThread
+from tcm.triton import TritonThread
+from tcm.websocket import WebSocketThread
 from utils.logging_config import configure_logging
 
 logger = logging.getLogger(__name__)

@@ -2,7 +2,7 @@
 Small, standalone Python SDK for Triton Client Manager's WebSocket API.
 
 This module is a packaging-friendly version of the internal SDK that lives
-under ``MANAGER/_______WEBSOCKET/sdk.py`` in the main repository. It is meant
+under ``apps/manager/ws_sdk/sdk.py`` in the main repository. It is meant
 to be installed as a regular Python package (``tcm-client``) and used by
 integrators without needing to vendor or copy code from the server repo.
 """

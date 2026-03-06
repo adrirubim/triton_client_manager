@@ -25,33 +25,33 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        working-directory: MANAGER
+        working-directory: apps/manager
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt -r requirements-test.txt
 
       - name: Compile Python sources
-        working-directory: MANAGER
+        working-directory: apps/manager
         run: |
           python -m py_compile client_manager.py
           python -m compileall -q classes utils
 
       - name: Run smoke test (with WebSocket client)
-        working-directory: MANAGER
+        working-directory: apps/manager
         env:
           PYTHONPATH: .
         run: |
           python tests/smoke_runtime.py --with-ws-client
 
       - name: Run regression tests
-        working-directory: MANAGER
+        working-directory: apps/manager
         env:
           PYTHONPATH: .
         run: |
           python -m unittest tests.test_regression -v
 
       - name: Run pytest suite with coverage
-        working-directory: MANAGER
+        working-directory: apps/manager
         env:
           PYTHONPATH: .
         run: |

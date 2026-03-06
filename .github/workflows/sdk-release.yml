@@ -29,13 +29,13 @@ jobs:
           pip install build
 
       - name: Build SDK package
-        working-directory: MANAGER
+        working-directory: sdk
         run: |
           python -m build
 
       - name: Publish to PyPI
         if: secrets.PYPI_TOKEN != ''
-        working-directory: MANAGER
+        working-directory: sdk
         env:
           PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
         run: |

@@ -41,10 +41,10 @@ Use these `make` targets from the **repository root** as the single source of en
 
 | Command           | Purpose                                                           | Notes                                                                                 |
 | ----------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `make test`       | **Full validation** (pytest + smoke + SDK contract tests)        | Runs the full Python test suite under `MANAGER/`, including WebSocket SDK contracts. |
+| `make test`       | **Full validation** (pytest + smoke + SDK contract tests)        | Runs the full Python test suite under `apps/manager/`, including WebSocket SDK contracts. |
 | `make demo`       | **Multi-replica scaling demo with NGINX**                        | Starts `docker-compose.multi-node.yml` (two manager replicas behind an NGINX LB).     |
-| `make monitor`    | **SRE observability stack (Prometheus/Grafana)**                 | Brings up the monitoring stack in `monitoring/docker-compose.yml`.                   |
-| `make k8s-deploy` | **Production-style Kubernetes deployment (Deployment + HPA etc.)** | Applies manifests from `k8s/` and prepares the cluster for autoscaling validation.   |
+| `make monitor`    | **SRE observability stack (Prometheus/Grafana)**                 | Brings up the monitoring stack in `infra/monitoring/docker-compose.yml`.             |
+| `make k8s-deploy` | **Production-style Kubernetes deployment (Deployment + HPA etc.)** | Applies manifests from `infra/k8s/` and prepares the cluster for autoscaling validation. |
 
 These commands are designed so that any **developer or SRE** can get from clone to:
 
@@ -112,7 +112,7 @@ The system exposes inference endpoints (HTTP and gRPC) and manages per-user job 
 
 - ✅ **WebSocket auth** — Top-level `uuid` required in the first `auth` message
 - ✅ **Type validation** — Strict validation for `info`, `management`, and `inference` message types
-- ✅ **Config isolation** — YAML config files loaded from `MANAGER/config/`, never committed with secrets
+- ✅ **Config isolation** — YAML config files loaded from `apps/manager/config/`, never committed with secrets
 - ✅ **OpenStack credentials** — Application credentials used for Keystone auth (ID + secret)
 - ✅ **Token management** — Proactive token refresh and region-aware service catalog (`Catalog` helper)
 - ✅ **Graceful shutdown** — uvicorn server shutdown via `server.should_exit = True`
@@ -131,7 +131,7 @@ The system exposes inference endpoints (HTTP and gRPC) and manages per-user job 
 - ✅ **HTTP inference** — Single request/response via Triton HTTP client
 - ✅ **gRPC inference** — Streaming support via Triton gRPC client (planned/experimental; see `docs/ARCHITECTURE.md`)
 - ✅ **Routing by IDs** — Uses `vm_id` and `container_id` for routing (aligned with Triton server registration)
-- ✅ **Payload examples** — Sample management and inference payloads in [MANAGER/payload_examples/](MANAGER/payload_examples/)
+- ✅ **Payload examples** — Sample management and inference payloads in [apps/manager/payload_examples/](apps/manager/payload_examples/)
 
 ### 🏗 Code Quality & Testing
 
@@ -139,7 +139,7 @@ The system exposes inference endpoints (HTTP and gRPC) and manages per-user job 
 - ✅ **Regression tests** — Contracts for DI, deletion normalization, auth, and inference examples
 - ✅ **Smoke test** — Validates startup, WebSocket auth, and `queue_stats` with mocks
 - ✅ **Internal changelog** — [CHANGELOG_INTERNAL](docs/CHANGELOG_INTERNAL.md) tracks notable engineering changes
-- ✅ **Observability stack** — Sample Prometheus + Grafana setup with a ready‑to‑use dashboard (`monitoring/`, `grafana/tcm_dashboard.json`)
+- ✅ **Observability stack** — Sample Prometheus + Grafana setup with a ready‑to‑use dashboard (`infra/monitoring/`, `infra/grafana/tcm_dashboard.json`)
 
 ### 👥 Target users & use cases
 
@@ -171,7 +171,7 @@ The system exposes inference endpoints (HTTP and gRPC) and manages per-user job 
 ### Development & Testing
 
 - **Tests:** `unittest`, smoke runtime script, WebSocket integration tests (pytest)
-- **Environment:** venv inside `MANAGER/` (recommended, especially on WSL/Ubuntu)
+- **Environment:** venv inside `apps/manager/` (recommended, especially on WSL/Ubuntu)
 
 ---
 
@@ -181,7 +181,7 @@ The system exposes inference endpoints (HTTP and gRPC) and manages per-user job 
 - **Python** ≥ 3.12  
   Check: `python3 --version`
 - **Virtual environment** (mandatory on Ubuntu/WSL due to PEP 668)  
-  Create: `python3 -m venv .venv` (inside `MANAGER/`)
+  Create: `python3 -m venv .venv` (inside `apps/manager/`)
 - **OpenStack access** (for full pipeline)  
   - Keystone URL (`OPENSTACK_AUTH_URL`)
   - Application credential ID and secret
@@ -202,13 +202,13 @@ git clone https://github.com/adrirubim/triton_client_manager.git
 cd triton_client_manager
 ```
 
-### 2. Navigate to `MANAGER`
+### 2. Navigate to `apps/manager`
 
 ```bash
-cd MANAGER
+cd apps/manager
 ```
 
-> **Important:** The virtual environment should live **inside** `MANAGER/`, not at the repository root.
+> **Important:** The virtual environment should live **inside** `apps/manager/`, not at the repository root.
 
 ### 3. Create Virtual Environment
 
@@ -227,7 +227,7 @@ pip install -r requirements.txt
 
 ### 5. Configure
 
-- Ensure `config/*.yaml` exists inside `MANAGER/config/`:
+- Ensure `config/*.yaml` exists inside `apps/manager/config/`:
   - `jobs.yaml`
   - `websocket.yaml`
   - `openstack.yaml`
@@ -245,14 +245,14 @@ See [CONFIGURATION](docs/CONFIGURATION.md) for full details.
 Runs only `JobThread` + `WebSocketThread` with mocked OpenStack/Docker/Triton backends. No external services required; ideal for experimenting with `/ws`, `/metrics` and the Grafana dashboard.
 
 ```bash
-cd MANAGER
+cd apps/manager
 .venv/bin/python dev_server.py
 ```
 
 #### Full pipeline (requires real OpenStack/Docker/Triton)
 
 ```bash
-cd MANAGER
+cd apps/manager
 python client_manager.py
 ```
 
@@ -290,7 +290,7 @@ All documentation lives under [docs/](docs/). The main index is [docs/README.md]
 | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Architecture** | [ARCHITECTURE](docs/ARCHITECTURE.md) · [API_CONTRACTS](docs/API_CONTRACTS.md) · [VERSION_STACK](docs/VERSION_STACK.md)                                  |
 | **Operations**   | **[RUNBOOK](docs/RUNBOOK.md)** · **[CONFIGURATION](docs/CONFIGURATION.md)**                                                                             |
-| **Development**  | [payload_examples/](MANAGER/payload_examples/) — JSON examples for management and inference payloads                                                    |
+| **Development**  | [payload_examples/](apps/manager/payload_examples/) — JSON examples for management and inference payloads                                                    |
 | **Testing**      | [TESTING](docs/TESTING.md)                                                                                                                               |
 | **Support**      | [TROUBLESHOOTING](docs/TROUBLESHOOTING.md) · [CHANGELOG_INTERNAL](docs/CHANGELOG_INTERNAL.md)                                                           |
 | **Policy**       | [CONTRIBUTING](CONTRIBUTING.md) · [SECURITY](SECURITY.md)                                                                                               |
@@ -305,7 +305,7 @@ GitHub Actions (or any other CI) should run tests and basic checks on every push
 **Recommended pipeline steps (validate stage):**
 
 ```bash
-cd MANAGER
+cd apps/manager
 
 pip install -r requirements.txt
 python3 -m py_compile client_manager.py
@@ -328,11 +328,11 @@ You can mirror this flow in workflows such as [tests.yml](.github/workflows/test
 
 ### Smoke Test
 
-**File:** [`MANAGER/tests/smoke_runtime.py`](MANAGER/tests/smoke_runtime.py)  
+**File:** [`apps/manager/tests/smoke_runtime.py`](apps/manager/tests/smoke_runtime.py)
 **Purpose:** Runtime validation with mocks (JobThread, WebSocket, auth, info).
 
 ```bash
-cd MANAGER
+cd apps/manager
 .venv/bin/python tests/smoke_runtime.py
 ```
 
@@ -340,21 +340,21 @@ cd MANAGER
 
 ### Regression Tests
 
-**File:** [`MANAGER/tests/test_regression.py`](MANAGER/tests/test_regression.py)  
+**File:** [`apps/manager/tests/test_regression.py`](apps/manager/tests/test_regression.py)
 **Purpose:** Unit tests for dependency injection, deletion normalization, auth, inference contract, and config.
 
 ```bash
-cd MANAGER
+cd apps/manager
 .venv/bin/python -m unittest tests.test_regression -v
 ```
 
 ### WebSocket Integration Tests
 
-**File:** [`MANAGER/tests/test_integration_ws.py`](MANAGER/tests/test_integration_ws.py)  
+**File:** [`apps/manager/tests/test_integration_ws.py`](apps/manager/tests/test_integration_ws.py)
 **Purpose:** Multi-client WebSocket auth and `info` flow.
 
 ```bash
-cd MANAGER
+cd apps/manager
 .venv/bin/pip install -r requirements-test.txt
 .venv/bin/pytest tests/test_integration_ws.py -v
 ```
@@ -366,7 +366,7 @@ Full details and known caveats are documented in [docs/TESTING.md](docs/TESTING.
 For a full local run that matches CI:
 
 ```bash
-cd MANAGER
+cd apps/manager
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt -r requirements-test.txt
@@ -393,12 +393,12 @@ WebSocket → JobThread → JobInfo | JobManagement | JobInference
 | Module                | Responsibility                                                    |
 | --------------------- | ---------------------------------------------------------------- |
 | `client_manager.py`   | Entry point; loads config, wires dependencies, starts threads   |
-| `classes/websocket/`  | WebSocket server (FastAPI/uvicorn), auth, type validation       |
-| `classes/job/`        | Per-user queues, routing by type (info, management, inference) |
-| `classes/openstack/`  | OpenStack auth and VM lifecycle                                 |
-| `classes/docker/`     | Docker container lifecycle on worker VMs                        |
-| `classes/triton/`     | Triton server lifecycle, health checks, inference               |
-| `classes/minio/`      | (If present) MinIO / S3 integration for model storage           |
+| `tcm/websocket/`      | WebSocket server (FastAPI/uvicorn), auth, type validation       |
+| `tcm/job/`            | Per-user queues, routing by type (info, management, inference) |
+| `tcm/openstack/`      | OpenStack auth and VM lifecycle                                 |
+| `tcm/docker/`         | Docker container lifecycle on worker VMs                        |
+| `tcm/triton/`         | Triton server lifecycle, health checks, inference               |
+| `tcm/minio/`          | (If present) MinIO / S3 integration for model storage           |
 
 For in-depth diagrams and contracts, see [ARCHITECTURE](docs/ARCHITECTURE.md) and [API_CONTRACTS](docs/API_CONTRACTS.md).
 
@@ -435,7 +435,7 @@ For local development and tests:
 ### Run Application
 
 ```bash
-cd MANAGER
+cd apps/manager
 
 # Dev server (no external services, recommended for local work)
 .venv/bin/python dev_server.py
@@ -447,7 +447,7 @@ python client_manager.py
 ### Smoke & Regression
 
 ```bash
-cd MANAGER
+cd apps/manager
 .venv/bin/python tests/smoke_runtime.py
 .venv/bin/python -m unittest tests.test_regression -v
 ```
@@ -501,14 +501,14 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
-The SDK is validated by contract tests (`MANAGER/tests/test_client_sdk_contract.py`) and mirrors the
-runtime behavior of the internal client in `MANAGER/_______WEBSOCKET/sdk.py`. For full API contract
+The SDK is validated by contract tests (`apps/manager/tests/test_client_sdk_contract.py`) and mirrors the
+runtime behavior of the internal client in `apps/manager/ws_sdk/sdk.py`. For full API contract
 details, see `docs/API_CONTRACTS.md` / `docs/WEBSOCKET_API.md`.
 
 ### Compilation Check
 
 ```bash
-cd MANAGER
+cd apps/manager
 .venv/bin/python -m py_compile client_manager.py
 .venv/bin/python -m compileall -q classes utils
 ```
@@ -525,7 +525,7 @@ docker compose up -d
 Then:
 
 - Prometheus UI at `http://localhost:9090`
-- Grafana UI at `http://localhost:3000` (import `grafana/tcm_dashboard.json` and point it to the `prometheus` data source)
+- Grafana UI at `http://localhost:3000` (import `infra/grafana/tcm_dashboard.json` and point it to the `prometheus` data source)
 
 ---
 
@@ -535,7 +535,7 @@ Then:
 Before opening a pull request, run the full validation flow locally:
 
 ```bash
-cd MANAGER
+cd apps/manager
 .venv/bin/python tests/smoke_runtime.py --with-ws-client
 .venv/bin/python -m unittest tests.test_regression -v
 .venv/bin/pytest tests/test_integration_ws.py -v  # optional but recommended

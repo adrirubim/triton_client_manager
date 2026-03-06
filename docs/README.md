@@ -29,16 +29,16 @@ Central index for Triton Client Manager documentation.
 
 - **Integrators / client teams**:
   - Start with: `API_CONTRACTS.md` for WebSocket contracts and message schemas.
-  - Complement with: payload examples in `MANAGER/payload_examples/` and high‑level overview in the root `README.md`.
+  - Complement with: payload examples in `apps/manager/payload_examples/` and high‑level overview in the root `README.md`.
 
-## Folder Structure (MANAGER)
+## Folder Structure (apps/manager)
 
 | Folder | Purpose |
 |--------|---------|
-| `classes/` | Core application logic |
+| `tcm/` | Core application logic (domain package; wraps internal `classes.*` modules) |
 | `config/` | YAML configuration |
 | `utils/` | Utilities (e.g. bounded_executor) |
 | `payload_examples/` | JSON samples for management and inference |
 | `tests/` | Smoke and regression tests |
-| `___openstack___/` | OpenStack-related scripts and utilities |
-| `_______WEBSOCKET/` | WebSocket client and related code |
+| `openstack_tools/` | OpenStack-related scripts and utilities |
+| `ws_sdk/` | WebSocket client and related code |

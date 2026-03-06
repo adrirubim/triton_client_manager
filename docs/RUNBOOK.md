@@ -24,12 +24,12 @@ Operations and deployment guidance for Triton Client Manager.
 
 ## Working Directory
 
-Run all commands from `MANAGER` or ensure the current working directory is `MANAGER` when starting the application. `client_manager.py` loads `config/*.yaml` relative to the current directory.
+Run all commands from `apps/manager` or ensure the current working directory is `apps/manager` when starting the application. `client_manager.py` loads `config/*.yaml` relative to the current directory.
 
 ## Local Setup (Development)
 
 ```bash
-cd MANAGER
+cd apps/manager
 python3 -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt -r requirements-test.txt
@@ -42,7 +42,7 @@ pip install -r requirements.txt -r requirements-test.txt
 Minimal flow for a new developer:
 
 ```bash
-cd MANAGER
+cd apps/manager
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt -r requirements-test.txt
@@ -75,7 +75,7 @@ See [TESTING.md](TESTING.md) for detailed test commands and [CONFIGURATION.md](C
 ### Full pipeline (requires real OpenStack/Docker/Triton)
 
 ```bash
-cd MANAGER
+cd apps/manager
 python client_manager.py
 ```
 
@@ -84,7 +84,7 @@ Threads start in order: OpenStack → Triton → Docker → Job → WebSocket. E
 ### Dev-only pipeline (no external dependencies)
 
 ```bash
-cd MANAGER
+cd apps/manager
 .venv/bin/python dev_server.py
 ```
 
@@ -99,7 +99,7 @@ In this mode:
 Uses mocks for OpenStack, Docker, Triton. Validates JobThread DI, WebSocket auth, and info `queue_stats`.
 
 ```bash
-cd MANAGER
+cd apps/manager
 .venv/bin/python tests/smoke_runtime.py
 ```
 
@@ -110,7 +110,7 @@ cd MANAGER
 Unit tests for DI, deletion normalization, auth contract, inference example, config.
 
 ```bash
-cd MANAGER
+cd apps/manager
 .venv/bin/python -m unittest tests.test_regression -v
 ```
 
@@ -130,7 +130,7 @@ With mocks (smoke test), OpenStack/Docker/Triton are not required.
 Recommended full validation before pushing:
 
 ```bash
-cd MANAGER
+cd apps/manager
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt -r requirements-test.txt
@@ -150,7 +150,7 @@ black --check .
 
 # 4. Optional coverage report
 .venv/bin/pytest --cov=classes --cov=utils --cov=client_manager --cov-report=term-missing
-# Or HTML report in MANAGER/htmlcov/
+# Or HTML report in apps/manager/htmlcov/
 .venv/bin/pytest --cov=classes --cov=utils --cov=client_manager --cov-report=html
 
 # 5. Compilation
@@ -162,7 +162,7 @@ CI pipelines (for example, GitHub Actions) should at minimum run the regression 
 
 ## Logging and Troubleshooting
 
-The manager uses a centralized logging configuration in `MANAGER/utils/logging_config.py`.  
+The manager uses a centralized logging configuration in `apps/manager/utils/logging_config.py`.  
 Log lines are formatted with correlation fields so you can quickly filter by client or job:
 
 ```text
@@ -348,13 +348,13 @@ At minimum, we recommend a Grafana dashboard with panels for:
     - Triton metrics (if you expose them to Prometheus).
     - OpenStack API metrics (HTTP status codes, latency), if available via your infra.
 
-An example dashboard JSON is provided at `grafana/tcm_dashboard.json`. You can import it
+An example dashboard JSON is provided at `infra/grafana/tcm_dashboard.json`. You can import it
 directly into Grafana and then customize it for your environment.
 
 ## Local Monitoring Stack
 
 To experiment with metrics and the Grafana dashboard locally, you can use the
-Docker Compose stack under `monitoring/`:
+Docker Compose stack under `infra/monitoring/`:
 
 ```bash
 cd monitoring
@@ -364,7 +364,7 @@ docker compose up -d
 Requirements:
 
 - Triton Client Manager running on the host at `0.0.0.0:8000` (for example
-  with `MANAGER/dev_server.py`).
+  with `apps/manager/dev_server.py`).
 - Docker Desktop or Docker with support for `host.docker.internal` (on pure
   Linux you can replace the hostname in `prometheus.yml` with the host IP).
 
@@ -374,7 +374,7 @@ Once the stack is up:
   `triton-client-manager` job scrapes `/metrics`.
 - Access Grafana at `http://localhost:3000` (default user/password
   `admin`/`admin`), create a Prometheus datasource pointing to
-  `http://prometheus:9090` and import `grafana/tcm_dashboard.json`.
+  `http://prometheus:9090` and import `infra/grafana/tcm_dashboard.json`.
 
 ### Day 2 operations checklist
 
@@ -426,8 +426,8 @@ To validate horizontal scaling behaviour using Docker Compose:
 3. Run the SDK quickstart against the NGINX load balancer:
 
    ```bash
-   cd MANAGER
-   .venv/bin/python -c "from _______WEBSOCKET.sdk import run_quickstart; run_quickstart('ws://127.0.0.1:8000/ws')"
+   cd apps/manager
+   .venv/bin/python -c "from ws_sdk.sdk import run_quickstart; run_quickstart('ws://127.0.0.1:8000/ws')"
    ```
 
    - Verify that you receive a valid `info_response`.
@@ -441,7 +441,7 @@ To validate horizontal scaling behaviour using Docker Compose:
    - Re-run the SDK quickstart and confirm that the `auth` + `info.queue_stats`
      flow still works via `tcm-manager-2`.
 
-5. If you are also running the monitoring stack (`monitoring/docker-compose.yml`):
+5. If you are also running the monitoring stack (`infra/monitoring/docker-compose.yml`):
 
    - Check in Prometheus that metrics from both instances aggregate correctly
      (for example `tcm_ws_connections_total` and `tcm_queue_total_queued`).
@@ -473,7 +473,7 @@ readinessProbe:
 
 ## Deployment Examples
 
-The manager is a long-running process that reads `config/*.yaml` from `MANAGER/config` and exposes the WebSocket server on the configured host/port (default `0.0.0.0:8000`).
+The manager is a long-running process that reads `config/*.yaml` from `apps/manager/config` and exposes the WebSocket server on the configured host/port (default `0.0.0.0:8000`).
 
 ### systemd service (single instance)
 
@@ -486,8 +486,8 @@ After=network.target
 
 [Service]
 Type=simple
-WorkingDirectory=/var/www/triton_client_manager/MANAGER
-ExecStart=/var/www/triton_client_manager/MANAGER/.venv/bin/python client_manager.py
+WorkingDirectory=/var/www/triton_client_manager/apps/manager
+ExecStart=/var/www/triton_client_manager/apps/manager/.venv/bin/python client_manager.py
 Restart=on-failure
 Environment="PYTHONUNBUFFERED=1"
 
@@ -510,7 +510,7 @@ Build a minimal image (example `Dockerfile` snippet):
 ```dockerfile
 FROM python:3.12-slim
 WORKDIR /app
-COPY MANAGER /app
+COPY apps/manager /app
 RUN pip install --no-cache-dir -r requirements.txt
 CMD ["python", "client_manager.py"]
 ```
@@ -519,7 +519,7 @@ Run with config mounted:
 
 ```bash
 docker run -d \
-  -v /var/www/triton_client_manager/MANAGER/config:/app/config:ro \
+  -v /var/www/triton_client_manager/apps/manager/config:/app/config:ro \
   -p 8000:8000 \
   --name triton-client-manager \
   triton-client-manager:latest
@@ -527,16 +527,16 @@ docker run -d \
 
 ### Kubernetes
 
-Reference manifests live under `k8s/`:
+Reference manifests live under `infra/k8s/`:
 
-- `k8s/deployment.yaml` — Deployment + HPA (`triton-client-manager-hpa`).
-- `k8s/service.yaml` — ClusterIP Service exposing port 80 → container 8000.
-- `k8s/ingress.yaml` — NGINX Ingress with WebSocket support.
+- `infra/k8s/deployment.yaml` — Deployment + HPA (`triton-client-manager-hpa`).
+- `infra/k8s/service.yaml` — ClusterIP Service exposing port 80 → container 8000.
+- `infra/k8s/ingress.yaml` — NGINX Ingress with WebSocket support.
 
 Apply them from the repo root:
 
 ```bash
-kubectl apply -f k8s/
+kubectl apply -f infra/k8s/
 ```
 
 Then:
@@ -567,7 +567,7 @@ Recommendations to scale across replicas and regions:
     - Or configure *sticky sessions* at the LB level so the same client stays
       on the same replica for the duration of the session.
   - Prometheus metrics should be aggregated by `job` / `instance` to obtain a
-    cluster‑wide view; the example dashboard (`grafana/tcm_dashboard.json`)
+    cluster‑wide view; the example dashboard (`infra/grafana/tcm_dashboard.json`)
     can be adapted by adding filters per instance label.
 
 - **Multi-region:**
@@ -591,7 +591,7 @@ automated tests:
 1. **Multi-replica (single region):**
    - Deploy at least 2 replicas of the Kubernetes Deployment or 2 identical
      containers behind the same load balancer.
-   - Connect several clients (for example using `MANAGER/devtools/ws_client.py`
+   - Connect several clients (for example using `apps/manager/devtools/ws_client.py`
      or the `TcmWebSocketClient` SDK) and verify:
      - That `auth` + `info.queue_stats` behave consistently.
      - That metrics from each instance (`tcm_ws_connections_total`,
@@ -614,7 +614,7 @@ automated tests:
 
 The main state is external (OpenStack, Docker, Triton). The manager itself is mostly **stateless**, but you should still protect:
 
-- `MANAGER/config/*.yaml`
+- `apps/manager/config/*.yaml`
 - Any TLS keys or certificates referenced from config
 
 ### Backup
@@ -622,7 +622,7 @@ The main state is external (OpenStack, Docker, Triton). The manager itself is mo
 - **Filesystem backup**:
 
   ```bash
-  tar czf triton_client_manager-config-$(date +%F).tar.gz MANAGER/config
+  tar czf triton_client_manager-config-$(date +%F).tar.gz apps/manager/config
   ```
 
 - **Kubernetes**:
@@ -640,13 +640,13 @@ tar xzf triton_client_manager-config-YYYY-MM-DD.tar.gz -C /var/www/triton_client
  
 ## Deploying to Kubernetes
 
-This section describes how to deploy Triton Client Manager to Kubernetes using the reference manifests under `k8s/` and how to verify that the Horizontal Pod Autoscaler (HPA) is working as expected.
+This section describes how to deploy Triton Client Manager to Kubernetes using the reference manifests under `infra/k8s/` and how to verify that the Horizontal Pod Autoscaler (HPA) is working as expected.
 
-### Manifests overview (`k8s/`)
+### Manifests overview (`infra/k8s/`)
 
-The `k8s/` directory contains a minimal but production‑oriented example:
+The `infra/k8s/` directory contains a minimal but production‑oriented example:
 
-- `k8s/deployment.yaml`
+- `infra/k8s/deployment.yaml`
   - `Deployment` for `triton-client-manager` with:
     - Container image (for example `ghcr.io/triton-client-manager/triton-client-manager:latest`).
     - `readinessProbe` on `GET /ready`.
@@ -655,10 +655,10 @@ The `k8s/` directory contains a minimal but production‑oriented example:
   - `HorizontalPodAutoscaler` (`triton-client-manager-hpa`) targeting the Deployment:
     - `minReplicas` / `maxReplicas` for the manager.
     - CPU utilization target (for example `averageUtilization: 70`).
-- `k8s/service.yaml`
+- `infra/k8s/service.yaml`
   - `Service` exposing the manager pods on port `80` (or `8000`) and targeting container port `8000`.
   - Label selector `app: triton-client-manager`, shared with the Deployment and Ingress.
-- `k8s/ingress.yaml`
+- `infra/k8s/ingress.yaml`
   - `Ingress` for `triton-client-manager`:
     - Host rule (for example `tcm.example.com`).
     - Path `/` routing to the `triton-client-manager` Service on HTTP.
@@ -671,7 +671,7 @@ Treat these manifests as a starting point: copy them into your own repo and adju
 From the project root:
 
 ```bash
-kubectl apply -f k8s/
+kubectl apply -f infra/k8s/
 ```
 
 This command will:

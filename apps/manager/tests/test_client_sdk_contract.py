@@ -1,14 +1,14 @@
 """
 Contract tests for the Python WebSocket SDK used against the local ws_server.
 
-These tests ensure that the examples in sdk/README.md and
-MANAGER/_______WEBSOCKET/README.md remain valid against the actual server
-implementation and the contract documented in docs/WEBSOCKET_API.md.
+These tests ensure that the examples in ``sdk/README.md`` remain valid against
+the actual server implementation and the contract documented in
+``docs/WEBSOCKET_API.md``.
 """
 
 import pytest
 
-from _______WEBSOCKET.sdk import (
+from ws_sdk.sdk import (
     AuthContext,
     TcmWebSocketClient,
     quickstart_queue_stats,

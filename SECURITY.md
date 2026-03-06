@@ -38,7 +38,7 @@ If you discover a security vulnerability in this project, please report it **res
 
 - Never commit API keys, passwords, tokens, or credentials.
 - Use environment variables or secure secret stores for runtime secrets.
-- Config files in `MANAGER/config/` may contain placeholders; replace with real values only in deployment environments.
+- Config files in `apps/manager/config/` may contain placeholders; replace with real values only in deployment environments.
 - **SSH keys (`.pem`)**: Never commit private keys. `*.pem` files are in `.gitignore`. Use environment variables or a secret manager (for example `SSH_KEY_PATH`) to supply key paths at runtime.
 
 ---
@@ -47,14 +47,14 @@ If you discover a security vulnerability in this project, please report it **res
 
 - Credentials for OpenStack, Docker registry, MinIO / S3, Triton, and similar services must be supplied at runtime (env vars, secret manager, CI secrets).
 - Avoid logging credentials, tokens, or full request/response payloads that may contain sensitive data.
-- Review `MANAGER/config/` before committing to ensure no accidental credential inclusion.
+- Review `apps/manager/config/` before committing to ensure no accidental credential inclusion.
 
 ### WebSocket auth tokens
 
 - The WebSocket entrypoint (`/ws`) accepts an `auth` message whose
   `payload.token` is a JWT-like token issued by your IdP.
 - The runtime exposes two high‑level modes, configured via
-  `MANAGER/config/websocket.yaml`:
+  `apps/manager/config/websocket.yaml`:
   - `auth.mode: "simple"` (default): the server treats the token as opaque and
     can only require its presence (`require_token`). Use this in development
     or when cryptographic validation happens upstream (API gateway, IdP,
@@ -84,7 +84,7 @@ If you discover a security vulnerability in this project, please report it **res
 
 ## Dependency Hygiene
 
-- Keep dependencies in `MANAGER/requirements.txt` and `MANAGER/requirements-test.txt` up to date.
+- Keep dependencies in `apps/manager/requirements.txt` and `apps/manager/requirements-test.txt` up to date.
 - Run `pip list --outdated` periodically and review upgrade notes before bumping versions.
 - Pin or range-lock versions where stability matters (for example `uvicorn` and other infra components, see `docs/CONFIGURATION.md`).
 

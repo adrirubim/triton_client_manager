@@ -1,6 +1,6 @@
 # Configuration
 
-Reference for `MANAGER/config/*.yaml`.
+Reference for `apps/manager/config/*.yaml`.
 
 ---
 
@@ -29,7 +29,7 @@ Reference for `MANAGER/config/*.yaml`.
 ## Runtime Assumptions
 
 - Config files are loaded relative to the current working directory.
-- `client_manager.py` expects to run with CWD = `MANAGER` (or `config/` reachable).
+- `client_manager.py` expects to run with CWD = `apps/manager` (or `config/` reachable).
 - Paths in config (e.g. for keys, models) are relative to CWD unless absolute.
 
 ## jobs.yaml

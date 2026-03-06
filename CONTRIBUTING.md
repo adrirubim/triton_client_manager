@@ -21,7 +21,7 @@ Always validate locally with the same steps that CI will run.
 Runtime validation with mocks (JobThread, WebSocket, auth, info):
 
 ```bash
-cd MANAGER
+cd apps/manager
 .venv/bin/python tests/smoke_runtime.py
 ```
 
@@ -30,14 +30,14 @@ cd MANAGER
 Unit tests for DI, deletion, auth, inference, and config:
 
 ```bash
-cd MANAGER
+cd apps/manager
 .venv/bin/python -m unittest tests.test_regression -v
 ```
 
 ### 3. Full test suite (pytest)
 
 ```bash
-cd MANAGER
+cd apps/manager
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt -r requirements-test.txt
@@ -50,7 +50,7 @@ Requires: `pip install -r requirements-test.txt` (pytest, pytest-asyncio, websoc
 The server is started automatically by a session-scoped fixture:
 
 ```bash
-cd MANAGER
+cd apps/manager
 .venv/bin/pytest tests/test_integration_ws.py -v
 ```
 
@@ -59,7 +59,7 @@ Alternative: `python tests/smoke_runtime.py --with-ws-client` (standalone, no py
 ### 5. Compilation check
 
 ```bash
-cd MANAGER
+cd apps/manager
 .venv/bin/python -m py_compile client_manager.py
 .venv/bin/python -m compileall -q classes utils
 ```
@@ -73,7 +73,7 @@ Continuous integration should run at least the regression suite and a subset of 
 To update all packages to the latest stable versions:
 
 ```bash
-cd MANAGER
+cd apps/manager
 .venv/bin/pip install -r requirements.txt -r requirements-test.txt --upgrade
 ```
 
@@ -85,7 +85,7 @@ Run smoke and regression tests afterward to verify.
 
 - Update `docs/` when changing architecture, API contracts, configuration, or operations.
 - Update `docs/CHANGELOG_INTERNAL.md` for notable internal changes.
-- Keep `MANAGER/README.md` as a slim quick-start; move detailed content to `docs/`.
+- Keep `apps/manager/README.md` as a slim quick-start; move detailed content to `docs/`.
 
 ---
 

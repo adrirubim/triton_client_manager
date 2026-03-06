@@ -398,7 +398,14 @@ class JobThread(threading.Thread):
                 # Do not log the concrete user identifier here; only that a
                 # queue was created. More detailed per-user traces should be
                 # added in upstream systems if required.
-                logger.info("Created per-user queue")
+                logger.info(
+                    "Created per-user queue",
+                    extra={
+                        "client_uuid": "-",
+                        "job_id": "-",
+                        "job_type": "queue_create",
+                    },
+                )
             return queue_dict[user_id]
 
     # ------------ INFO ------------

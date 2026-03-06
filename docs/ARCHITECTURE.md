@@ -42,14 +42,14 @@ Each thread must report ready before the next starts. Failure raises `TimeoutErr
 | Module | Responsibility |
 |--------|----------------|
 | `client_manager.py` | Entry point; loads config, wires dependencies, starts threads |
-| `classes/websocket/` | WebSocket server (FastAPI/uvicorn), auth, type validation, `send_to_client`, `/health`, `/ready`, `/metrics` |
-| `classes/job/` | Per-user queues, routing by type (info, management, inference) |
-| `classes/job/info/` | Info requests (e.g. `queue_stats`) |
-| `classes/job/management/` | VM, container, Triton creation/deletion pipelines |
-| `classes/job/inference/` | Inference to Triton (HTTP implemented; gRPC path experimental/incomplete) |
-| `classes/openstack/` | Auth, info, VM creation/deletion |
-| `classes/docker/` | Container creation/deletion on OpenStack VMs |
-| `classes/triton/` | Triton server lifecycle, health checks, inference clients |
+| `tcm/websocket/` | WebSocket server (FastAPI/uvicorn), auth, type validation, `send_to_client`, `/health`, `/ready`, `/metrics` |
+| `tcm/job/` | Per-user queues, routing by type (info, management, inference) |
+| `tcm/job/info/` | Info requests (e.g. `queue_stats`) |
+| `tcm/job/management/` | VM, container, Triton creation/deletion pipelines |
+| `tcm/job/inference/` | Inference to Triton (HTTP implemented; gRPC path experimental/incomplete) |
+| `tcm/openstack/` | Auth, info, VM creation/deletion |
+| `tcm/docker/` | Container creation/deletion on OpenStack VMs |
+| `tcm/triton/` | Triton server lifecycle, health checks, inference clients |
 | `utils/bounded_executor.py` | ThreadPool with bounded queue (backpressure) |
 | `utils/metrics.py` | Prometheus metrics for WebSocket and job queues/executors |
 
@@ -146,7 +146,7 @@ High-level design:
 |------|------------|
 | **Startup order** | Triton starts before Docker; adjust if Triton depends on containers |
 | **Alerts** | OpenStack/Docker/Triton use `send_to_first_client`; with multiple clients, alerts go to the first connected client only |
-| **Working directory** | `client_manager.py` loads `config/*.yaml` relative to CWD; run from `MANAGER` so `config/` is resolvable |
+| **Working directory** | `client_manager.py` loads `config/*.yaml` relative to CWD; run from `apps/manager` so `config/` is resolvable |
 | **Backpressure** | `JobThread` uses `BoundedThreadPoolExecutor` and per‑user bounded queues; if queues or executors fill, jobs are rejected and warnings are logged — monitor `/metrics` gauges for saturation |
 | **Metrics collection** | `/metrics` calls `get_queue_stats`; failures in stats collection are swallowed to keep the endpoint available, but may temporarily expose stale zeros for some gauges |
 

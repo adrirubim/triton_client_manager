@@ -26,6 +26,6 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
 
 

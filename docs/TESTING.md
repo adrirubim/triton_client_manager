@@ -24,7 +24,7 @@ Canonical source of truth for test execution and coverage.
 
 | Field | Value |
 |-------|-------|
-| **File** | `MANAGER/tests/smoke_runtime.py` |
+| **File** | `apps/manager/tests/smoke_runtime.py` |
 | **Purpose** | Runtime validation of core startup and WebSocket flow |
 
 Uses mocks for OpenStack, Docker, Triton. Verifies:
@@ -38,7 +38,7 @@ Uses mocks for OpenStack, Docker, Triton. Verifies:
 **Run:**
 
 ```bash
-cd MANAGER
+cd apps/manager
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt -r requirements-test.txt
@@ -53,7 +53,7 @@ pip install -r requirements.txt -r requirements-test.txt
 
 | Field | Value |
 |-------|-------|
-| **File** | `MANAGER/tests/test_regression.py` |
+| **File** | `apps/manager/tests/test_regression.py` |
 | **Purpose** | Unit tests for DI, contracts, config |
 
 **Covers** (the suite aims to verify):
@@ -69,7 +69,7 @@ pip install -r requirements.txt -r requirements-test.txt
 **Run:**
 
 ```bash
-cd MANAGER
+cd apps/manager
 .venv/bin/python -m unittest tests.test_regression -v
 ```
 
@@ -79,7 +79,7 @@ cd MANAGER
 
 | Field | Value |
 |-------|-------|
-| **File** | `MANAGER/tests/test_integration_ws.py` |
+| **File** | `apps/manager/tests/test_integration_ws.py` |
 | **Purpose** | Multi-client WebSocket auth and info flow |
 
 Requires: `pip install -r requirements-test.txt` (pytest, pytest-asyncio, websockets, httpx). The server is started automatically by a session-scoped fixture.
@@ -87,7 +87,7 @@ Requires: `pip install -r requirements-test.txt` (pytest, pytest-asyncio, websoc
 **Run:**
 
 ```bash
-cd MANAGER
+cd apps/manager
 .venv/bin/pytest tests/test_integration_ws.py -v
 ```
 
@@ -104,7 +104,7 @@ leaked into logs under backpressure scenarios (`info`, `management`,
 `inference` queues full):
 
 ```bash
-cd MANAGER
+cd apps/manager
 . .venv/bin/activate
 python -m pytest tests/test_security_logging.py -v
 ```
@@ -118,7 +118,7 @@ payload and asserts that they never appear in log messages emitted by
 To run the full pytest suite with coverage over the core modules (`classes`, `utils`, `client_manager`) and see a terminal summary:
 
 ```bash
-cd MANAGER
+cd apps/manager
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt -r requirements-test.txt
@@ -126,10 +126,10 @@ pip install -r requirements.txt -r requirements-test.txt
 .venv/bin/pytest --cov=classes --cov=utils --cov=client_manager --cov-report=term-missing
 ```
 
-To generate an HTML coverage report (written to `MANAGER/htmlcov/index.html`):
+To generate an HTML coverage report (written to `apps/manager/htmlcov/index.html`):
 
 ```bash
-cd MANAGER
+cd apps/manager
 source .venv/bin/activate
 
 .venv/bin/pytest --cov=classes --cov=utils --cov=client_manager --cov-report=html
@@ -140,7 +140,7 @@ source .venv/bin/activate
 CI runs **Ruff** and **Black** on every push and pull request. You should run the same checks locally:
 
 ```bash
-cd MANAGER
+cd apps/manager
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt -r requirements-test.txt
@@ -161,7 +161,7 @@ These tools come from `requirements-test.txt` and are required for CI to pass.
 Full verification flow (recommended after upgrades or dependency changes):
 
 ```bash
-cd MANAGER
+cd apps/manager
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt -r requirements-test.txt

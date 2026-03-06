@@ -7,7 +7,7 @@ This directory contains the main Python application. **Full documentation is in 
 ### Quick commands
 
 ```bash
-# From MANAGER/
+# From apps/manager/
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt

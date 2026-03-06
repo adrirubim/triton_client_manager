@@ -9,11 +9,11 @@ docs/internal/
 
 # Sensitive keys (never commit)
 *.pem
-MANAGER/config/*.pem
-MANAGER/___openstack___/openstack_*
-MANAGER/___openstack___/docker-vm/auto-update/config.yaml
-MANAGER/config/openstack.yaml
-MANAGER/config/openstack.local.yaml
+apps/manager/config/*.pem
+apps/manager/openstack_tools/openstack_*
+apps/manager/openstack_tools/docker-vm/auto-update/config.yaml
+apps/manager/config/openstack.yaml
+apps/manager/config/openstack.local.yaml
 _TRITON_ML
 MODEL_CONVERSION
 
@@ -28,7 +28,7 @@ __pycache__/
 dist/
 build/
 
-# Virtual environments (create inside MANAGER/ only)
+# Virtual environments (create inside apps/manager/ only)
 .venv/
 venv/
 .MOCK_SERVER/mockvenv
@@ -44,4 +44,4 @@ venv/
 Thumbs.db
 
 # Coverage / local infra (do not commit)
-MANAGER/.coverage
+apps/manager/.coverage

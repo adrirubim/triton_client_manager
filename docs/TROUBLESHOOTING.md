@@ -24,10 +24,10 @@ Common issues and fixes for Triton Client Manager.
 
 **Symptom:** `FileNotFoundError` for `config/jobs.yaml` or similar.
 
-**Fix:** Run from `MANAGER`:
+**Fix:** Run from `apps/manager`:
 
 ```bash
-cd MANAGER
+cd apps/manager
 python client_manager.py
 ```
 
@@ -38,7 +38,7 @@ python client_manager.py
 **Fix:** Create and activate venv:
 
 ```bash
-cd MANAGER
+cd apps/manager
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -61,15 +61,15 @@ sudo apt install python3.12-venv
 **Fix:** Install dependencies in the venv:
 
 ```bash
-cd MANAGER
+cd apps/manager
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-If you use `devtools/ws_client.py` or `_______WEBSOCKET/client.py`, ensure test dependencies are installed:
+If you use `devtools/ws_client.py`, ensure test dependencies are installed:
 
 ```bash
-cd MANAGER
+cd apps/manager
 pip install -r requirements-test.txt
 ```
 

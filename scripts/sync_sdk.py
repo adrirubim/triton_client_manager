@@ -5,7 +5,7 @@ Source of truth:
   - sdk/src/tcm_client/sdk.py
 
 Vendored wrapper (used by repo tests and internal examples):
-  - MANAGER/_______WEBSOCKET/sdk.py
+  - apps/manager/_______WEBSOCKET/sdk.py
 
 Usage:
   python3 scripts/sync_sdk.py
@@ -73,7 +73,7 @@ def main() -> int:
 
     repo_root = Path(__file__).resolve().parents[1]
     src = repo_root / "sdk" / "src" / "tcm_client" / "sdk.py"
-    dest = repo_root / "MANAGER" / "_______WEBSOCKET" / "sdk.py"
+    dest = repo_root / "apps" / "manager" / "_______WEBSOCKET" / "sdk.py"
 
     if not src.exists():
         raise SystemExit(f"Source not found: {src}")

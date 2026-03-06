@@ -9,7 +9,7 @@
 /docs/                   @adrirubim
 
 # Configuration (sensitive)
-/MANAGER/config/         @adrirubim
+/apps/manager/config/         @adrirubim
 
 # Application code
-/MANAGER/classes/        @adrirubim
+/apps/manager/classes/        @adrirubim

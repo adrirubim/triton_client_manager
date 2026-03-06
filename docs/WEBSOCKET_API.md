@@ -22,12 +22,8 @@ There you will find:
   - Structure `{"type": "error", "payload": {"message": "..."}}`.
   - WebSocket close codes (for example `1008`, `1009`) and typical causes.
 
-When you see references to `docs/WEBSOCKET_API.md` in this repository (for example in):
-
-- `docs/internal/PROJECT_STATES.md`
-- `MANAGER/_______WEBSOCKET/README.md`
-- Comments in `MANAGER/tests/test_client_sdk_contract.py`
-
+When you see references to `docs/WEBSOCKET_API.md` in this repository (for example in
+`docs/internal/PROJECT_STATES.md` or comments in `apps/manager/tests/test_client_sdk_contract.py`),
 you should treat them as a direct alias to `docs/API_CONTRACTS.md`.
 
 When in doubt, **always consider `API_CONTRACTS.md` as the most up‑to‑date
@@ -128,7 +124,7 @@ The server validates that:
 - `payload` is an object.
 - If `client` is present, it contains `sub`, `tenant_id`, and `roles` (list of
   strings).
-- Depending on configuration (`MANAGER/config/websocket.yaml` → `auth`), it may
+- Depending on configuration (`apps/manager/config/websocket.yaml` → `auth`), it may
   also enforce that `payload.token` is present and that it includes certain
   claims (`exp`, `aud`, `iss`).
 
@@ -504,9 +500,9 @@ An external integrator (frontend, other service) should, at minimum, follow this
 
 For functional client examples, see:
 
-- `MANAGER/_______WEBSOCKET/client.py` — minimal interactive client.
-- `MANAGER/_______WEBSOCKET/sdk.py` — lightweight SDK (`TcmWebSocketClient`) and quickstart helpers.
-- `MANAGER/_______WEBSOCKET/README.md` — “copy/paste and run” quickstart using the SDK.
+- `apps/manager/legacy_ws_examples/client.py` — minimal interactive client.
+- `apps/manager/ws_sdk/sdk.py` — lightweight SDK (`TcmWebSocketClient`) and quickstart helpers.
+- `apps/manager/legacy_ws_examples/README.md` — “copy/paste and run” quickstart using the SDK.
 
 ---
 
