@@ -78,4 +78,3 @@ if __name__ == "__main__":
     print("Make sure the server is running first!")
     print("-" * 50)
     asyncio.run(test_multiple_clients())
-

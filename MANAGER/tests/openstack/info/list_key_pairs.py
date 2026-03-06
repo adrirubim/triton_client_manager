@@ -21,4 +21,3 @@ response.raise_for_status()
 # Parse response
 data = response.json()
 pprint(data["keypairs"][0]["keypair"]["public_key"][0])
-

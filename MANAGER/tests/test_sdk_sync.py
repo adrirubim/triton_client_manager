@@ -17,4 +17,3 @@ def test_vendored_sdk_is_in_sync() -> None:
         text=True,
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
-

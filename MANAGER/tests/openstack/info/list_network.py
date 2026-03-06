@@ -23,4 +23,3 @@ exit()
 # Parse response
 data = response.json()
 pprint(data)
-
