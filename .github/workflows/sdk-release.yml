@@ -34,7 +34,7 @@ jobs:
           python -m build
 
       - name: Publish to PyPI
-        if: secrets.PYPI_TOKEN != ''
+        if: ${{ secrets.PYPI_TOKEN != '' }}
         working-directory: sdk
         env:
           PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
