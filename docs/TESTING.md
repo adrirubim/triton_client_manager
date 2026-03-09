@@ -64,7 +64,8 @@ pip install -r requirements.txt -r requirements-test.txt
 -- Inference example (`vm_id` in payload; see [API_CONTRACTS.md](API_CONTRACTS.md))
 -- `inspect_config` absent from advertised actions (test expects it to be removed)
 
-**Known failures** (historical, may no longer apply): `test_job_inference_instantiation`, `test_inference_example_uses_vm_ip`, `test_inspect_config_not_in_actions`.
+As of March 2026, the regression suite is expected to be **fully green**.  
+Historically, the tests `test_job_inference_instantiation`, `test_inference_example_uses_vm_ip`, and `test_inspect_config_not_in_actions` caught specific regressions, but they are now part of the normal guardrail: **any failure in these tests should be treated as a bug to fix, not as an accepted “known failure”**.
 
 **Run:**
 

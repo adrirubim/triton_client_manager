@@ -357,7 +357,7 @@ To experiment with metrics and the Grafana dashboard locally, you can use the
 Docker Compose stack under `infra/monitoring/`:
 
 ```bash
-cd monitoring
+cd infra/monitoring
 docker compose up -d
 ```
 
@@ -411,10 +411,10 @@ When responding to incidents or degradation, use this checklist:
 
 To validate horizontal scaling behaviour using Docker Compose:
 
-1. Build a manager image:
+1. Build a manager image (use an explicit version tag instead of `:latest` for anything beyond local experiments):
 
    ```bash
-   docker build -t your-registry/triton-client-manager:latest .
+   docker build -t your-registry/triton-client-manager:<version> .
    ```
 
 2. Start the multi-node environment:
@@ -515,14 +515,14 @@ RUN pip install --no-cache-dir -r requirements.txt
 CMD ["python", "client_manager.py"]
 ```
 
-Run with config mounted:
+Run with config mounted (use an explicit version tag rather than `:latest` in production):
 
 ```bash
 docker run -d \
   -v /var/www/triton_client_manager/apps/manager/config:/app/config:ro \
   -p 8000:8000 \
   --name triton-client-manager \
-  triton-client-manager:latest
+  triton-client-manager:<version>
 ```
 
 ### Kubernetes
@@ -648,7 +648,7 @@ The `infra/k8s/` directory contains a minimal but production‑oriented example:
 
 - `infra/k8s/deployment.yaml`
   - `Deployment` for `triton-client-manager` with:
-    - Container image (for example `ghcr.io/triton-client-manager/triton-client-manager:latest`).
+    - Container image (for example `ghcr.io/triton-client-manager/triton-client-manager:<version>` — avoid `:latest` in production).
     - `readinessProbe` on `GET /ready`.
     - `livenessProbe` on `GET /health`.
     - Resource `requests`/`limits` for CPU and memory.

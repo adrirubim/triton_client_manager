@@ -84,6 +84,13 @@ auth:
 - In all modes, the `client` block is validated structurally and is used for
   authorization (`roles`).
 
+> **Production guidance:** the `simple` mode with `require_token: false` is intended
+> only for controlled development or behind a strictly authenticated gateway. For
+> production and internet‑facing deployments, prefer `mode: "strict"` with either
+> `jwks_url` or `public_key_pem` configured so that JWT signatures are actually
+> verified, and set `require_token: true` unless your upstream explicitly guarantees
+> authentication on every request.
+
 ### `websocket.yaml` – rate_limits
 
 ```yaml
