@@ -450,19 +450,16 @@ cd apps/manager
 An official Python SDK is published for talking to the Triton Client Manager WebSocket API.
 
 - **Package name:** `tcm-client`  
-- **Index (current):** TestPyPI (`https://test.pypi.org/simple/`) – ready to be mirrored to PyPI when desired.
+- **Index:** PyPI (`https://pypi.org/project/tcm-client/`)
 
-Install from TestPyPI (preferring TestPyPI and falling back to PyPI for dependencies):
+Install from PyPI:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 
 python -m pip install --upgrade pip
-python -m pip install \
-  --index-url https://test.pypi.org/simple/ \
-  --extra-index-url https://pypi.org/simple \
-  tcm-client
+python -m pip install tcm-client
 ```
 
 Then use the SDK in your own code:

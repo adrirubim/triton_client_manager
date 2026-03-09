@@ -9,12 +9,19 @@ vendoring code from the server repository.
 
 ## Installation
 
-Install from TestPyPI (preferred index for this SDK at the moment):
+Install from PyPI:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 
+python -m pip install --upgrade pip
+python -m pip install tcm-client
+```
+
+For testing against TestPyPI (for example, when validating pre-releases), you can still use:
+
+```bash
 python -m pip install --upgrade pip
 python -m pip install \
   --index-url https://test.pypi.org/simple/ \
