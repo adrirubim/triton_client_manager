@@ -46,8 +46,8 @@ If you discover a security vulnerability in this project, please report it **res
 
 - Never commit API keys, passwords, tokens, or credentials.
 - Use environment variables or secure secret stores for runtime secrets.
-- Config files in `apps/manager/config/` may contain placeholders; replace with real values only in deployment environments.
-- **SSH keys (`.pem`)**: Never commit private keys. `*.pem` files are in `.gitignore`. Use environment variables or a secret manager (for example `SSH_KEY_PATH`) to supply key paths at runtime.
+- Config files in [`apps/manager/config/`](apps/manager/config/) may contain placeholders; replace with real values only in deployment environments.
+- **SSH keys (`.pem`)**: Never commit private keys. `*.pem` files are in [`.gitignore`](.gitignore). Use environment variables or a secret manager (for example `SSH_KEY_PATH`) to supply key paths at runtime.
 
 ---
 
@@ -55,14 +55,14 @@ If you discover a security vulnerability in this project, please report it **res
 
 - Credentials for OpenStack, Docker registry, MinIO / S3, Triton, and similar services must be supplied at runtime (env vars, secret manager, CI secrets).
 - Avoid logging credentials, tokens, or full request/response payloads that may contain sensitive data.
-- Review `apps/manager/config/` before committing to ensure no accidental credential inclusion.
+- Review [`apps/manager/config/`](apps/manager/config/) before committing to ensure no accidental credential inclusion.
 
 ### WebSocket auth tokens
 
 - The WebSocket entrypoint (`/ws`) accepts an `auth` message whose
   `payload.token` is a JWT-like token issued by your IdP.
 - The runtime exposes two high‑level modes, configured via
-  `apps/manager/config/websocket.yaml`:
+  [`apps/manager/config/websocket.yaml`](apps/manager/config/websocket.yaml):
   - `auth.mode: "simple"` (default): the server treats the token as opaque and
     can only require its presence (`require_token`). Use this in development
     or when cryptographic validation happens upstream (API gateway, IdP,
@@ -92,19 +92,23 @@ If you discover a security vulnerability in this project, please report it **res
 
 ## Dependency Hygiene
 
-- Keep dependencies in `apps/manager/requirements.txt` and `apps/manager/requirements-test.txt` up to date.
+- Keep dependencies in [`apps/manager/requirements.txt`](apps/manager/requirements.txt) and
+  [`apps/manager/requirements-test.txt`](apps/manager/requirements-test.txt) up to date.
 - Run `pip list --outdated` periodically and review upgrade notes before bumping versions.
-- Pin or range-lock versions where stability matters (for example `uvicorn` and other infra components, see `docs/CONFIGURATION.md`).
+- Pin or range-lock versions where stability matters (for example `uvicorn` and other infra components, see
+  [`docs/CONFIGURATION.md`](docs/CONFIGURATION.md)).
 
 ### Automated security checks (CI)
 
 - A dedicated **Security** GitHub Actions workflow runs on every push and pull request:
-  - **`pip-audit`** against `apps/manager/requirements.txt` and `apps/manager/requirements-test.txt`:
+  - **`pip-audit`** against [`apps/manager/requirements.txt`](apps/manager/requirements.txt) and
+    [`apps/manager/requirements-test.txt`](apps/manager/requirements-test.txt):
     - The build currently **fails if any vulnerability is detected**.
     - If an exception is ever needed, it must be:
       - Documented in the commit / pull request.
       - Justified in this `SECURITY.md` file (reason, affected package and version, planned mitigation).
-  - **`bandit`** SAST scan over `apps/manager/classes`, `apps/manager/utils`, and `apps/manager/client_manager.py` (tests excluded to reduce noise).
+  - **`bandit`** SAST scan over [`apps/manager/classes`](apps/manager/classes), [`apps/manager/utils`](apps/manager/utils), and
+    [`apps/manager/client_manager.py`](apps/manager/client_manager.py) (tests excluded to reduce noise).
 - This policy reflects the current stance: **no known vulnerabilities are accepted** in the main branch without an explicit, documented exception.
 
 ---
