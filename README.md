@@ -1,6 +1,6 @@
 # Triton Client Manager
 
-Production-ready orchestrator for OpenStack VMs, Docker containers, and NVIDIA Triton Inference Server. Python 3.12, FastAPI, and uvicorn with WebSocket job routing, per-user queues, and HTTP/gRPC inference endpoints for AI workloads.
+Python-based orchestration service for AI inference that coordinates OpenStack VMs, Docker containers, and NVIDIA Triton Inference Server via WebSockets. It provides per-user job queues, management pipelines (VM/container/server creation & deletion), and HTTP/gRPC inference endpoints.
 
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-3776AB?logo=python&logoColor=white)](https://www.python.org/) [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/) [![Uvicorn](https://img.shields.io/badge/Uvicorn-0.30+-499848)](https://www.uvicorn.org/) [![Docker](https://img.shields.io/badge/Docker-24+-2496ED?logo=docker&logoColor=white)](https://www.docker.com/) [![Triton Client](https://img.shields.io/badge/Triton_Client-2.65-76B900)](https://github.com/triton-inference-server/client) [![Tests](https://github.com/adrirubim/triton_client_manager/actions/workflows/tests.yml/badge.svg)](https://github.com/adrirubim/triton_client_manager/actions/workflows/tests.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
