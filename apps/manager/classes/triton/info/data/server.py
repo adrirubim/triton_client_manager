@@ -1,6 +1,6 @@
+import logging
 from dataclasses import dataclass, field
 from typing import Union
-import logging
 
 import tritonclient.grpc as grpcclient
 import tritonclient.http as httpclient
