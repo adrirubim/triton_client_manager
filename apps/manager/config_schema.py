@@ -89,5 +89,3 @@ class TritonConfig(BaseModel):
     http_infer_timeout: PositiveInt
 
     model_config = ConfigDict(extra="allow")
-
-

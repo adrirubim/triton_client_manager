@@ -3,14 +3,15 @@ from typing import Final
 
 import pytest
 
-
 RUN_REAL: Final[bool] = os.getenv("TCM_RUN_REAL_BACKENDS") == "1"
 
 
 def _require_env(var_name: str) -> str:
     value = os.getenv(var_name)
     if not value:
-        pytest.skip(f"missing required env var {var_name!r} for real backend integration")
+        pytest.skip(
+            f"missing required env var {var_name!r} for real backend integration"
+        )
     return value
 
 
@@ -48,4 +49,3 @@ def test_real_backends_smoke_pipeline():
     #  - verificar status COMPLETED y datos mínimamente coherentes
 
     assert manager_ws and model_name
-

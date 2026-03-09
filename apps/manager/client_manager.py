@@ -79,7 +79,9 @@ class ClientManager:
             self.config_websocket["auth"] = auth_cfg
 
         # Detect HS* usage in non‑dev environments and refuse to start.
-        uses_hs = any(isinstance(a, str) and a.upper().startswith("HS") for a in algorithms)
+        uses_hs = any(
+            isinstance(a, str) and a.upper().startswith("HS") for a in algorithms
+        )
         if env in {"staging", "production"} and uses_hs and public_key_pem:
             UNSAFE_CONFIG_STARTUPS_TOTAL.labels(
                 reason="hs_algorithm_in_non_dev_env",
