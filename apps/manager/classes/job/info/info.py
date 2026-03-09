@@ -75,4 +75,6 @@ class JobInfo:
                     }
                     self.websocket(msg_uuid, error_result)
             except Exception as send_err:
-                print(f"[Error] JobInfo.handle_info: failed to send error response: {send_err}")
+                print(
+                    f"[Error] JobInfo.handle_info: failed to send error response: {send_err}"
+                )
