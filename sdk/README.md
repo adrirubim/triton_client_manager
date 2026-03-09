@@ -9,6 +9,10 @@ vendoring code from the server repository.
 
 ## Installation
 
+PyPI: https://pypi.org/project/tcm-client/
+
+Supported Python versions: **3.10 – 3.12**.
+
 Install from PyPI:
 
 ```bash
