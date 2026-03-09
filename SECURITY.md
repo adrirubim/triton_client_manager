@@ -88,6 +88,17 @@ If you discover a security vulnerability in this project, please report it **res
 - Run `pip list --outdated` periodically and review upgrade notes before bumping versions.
 - Pin or range-lock versions where stability matters (for example `uvicorn` and other infra components, see `docs/CONFIGURATION.md`).
 
+### Automated security checks (CI)
+
+- A dedicated **Security** GitHub Actions workflow runs on every push and pull request:
+  - **`pip-audit`** against `apps/manager/requirements.txt` and `apps/manager/requirements-test.txt`:
+    - The build currently **fails if any vulnerability is detected**.
+    - If an exception is ever needed, it must be:
+      - Documented in the commit / pull request.
+      - Justified in this `SECURITY.md` file (reason, affected package and version, planned mitigation).
+  - **`bandit`** SAST scan over `apps/manager/classes`, `apps/manager/utils`, and `apps/manager/client_manager.py` (tests excluded to reduce noise).
+- This policy reflects the current stance: **no known vulnerabilities are accepted** in the main branch without an explicit, documented exception.
+
 ---
 
 ## Logging and Debugging Caution

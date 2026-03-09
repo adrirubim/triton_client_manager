@@ -1,0 +1,50 @@
+name: Security
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  dependency-and-code-security:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies for apps/manager
+        working-directory: apps/manager
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-test.txt
+
+      - name: Install security tooling
+        run: |
+          python -m pip install pip-audit bandit
+
+      - name: Dependency vulnerability scan (pip-audit)
+        working-directory: apps/manager
+        run: |
+          # Audit direct dependencies as declared in requirements files.
+          # The build fails if ANY vulnerability is found. If an exception is
+          # required, it must be justified and handled via explicit ignore rules.
+          pip-audit -r requirements.txt -r requirements-test.txt
+
+      - name: Static application security testing (Bandit)
+        working-directory: apps/manager
+        run: |
+          # Recursively scan application code; tests are excluded to reduce noise.
+          bandit -r classes utils client_manager.py -x tests
+

@@ -307,7 +307,7 @@ python3 tests/smoke_runtime.py
 python3 -m unittest tests.test_regression -v
 ```
 
-You can mirror this flow in workflows such as [tests.yml](.github/workflows/tests.yml) and [lint.yml](.github/workflows/lint.yml) to keep the main branch healthy.
+You can mirror this flow in workflows such as [tests.yml](.github/workflows/tests.yml), [lint.yml](.github/workflows/lint.yml), and [security.yml](.github/workflows/security.yml) to keep the main branch healthy (including dependency and SAST security checks).
 
 ---
 
