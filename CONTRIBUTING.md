@@ -1,6 +1,6 @@
 # Contributing to Triton Client Manager
 
-Thank you for your interest in contributing to this project. Please read this guide and the main `README` before opening pull requests.
+Thank you for your interest in contributing to this project. Please read this guide and the main [README](README.md) before opening pull requests.
 
 ---
 
@@ -66,6 +66,28 @@ cd apps/manager
 
 Continuous integration should run at least the regression suite and a subset of pytest on pull requests. Smoke and integration tests are recommended locally before pushing.
 
+### 6. Integration tests with real backends (optional / CI nightly)
+
+For teams with access to **real OpenStack/Docker/Triton backends**, there is an additional pytest module and workflow:
+
+- File: [apps/manager/tests/test_integration_backends.py](apps/manager/tests/test_integration_backends.py)
+- Workflow: [.github/workflows/integration-backends.yml](.github/workflows/integration-backends.yml)
+
+By default these tests are **skipped**. They only run when:
+
+- `TCM_RUN_REAL_BACKENDS=1` is defined in the environment, and
+- the environment variables `TCM_REAL_MANAGER_WS_URL` and `TCM_REAL_MODEL_NAME` are set (and, if applicable, a real auth token).
+
+To run locally:
+
+```bash
+cd apps/manager
+export TCM_RUN_REAL_BACKENDS=1
+.venv/bin/pytest tests/test_integration_backends.py -v
+```
+
+See `docs/TESTING.md` for details and recommended usage in CI.
+
 ---
 
 ## Dependencies
@@ -81,11 +103,25 @@ Run smoke and regression tests afterward to verify.
 
 ---
 
+## Linting and Formatting
+
+Before opening a pull request, run the same linters that CI uses:
+
+```bash
+cd apps/manager
+.venv/bin/ruff check .
+.venv/bin/black .
+```
+
+Fix any reported issues before pushing.
+
+---
+
 ## Documentation
 
-- Update `docs/` when changing architecture, API contracts, configuration, or operations.
-- Update `docs/CHANGELOG_INTERNAL.md` for notable internal changes.
-- Keep `apps/manager/README.md` as a slim quick-start; move detailed content to `docs/`.
+- Update [`docs/`](docs/) when changing architecture, API contracts, configuration, or operations.
+- Update [`docs/CHANGELOG_INTERNAL.md`](docs/CHANGELOG_INTERNAL.md) for notable internal changes.
+- Keep [`apps/manager/README.md`](apps/manager/README.md) as a slim quick-start; move detailed content to `docs/`.
 
 ---
 
@@ -100,4 +136,4 @@ Run smoke and regression tests afterward to verify.
 
 ## Questions
 
-- For questions or coordination, contact the maintainer (see `README` → Author).
+- For questions or coordination, contact the maintainer (see [README](README.md) → Author).
