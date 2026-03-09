@@ -98,6 +98,31 @@ cd apps/manager
 .venv/bin/python tests/smoke_runtime.py --with-ws-client
 ```
 
+## Integration tests with real backends (advanced / CI nightly)
+
+For environments where **real OpenStack/Docker/Triton backends** are available, a
+dedicated pytest module and CI workflow exist:
+
+- **File**: `apps/manager/tests/test_integration_backends.py`
+- **Workflow**: `.github/workflows/integration-backends.yml`
+
+By default, these tests are **skipped**. They only run when the environment
+variable `TCM_RUN_REAL_BACKENDS=1` is present (for example, configured as a
+`secret`/env in the runner that has access to the real backends).
+
+**Run locally (when you have real backends wired):**
+
+```bash
+cd apps/manager
+export TCM_RUN_REAL_BACKENDS=1
+.venv/bin/pytest tests/test_integration_backends.py -v
+```
+
+In a production‑like CI environment, the workflow `Integration Backends (nightly)`
+can be enabled to run nightly or on demand via `workflow_dispatch`. Teams with
+real infrastructure are expected to extend `test_integration_backends.py` to run
+full creation → inference → teardown flows and error scenarios.
+
 ## Security logging
 
 Minimal automated check to ensure that sensitive values in payloads are **not**

@@ -59,8 +59,8 @@ Reference for `apps/manager/config/*.yaml`.
 
 ```yaml
 auth:
-  mode: "simple"        # or "strict"
-  require_token: false  # if true, token is required even in simple mode
+  mode: "strict"        # or "simple" (only for dev / behind a strict gateway)
+  require_token: true   # recommended default; in dev you may relax it explicitly
   required_claims: []   # e.g. ["exp", "aud", "iss"]
   issuer: null          # expected `iss` claim (optional)
   audience: null        # expected `aud` claim (optional)
@@ -84,12 +84,13 @@ auth:
 - In all modes, the `client` block is validated structurally and is used for
   authorization (`roles`).
 
-> **Production guidance:** the `simple` mode with `require_token: false` is intended
-> only for controlled development or behind a strictly authenticated gateway. For
-> production and internet‑facing deployments, prefer `mode: "strict"` with either
-> `jwks_url` or `public_key_pem` configured so that JWT signatures are actually
-> verified, and set `require_token: true` unless your upstream explicitly guarantees
-> authentication on every request.
+> **Production guidance:** `mode: "strict"` + `require_token: true` is the
+> recommended default. The combination `mode: "simple"` and/or
+> `require_token: false` is meant only for controlled development environments
+> or when an upstream gateway already enforces strong authentication on every
+> request. For production and internet‑exposed deployments, always use
+> `mode: "strict"` with `jwks_url` or `public_key_pem` configured and avoid HS*
+> tokens outside of dev.
 
 ### `websocket.yaml` – rate_limits
 

@@ -1,3 +1,11 @@
+#### Recommended auth modes per environment
+
+| Environment | Recommended `auth.mode` | JWT signature                    | HS* tokens                                |
+|------------:|-------------------------|----------------------------------|-------------------------------------------|
+| `dev`       | `simple` or `strict`    | Optional                         | Allowed for local testing only            |
+| `staging`   | `strict`                | Required (JWKS/PEM)              | **Not allowed** (startup will fail)       |
+| `prod`      | `strict`                | Required (JWKS/PEM)              | **Not allowed** (startup will fail)       |
+
 # Security Policy
 
 ## Supported Versions

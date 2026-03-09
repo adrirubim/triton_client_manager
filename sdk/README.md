@@ -77,6 +77,22 @@ main WebSocket flows:
 The low-level JSON contracts for these flows are documented in
 `docs/WEBSOCKET_API.md` / `docs/API_CONTRACTS.md`.
 
+## AuthContext – best practices
+
+`AuthContext` encapsulates the identity of your integration:
+
+- In `staging`/`prod` environments, whenever possible:
+  - Set `sub` to the real user or service identifier.
+  - Set `tenant_id` when you have multi‑tenant scenarios.
+  - Use `roles` to reflect permissions (`["inference"]`, `["management"]`, etc.).
+- The `token` should be the same token issued by your IdP/API gateway:
+  - Either an opaque token validated upstream (with `auth.mode: "simple"` in the manager).
+  - Or a JWT whose signature is verified by the manager (`auth.mode: "strict"` + JWKS/PEM).
+- In development environments a synthetic or even empty `token` may be acceptable, but for
+  production you should:
+  - Integrate with your corporate IdP.
+  - Align `websocket.yaml` configuration with your token model (see `SECURITY.md`).
+
 ## Examples
 
 ### Management – creation flow

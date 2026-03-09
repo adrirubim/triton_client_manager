@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:<version>
     container_name: tcm-prometheus
     restart: unless-stopped
     volumes:
@@ -13,11 +13,14 @@ services:
       - "host.docker.internal:host-gateway"
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:<version>
     container_name: tcm-grafana
     restart: unless-stopped
     depends_on:
       - prometheus
+    # NOTE: These credentials are for **local development only**.
+    # For any shared/staging/production environment, override them via
+    # environment variables or secrets and never use admin/admin.
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin

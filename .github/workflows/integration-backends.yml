@@ -1,0 +1,37 @@
+name: Integration Backends (nightly)
+
+permissions:
+  contents: read
+
+on:
+  schedule:
+    - cron: "0 2 * * *" # nightly at 02:00 UTC
+  workflow_dispatch: {}
+
+jobs:
+  integration-backends:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        working-directory: apps/manager
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-test.txt
+
+      - name: Run integration tests against real backends (if enabled)
+        working-directory: apps/manager
+        env:
+          PYTHONPATH: .
+          TCM_RUN_REAL_BACKENDS: ${{ secrets.TCM_RUN_REAL_BACKENDS }}
+        run: |
+          python -m pytest tests/test_integration_backends.py -v
+

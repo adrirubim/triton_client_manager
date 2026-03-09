@@ -226,8 +226,11 @@ Additional security-related metrics:
 - `tcm_rate_limit_violations_total{scope=...}` — total rate limit violations,
   split by scope (`"messages"` for message floods; `"auth"` for too many
   failed authentication attempts).
+- `tcm_unsafe_config_startups_total{reason=...}` — startups where a potentially
+  unsafe configuration has been detected (for example,
+  `strict_without_signature_verification`, `hs_algorithm_in_non_dev_env`).
 
-### Operational playbooks (backpressure and dependency failures)
+### Operational playbooks (backpressure, dependency failures, unsafe configs)
 
 #### Queues saturated / backpressure active
 
@@ -272,6 +275,23 @@ Additional security-related metrics:
   - Adjust timeouts and retry policies according to OpenStack documentation.
   - For prolonged degradation, coordinate with SRE/infra teams and consider
     pausing creation flows until the platform stabilises.
+
+#### Unsafe configuration detected on startup
+
+- **Symptoms**:
+  - `tcm_unsafe_config_startups_total{reason="strict_without_signature_verification"}` > 0.
+  - `tcm_unsafe_config_startups_total{reason="hs_algorithm_in_non_dev_env"}` > 0 and the process may have failed to start.
+- **Actions**:
+  - Review `apps/manager/config/websocket.yaml`:
+    - For `strict_without_signature_verification`: ensure that `jwks_url` or
+      `public_key_pem` is always configured and consistent with your corporate
+      IdP in `staging`/`prod`.
+    - For `hs_algorithm_in_non_dev_env`: remove HS* algorithms from
+      `algorithms` or move that configuration to an isolated `dev` environment.
+  - Verify that the `TCM_ENV` variable correctly reflects the environment
+    (`development`, `staging`, `production`).
+  - Restart the manager after fixing the configuration and verify that the
+    metric no longer increases on subsequent startups.
 
 ## SLOs, Alerts, and Dashboards
 
@@ -373,8 +393,18 @@ Once the stack is up:
 - Access Prometheus at `http://localhost:9090` and verify that the
   `triton-client-manager` job scrapes `/metrics`.
 - Access Grafana at `http://localhost:3000` (default user/password
-  `admin`/`admin`), create a Prometheus datasource pointing to
-  `http://prometheus:9090` and import `infra/grafana/tcm_dashboard.json`.
+  `admin`/`admin` **for local development only**), create a Prometheus
+  datasource pointing to `http://prometheus:9090` and import
+  `infra/grafana/tcm_dashboard.json`.
+
+### Example vs Production (monitoring stack)
+
+| Aspect           | Local example (`infra/monitoring`)                      | Production / shared environment                               |
+|------------------|----------------------------------------------------------|----------------------------------------------------------------|
+| Grafana creds    | `GF_SECURITY_ADMIN_USER=admin`, `GF_SECURITY_ADMIN_PASSWORD=admin` | Strong credentials managed via secrets                         |
+| Ports            | `9090`, `3000` exposed on localhost                     | Ports and access restricted (VPN, ingress, firewalls)         |
+| Metrics source   | `apps/manager/dev_server.py` on `0.0.0.0:8000`          | Real manager deployment behind ingress/gateway                 |
+| Recommended use  | Demo / individual exploration                           | Operational/SRE validation; never use admin/admin in these envs |
 
 ### Day 2 operations checklist
 
@@ -443,8 +473,31 @@ To validate horizontal scaling behaviour using Docker Compose:
 
 5. If you are also running the monitoring stack (`infra/monitoring/docker-compose.yml`):
 
-   - Check in Prometheus that metrics from both instances aggregate correctly
+- Check in Prometheus that metrics from both instances aggregate correctly
      (for example `tcm_ws_connections_total` and `tcm_queue_total_queued`).
+
+## Backends integration pipelines (nightly)
+
+In addition to the lightweight smoke / integration tests described above, there
+is a dedicated **CI workflow** intended for heavier tests against real
+OpenStack/Docker/Triton backends:
+
+- Workflow: `.github/workflows/integration-backends.yml`
+- Test entrypoint: `apps/manager/tests/test_integration_backends.py`
+
+By default, this workflow is safe to enable in environments without real
+backends because the test module is skipped unless `TCM_RUN_REAL_BACKENDS=1`.
+In environments con infraestructura real, se recomienda:
+
+1. Configurar `TCM_RUN_REAL_BACKENDS=1` como variable de entorno/secret en el
+   runner que tenga acceso a OpenStack/Docker/Triton.
+2. Extender `test_integration_backends.py` con flujos end‑to‑end:
+   - creación de recursos → inferencia → teardown;
+   - escenarios de error típicos (timeouts de Triton, fallos de creación de VM,
+     credenciales erróneas, etc.).
+3. Activar el workflow `Integration Backends (nightly)` para que se ejecute
+   nightly o bajo demanda, y revisar métricas/logs resultantes como parte de la
+   validación operacional.
 
 ## Health and Readiness Probes
 

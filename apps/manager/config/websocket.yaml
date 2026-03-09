@@ -8,8 +8,11 @@ valid_types:
 max_message_bytes: 65536
 
 # Optional auth hardening configuration.
-# - mode: "simple"  -> no token claims enforced (default for dev/tests)
+# This file is intended as a **dev/local default**. For staging/prod, see
+# docs/CONFIGURATION.md and SECURITY.md and override these values via your own
+# config or environment-specific overlays.
 # - mode: "strict"  -> token required and validated according to claims below
+# - mode: "simple"  -> sin validación local de claims; usar solo en dev o detrás de gateway autenticado
 auth:
   mode: "simple"
   require_token: false

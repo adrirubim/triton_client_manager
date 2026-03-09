@@ -49,6 +49,13 @@ RATE_LIMIT_VIOLATIONS_TOTAL = Counter(
     registry=registry,
 )
 
+UNSAFE_CONFIG_STARTUPS_TOTAL = Counter(
+    "tcm_unsafe_config_startups_total",
+    "Total unsafe configuration patterns detected at startup",
+    ["reason"],
+    registry=registry,
+)
+
 # Job / backpressure metrics
 JOBS_REJECTED_TOTAL = Counter(
     "tcm_jobs_rejected_total",
