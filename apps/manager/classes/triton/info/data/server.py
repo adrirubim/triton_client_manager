@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from typing import Union
+import logging
 
 import tritonclient.grpc as grpcclient
 import tritonclient.http as httpclient
@@ -33,5 +34,7 @@ class TritonServer:
     def close(self) -> None:
         try:
             self.client.close()
-        except Exception:
-            pass
+        except Exception as exc:
+            logging.getLogger(__name__).warning(
+                "Error while closing Triton client in TritonServer.close: %s", exc
+            )
