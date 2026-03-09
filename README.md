@@ -288,6 +288,10 @@ All documentation lives under [docs/](docs/). The main index is [docs/README.md]
 | **Support**      | [TROUBLESHOOTING](docs/TROUBLESHOOTING.md) · [CHANGELOG_INTERNAL](docs/CHANGELOG_INTERNAL.md)                                                           |
 | **Policy**       | [CONTRIBUTING](CONTRIBUTING.md) · [SECURITY](SECURITY.md)                                                                                               |
 
+For a navigable, high-level overview, you can also use the
+[GitHub Wiki](https://github.com/adrirubim/triton_client_manager/wiki)
+(Home, Architecture, Configuration, Runbook, Testing, Version Stack, WebSocket API, SDK).
+
 ---
 
 <a id="cicd"></a>
