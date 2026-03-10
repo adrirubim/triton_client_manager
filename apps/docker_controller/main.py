@@ -18,11 +18,11 @@ def config_dict():
     config_path = os.path.join(os.getcwd(), "config.yaml")
     config = yaml.load(open(config_path, "r"), Loader=yaml.SafeLoader)
 
-    token = os.environ.get("GITLAB_TOKEN")
+    token = os.environ.get("REGISTRY_TOKEN")
     if not token:
-        raise ValueError("GITLAB_TOKEN environment variable is not set")
+        raise ValueError("REGISTRY_TOKEN environment variable is not set")
     config["token"] = token
-    config["token_name"] = os.environ.get("GITLAB_TOKEN_NAME", "docker-vm-pull-token")
+    config["token_name"] = os.environ.get("REGISTRY_TOKEN_NAME", "docker-vm-pull-token")
 
     return config
 

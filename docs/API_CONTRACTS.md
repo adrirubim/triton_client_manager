@@ -94,6 +94,19 @@ Supported `action` / `request_type`: `queue`, `queue_stats`. Other types return 
 
 **Actions:** `creation`, `deletion`, `create_vm`, `create_container`, `create_server`, `delete_server`, `delete_container`, `delete_vm` (from `management_actions_available` in `config/jobs.yaml`).
 
+### Idempotency and retries (management)
+
+- `management.creation` is **not guaranteed to be strictly idempotent** across all external failure modes (OpenStack, Docker, Triton), but the server applies **best-effort rollback**:
+  - if container creation fails, the VM is deleted;
+  - if Triton server creation fails, both container and VM are deleted where possible;
+  - failures in rollback are propagated as errors in the response payload.
+- `management.deletion` is **idempotent at the API level**:
+  - deleting an already-removed VM/container is treated as a no-op by the manager;
+  - errors from individual delete steps are aggregated and returned in a single `JobDeletionFailed` message.
+- Clients that need **at-least-once semantics** SHOULD:
+  - treat any non-`True` `status` as a signal to reconcile state (for example, list VMs/containers and re-issue a deletion with a normalized payload);
+  - log job identifiers and external resource IDs (`vm_id`, `container_id`) to avoid duplicate creates when retrying after unknown failures (network timeouts, connection drops).
+
 ## Deletion Payload
 
 Deletion accepts **flat** or **nested** payloads. Normalization rules:
@@ -172,8 +185,8 @@ Inference routes by `vm_id` and `container_id` (matches Triton server registrati
 
 ### Pipeline (multi‑model, HTTP)
 
-For simple, sequential multi‑model pipelines (A → B → C) sobre el mismo `vm_id` /
-`container_id`, el `payload` admite una clave `pipeline`:
+For simple, sequential multi‑model pipelines (A → B → C) sobre la **misma instancia** (`vm_id` /
+`container_id` y su `vm_ip` asociada), el `payload` admite una clave `pipeline`:
 
 ```json
 {
@@ -182,6 +195,7 @@ For simple, sequential multi‑model pipelines (A → B → C) sobre el mismo `v
   "payload": {
     "vm_id": "openstack-vm-uuid",
     "container_id": "docker-container-id",
+    "vm_ip": "10.0.0.1",
     "pipeline": [
       {
         "name": "encode",
@@ -219,7 +233,7 @@ For simple, sequential multi‑model pipelines (A → B → C) sobre el mismo `v
 
 Notas:
 
-- Todos los pasos del pipeline comparten `vm_id` y `container_id`.
+- Todos los pasos del pipeline comparten `vm_id`, `container_id` **y** `vm_ip`, que deben apuntar a la misma instancia Docker registrada.
 - Cada paso debe aportar sus propios `inputs`; el servidor no infiere
   automáticamente tipos ni formas a partir de la salida de pasos anteriores.
 - El campo `name` se utiliza como clave en la respuesta agregada; si se omite,

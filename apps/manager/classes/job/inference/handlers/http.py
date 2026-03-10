@@ -91,5 +91,5 @@ class JobInferenceHttp:
         )
         decoded = self.triton_inference.handle(server, request)
 
-        logger.info(" ✓ HTTP inference complete for model '{model_name}'")
+        logger.info(" ✓ HTTP inference complete for model '%s'", model_name)
         return decoded  # returned to handle_inference → sent as COMPLETED data

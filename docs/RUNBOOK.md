@@ -138,9 +138,8 @@ Before deploying to a shared environment (staging/production), verify:
      `OPENSTACK_AUTH_URL`, `OPENSTACK_APPLICATION_CREDENTIAL_ID`,
      `OPENSTACK_APPLICATION_CREDENTIAL_SECRET`, `OPENSTACK_REGION_NAME`,
      `OPENSTACK_VERIFY_SSL`.
-   - Docker/GitLab registry variables are set when using
-     `apps/docker_controller`:
-     `GITLAB_TOKEN`, `GITLAB_TOKEN_NAME`.
+   - Docker/registry variables are set when using `apps/docker_controller`:
+     `REGISTRY_TOKEN`, `REGISTRY_TOKEN_NAME`.
    - Optional MinIO/S3 variables are set if required:
      `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_REGION`.
 

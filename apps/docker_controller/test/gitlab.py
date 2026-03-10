@@ -15,12 +15,12 @@ def load_config():
     with open(config_path, "r") as f:
         config = yaml.load(f, Loader=yaml.SafeLoader)
 
-    token = os.environ.get("GITLAB_TOKEN")
+    token = os.environ.get("REGISTRY_TOKEN")
     if not token:
-        print("[ERROR] GITLAB_TOKEN environment variable is not set")
+        print("[ERROR] REGISTRY_TOKEN environment variable is not set")
         sys.exit(1)
     config["token"] = token
-    config["token_name"] = os.environ.get("GITLAB_TOKEN_NAME", "docker-vm-pull-token")
+    config["token_name"] = os.environ.get("REGISTRY_TOKEN_NAME", "docker-vm-pull-token")
 
     return config
 

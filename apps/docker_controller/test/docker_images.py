@@ -103,7 +103,7 @@ def test_list_images(client):
     except docker.errors.APIError as e:
         print(f"[ERROR] ✗ Failed to list images: {e}")
 
-def test_filter_gitlab_images(client, gitlab_registry="git2004.vsrv.one"):
+def test_filter_gitlab_images(client, gitlab_registry="registry.example.com"):
     """Filter and show only GitLab registry images"""
     print("\n" + "="*60)
     print(f"[TEST] Filtering GitLab Registry Images ({gitlab_registry})")

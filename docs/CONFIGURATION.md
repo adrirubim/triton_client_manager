@@ -200,8 +200,8 @@ The template covers at least:
 
 - `TCM_ENV` — runtime environment (`development`, `staging`, `production`).
 - `OPENSTACK_...` — auth URL, application credentials, region and SSL verify flag.
-- `GITLAB_TOKEN`, `GITLAB_TOKEN_NAME` — used by `apps/docker_controller` when
-  interacting with a GitLab container registry.
+- `REGISTRY_TOKEN`, `REGISTRY_TOKEN_NAME` — used by `apps/docker_controller` when
+  interacting with a remote container registry.
 - Optional `MINIO_...` variables for MinIO/S3-style storage, if you prefer to
   inject credentials via environment variables instead of payloads.
 - Variables de testing opcionales (`TCM_RUN_REAL_BACKENDS`, `TCM_REAL_MANAGER_WS_URL`, `TCM_REAL_MODEL_NAME`) usadas solo en entornos controlados para pruebas de integración con backends reales.
@@ -219,14 +219,14 @@ The template covers at least:
 | `OPENSTACK_APPLICATION_CREDENTIAL_SECRET` | OpenStack application credential secret                    | string  | staging / prod                 | yes\*    |
 | `OPENSTACK_REGION_NAME`      | OpenStack region name (e.g. `RegionOne`)                               | string  | staging / prod                 | yes\*    |
 | `OPENSTACK_VERIFY_SSL`       | Whether to verify SSL certificates when talking to OpenStack           | bool    | all (recommended `true` in prod) | optional (default `true`) |
-| `GITLAB_TOKEN`               | Token with permissions to read from the GitLab container registry      | string  | staging / prod (and some dev)  | yes\*\*  |
-| `GITLAB_TOKEN_NAME`          | Logical name for the pull token used by the Docker controller          | string  | staging / prod (and some dev)  | optional (required if `GITLAB_TOKEN` is used) |
+| `REGISTRY_TOKEN`             | Token with permissions to read from the remote container registry       | string  | staging / prod (and some dev)  | yes\*\*  |
+| `REGISTRY_TOKEN_NAME`        | Logical name for the pull token used by the Docker controller           | string  | staging / prod (and some dev)  | optional (required if `REGISTRY_TOKEN` is used) |
 | `MINIO_ACCESS_KEY`           | Access key for MinIO/S3-style storage                                  | string  | staging / prod (when used)     | optional |
 | `MINIO_SECRET_KEY`           | Secret key for MinIO/S3-style storage                                  | string  | staging / prod (when used)     | optional |
 | `MINIO_REGION`               | Region for MinIO/S3-style storage                                      | string  | staging / prod (when used)     | optional |
 
 \* Required only when using the OpenStack integration (full pipeline).  
-\*\* Required when `apps/docker_controller` needs to access a private GitLab container registry.
+\*\* Required when `apps/docker_controller` needs to access a private container registry (for example GitLab, GHCR, or an internal registry).
 
 ## Other Config Files
 

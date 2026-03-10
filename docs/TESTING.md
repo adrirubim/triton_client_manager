@@ -123,6 +123,59 @@ can be enabled to run nightly or on demand via `workflow_dispatch`. Teams with
 real infrastructure are expected to extend `test_integration_backends.py` to run
 full creation → inference → teardown flows and error scenarios.
 
+## Using `tcm-client-cli` in CI and local smoke tests
+
+The Python SDK `tcm-client` includes a small CLI, `tcm-client-cli`, that can be
+used for:
+
+- simple smoke tests (`auth` + `info.queue_stats`);
+- lightweight load tests feeding `/metrics`;
+- manual management and inference flows driven by JSON payloads.
+
+Typical usage:
+
+```bash
+python -m pip install tcm-client
+
+# Basic smoke: auth + info.queue_stats once
+tcm-client-cli --uri ws://127.0.0.1:8000/ws queue-stats
+
+# Or with environment variables (recommended in CI / shared envs):
+export TCM_WS_URI=ws://manager.example.com/ws
+export TCM_CLIENT_UUID=ci-smoke-client
+export TCM_CLIENT_TOKEN="opaque-or-jwt-token"
+export TCM_CLIENT_TENANT_ID="tenant-ci"
+export TCM_CLIENT_ROLES="inference,management"
+
+tcm-client-cli queue-stats
+
+# Small load test feeding /metrics (N requests, M concurrent tasks)
+tcm-client-cli queue-stats --repeat 50 --concurrency 5
+
+# Management flows (creation/deletion) from JSON payloads
+tcm-client-cli management --action creation --payload examples/management_creation.json
+tcm-client-cli management --action deletion --payload examples/management_deletion.json
+
+# Single HTTP inference using a JSON file with `inputs`
+tcm-client-cli inference-http \
+  --vm-id openstack-vm-uuid \
+  --container-id docker-container-id \
+  --model-name example-model \
+  --payload examples/inference_inputs.json
+```
+
+In CI, you can add an extra, fast validation step before running the full test
+suite, for example:
+
+```bash
+python -m pip install tcm-client
+tcm-client-cli queue-stats --repeat 10 --concurrency 2
+```
+
+This sends a small number of `info.queue_stats` requests and exercises both the
+WebSocket path and the metrics pipeline without requiring the full regression
+suite.
+
 ## Security logging
 
 Minimal automated check to ensure that sensitive values in payloads are **not**

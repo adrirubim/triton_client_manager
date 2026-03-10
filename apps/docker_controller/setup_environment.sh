@@ -21,8 +21,8 @@ echo "Setting up auto-update service..."
 # Write token to a root-owned env file that systemd will load
 sudo mkdir -p /etc/auto-update
 sudo tee /etc/auto-update/env > /dev/null <<EOF
-GITLAB_TOKEN=${GITLAB_TOKEN:?GITLAB_TOKEN environment variable must be set}
-GITLAB_TOKEN_NAME=${GITLAB_TOKEN_NAME:-docker-vm-pull-token}
+REGISTRY_TOKEN=${REGISTRY_TOKEN:?REGISTRY_TOKEN environment variable must be set}
+REGISTRY_TOKEN_NAME=${REGISTRY_TOKEN_NAME:-docker-vm-pull-token}
 EOF
 sudo chmod 600 /etc/auto-update/env
 

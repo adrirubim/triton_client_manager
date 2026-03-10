@@ -119,6 +119,19 @@ Dependencies are set by `ClientManager.setup()`:
 
 Deletion is best-effort: failures are collected and reported at the end.
 
+### Idempotency semantics (management)
+
+- **Creation (`JobCreation`)**
+  - orchestrates `create_vm` → `create_container` → `create_server` as a single pipeline;
+  - on container failure, attempts to delete the VM;
+  - on Triton/server failure, attempts to delete both container and VM;
+  - some failure modes (for example, partial success in external systems) cannot be perfectly rolled back, so callers SHOULD treat creation as **at-least-once** and reconcile state explicitly when responses indicate failure.
+- **Deletion (`JobDeletion`)**
+  - normalizes flat/nested deletion payloads into a single shape and invokes:
+    `delete_server` → `delete_container` → `delete_vm`;
+  - collects errors from individual steps into a single `JobDeletionFailed` message while still attempting all of them;
+  - is designed to be **idempotent at the API level**: repeated deletion requests for already-removed resources will either be treated as no-ops or reported as "not found" without corrupting internal state.
+
 ## Inference Flow
 
 High-level design:

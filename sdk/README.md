@@ -83,6 +83,17 @@ tcm-client-cli queue-stats
 
 # Small load test feeding /metrics (N requests, M concurrent tasks)
 tcm-client-cli queue-stats --repeat 50 --concurrency 5
+
+# Management flows (creation/deletion) from JSON payloads
+tcm-client-cli management --action creation --payload examples/management_creation.json
+tcm-client-cli management --action deletion --payload examples/management_deletion.json
+
+# Single HTTP inference using a JSON file with `inputs`
+tcm-client-cli inference-http \
+  --vm-id openstack-vm-uuid \
+  --container-id docker-container-id \
+  --model-name example-model \
+  --payload examples/inference_inputs.json
 ```
 
 Environment variables understood by the CLI:
@@ -93,6 +104,43 @@ Environment variables understood by the CLI:
 - `TCM_CLIENT_SUB` – subject (`sub`) claim; falls back to UUID when not set.
 - `TCM_CLIENT_TENANT_ID` – tenant/project identifier; defaults to `dev-tenant`.
 - `TCM_CLIENT_ROLES` – comma-separated roles, e.g. `inference,management`.
+
+## Versioning and compatibility policy
+
+The `tcm-client` SDK follows a **semantic versioning** model aligned with the
+WebSocket contracts documented in `docs/WEBSOCKET_API.md` and
+`docs/API_CONTRACTS.md` in the main repository:
+
+- **MAJOR (`X.0.0`)**:
+  - May introduce **backwards-incompatible** changes in the wire protocol or
+    in the public Python API exposed by `tcm_client`.
+  - Used when contracts in `docs/WEBSOCKET_API.md` / `docs/API_CONTRACTS.md`
+    change in a way that breaks existing clients (for example, removing or
+    renaming fields without a transition path).
+- **MINOR (`0.Y.0` / `X.Y.0`)**:
+  - Adds new capabilities in a **backwards-compatible** way (new optional
+    fields, new helper methods, additional CLI commands) while keeping existing
+    flows working unchanged.
+- **PATCH (`X.Y.Z`)**:
+  - Contains bug fixes, performance improvements, or documentation-only updates
+    that do not modify the public API or the expected behaviour of existing
+    methods.
+
+Each release documents:
+
+- the **minimum and maximum supported server versions** (or commit ranges) in
+  `CHANGELOG.md`; and
+- any **contract-changing server-side updates** that require a new MAJOR or
+  MINOR version on the SDK side.
+
+In general:
+
+- if you stay within the same **MAJOR** version of `tcm-client`, you can expect
+  to remain compatible with any server deployment that advertises support for
+  that MAJOR in its own release notes;
+- if you upgrade the server in a way that changes `docs/WEBSOCKET_API.md` or
+  `docs/API_CONTRACTS.md`, bump the SDK at least at the **MINOR** level and add
+  a short note in `CHANGELOG.md` describing the new expectations.
 
 ## API overview
 

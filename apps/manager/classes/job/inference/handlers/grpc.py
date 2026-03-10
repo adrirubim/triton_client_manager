@@ -62,5 +62,5 @@ class JobInferenceGrpc:
             on_chunk=lambda chunk: send("ONGOING", chunk),
         )
 
-        logger.info(" ✓ gRPC stream complete for model '{model_name}'")
+        logger.info(" ✓ gRPC stream complete for model '%s'", model_name)
         return None  # COMPLETED data is null — all content sent via ONGOING

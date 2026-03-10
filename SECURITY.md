@@ -57,6 +57,15 @@ If you discover a security vulnerability in this project, please report it **res
 - Avoid logging credentials, tokens, or full request/response payloads that may contain sensitive data.
 - Review [`apps/manager/config/`](apps/manager/config/) before committing to ensure no accidental credential inclusion.
 
+### Registry access tokens (`apps/docker_controller`)
+
+- The helper under `apps/docker_controller/` uses `REGISTRY_TOKEN` / `REGISTRY_TOKEN_NAME` to pull images from a remote container registry and push them into a local registry. The same pattern applies to GitLab, GHCR, Docker Hub, or any other provider, as long as the token has equivalent pull scopes.
+- In non-local environments:
+  - restrict the registry token to the minimal scope required to **read** container images (for example, `read_registry` in GitLab or the equivalent in your provider);
+  - avoid using tokens with admin or write scopes unrelated to image pulls;
+  - treat the token as sensitive even when only partially printed in local test scripts.
+- Rotate the registry token periodically y en cualquier sospecha de compromiso, y actualiza el entorno / gestor de secretos donde esté configurado.
+
 ### Example vs production stacks
 
 - The monitoring stack under `infra/monitoring/` (Prometheus + Grafana) is intended **only for local development**.

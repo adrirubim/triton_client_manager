@@ -17,6 +17,7 @@ Python-based orchestration service for AI inference that coordinates OpenStack V
 - [CI/CD](#cicd)
 - [Testing](#testing)
 - [Architecture](#architecture)
+- [Optional Tooling](#optional-tooling)
 - [Project status](#project-status)
 - [Default Users](#default-users-development)
 - [Useful Commands](#useful-commands)
@@ -229,8 +230,8 @@ pip install -r requirements.txt
   - `minio.yaml` (optional)
 - Set your environment-specific values (OpenStack URL, application credentials, Docker host, Triton defaults, MinIO, etc.).
 - Optionally, copy `.env.example` at the repository root to `.env` and fill in
-  the environment variables for your OpenStack, GitLab registry and MinIO/S3
-  credentials (`TCM_ENV`, `OPENSTACK_*`, `GITLAB_TOKEN`, `GITLAB_TOKEN_NAME`,
+  the environment variables for your OpenStack, container registry and MinIO/S3
+  credentials (`TCM_ENV`, `OPENSTACK_*`, `REGISTRY_TOKEN`, `REGISTRY_TOKEN_NAME`,
   `MINIO_*`, etc.).
 
 See [CONFIGURATION](docs/CONFIGURATION.md) for full details.
@@ -401,6 +402,36 @@ WebSocket → JobThread → JobInfo | JobManagement | JobInference
 | `tcm/minio/`          | (If present) MinIO / S3 integration for model storage           |
 
 For in-depth diagrams and contracts, see [ARCHITECTURE](docs/ARCHITECTURE.md) and [API_CONTRACTS](docs/API_CONTRACTS.md).
+
+---
+
+<a id="optional-tooling"></a>
+## 🧩 Optional Tooling
+
+This repository includes some **auxiliary tools** that are _not_ required to run
+Triton Client Manager and can be treated as pluggable examples:
+
+- `apps/docker_controller/`:
+  - periodic sync script that copies images from a **remote container registry**
+    into a **local registry** (by default `localhost:5000`);
+  - configured via `apps/docker_controller/config.yaml` (registry URL, project
+    identifier, local registry) and environment variables such as
+    `REGISTRY_TOKEN` / `REGISTRY_TOKEN_NAME` (variables de entorno genéricas
+    para autenticarse contra el registro remoto; puedes mapearlas a cualquier
+    proveedor de registro);
+  - safe to ignore if your deployments already use a different image promotion
+    flow (for example, GitHub Container Registry, Docker Hub, or an internal
+    registry managed elsewhere).
+
+If you decide to use `apps/docker_controller/` in your own environment, you
+should:
+
+- adapt `config.yaml` to point to your registry of choice; and
+- provide a **read-only** registry token with the minimum scope required to pull
+  images, as described in [SECURITY.md](SECURITY.md).
+
+Triton Client Manager’s **core behavior and CI** do not depend on this tooling;
+it exists purely as an optional helper for image lifecycle management.
 
 ---
 
