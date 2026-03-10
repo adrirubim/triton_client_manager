@@ -228,6 +228,10 @@ pip install -r requirements.txt
   - `triton.yaml`
   - `minio.yaml` (optional)
 - Set your environment-specific values (OpenStack URL, application credentials, Docker host, Triton defaults, MinIO, etc.).
+- Optionally, copy `.env.example` at the repository root to `.env` and fill in
+  the environment variables for your OpenStack, GitLab registry and MinIO/S3
+  credentials (`TCM_ENV`, `OPENSTACK_*`, `GITLAB_TOKEN`, `GITLAB_TOKEN_NAME`,
+  `MINIO_*`, etc.).
 
 See [CONFIGURATION](docs/CONFIGURATION.md) for full details.
 

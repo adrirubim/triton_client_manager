@@ -95,7 +95,7 @@ python3 -m pip install websockets
 |---------|--------------------------------------|------|
 | JobInfo | `(docker, openstack, websocket, get_queue_stats)` | |
 | JobManagement | `(docker, triton, openstack, websocket, management_actions_available=...)` | |
-| JobInference | `(triton, docker, openstack, websocket, inference_actions_available)` | |
+| JobInference | `(triton, docker, openstack, websocket)` | |
 
 If you see mismatches, check that the constructor definitions in the corresponding classes match these signatures. See [ARCHITECTURE.md](ARCHITECTURE.md) for the full dependency injection map.
 

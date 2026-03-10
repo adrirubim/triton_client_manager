@@ -23,7 +23,6 @@ class JobsConfig(BaseModel):
 
     info_actions_available: List[str]
     management_actions_available: List[str]
-    inference_actions_available: List[str]
 
     model_config = ConfigDict(extra="allow")
 

@@ -29,15 +29,11 @@ class JobInference:
         docker: "DockerThread",
         openstack: "OpenstackThread",
         websocket: Callable[[str, dict], bool],
-        inference_actions_available: list,
-    ):  # TODO remove actions avliable not needed ( remove even the row inside the confing and all related)
-
+    ):
         self.triton = triton
         self.docker = docker
         self.websocket = websocket
         self.openstack = openstack
-        # NOTE: inference_actions_available is currently unused; kept for backwards‑compat config.
-        self.inference_actions_available = inference_actions_available
 
         # Handlers are created lazily on first inference to support tests/mocks
         self._http: JobInferenceHttp | None = None

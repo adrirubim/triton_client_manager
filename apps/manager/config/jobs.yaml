@@ -19,4 +19,3 @@ queue_idle_threshold: 900
 
 info_actions_available: [queue]
 management_actions_available: [creation, deletion, create_vm, create_container, create_server, delete_server, delete_container, delete_vm]
-inference_actions_available: [grpc, http]

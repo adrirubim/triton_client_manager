@@ -11,7 +11,7 @@ Engineering changelog for Triton Client Manager. Not for product marketing.
 | Component | Change |
 |-----------|--------|
 | **JobManagement** | Constructor order `(docker, triton, openstack, websocket, management_actions_available)` |
-| **JobInference** | Constructor order updated to `(triton, docker, openstack, websocket, inference_actions_available)` and aligned with `JobThread` wiring |
+| **JobInference** | Constructor order updated to `(triton, docker, openstack, websocket)` and aligned with `JobThread` wiring (no extra config arguments) |
 | **JobInfo** | Constructor fixed to `(docker, openstack, websocket, get_queue_stats)` — no extra arguments |
 
 ### Deletion Payload Normalization

@@ -57,7 +57,7 @@ class TestJobHandlerInstantiation(unittest.TestCase):
         self.assertIs(mgmt.job_deletion._triton.triton, mock_triton)
 
     def test_job_inference_instantiation(self):
-        """JobInference receives (triton, docker, openstack, websocket, inference_actions_available)."""
+        """JobInference receives (triton, docker, openstack, websocket)."""
         from classes.job.inference import JobInference
 
         mock_docker = type("DockerThread", (), {})()
@@ -73,7 +73,6 @@ class TestJobHandlerInstantiation(unittest.TestCase):
             mock_docker,
             mock_openstack,
             mock_ws,
-            ["http", "grpc"],
         )
         self.assertIs(inf.docker, mock_docker)
         self.assertIs(inf.triton, mock_triton)

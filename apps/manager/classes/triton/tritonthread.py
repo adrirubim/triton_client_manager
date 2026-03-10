@@ -8,7 +8,6 @@ from typing import Callable, Optional
 
 from .creation.creation import TritonCreation
 from .deletion.deletion import TritonDeletion
-from .inference.inference import TritonInference
 from .info.data.server import TritonServer
 from .info.info import TritonInfo
 from .tritonerrors import (
@@ -41,7 +40,6 @@ class TritonThread(threading.Thread):
         self.triton_info = TritonInfo(timeout=config["health_check_timeout"])
         self.triton_creation = TritonCreation(config)
         self.triton_deletion = TritonDeletion()
-        self.triton_inference = TritonInference(config)
 
         # --- WebSocket (set by ClientManager) ---
         self.websocket: Optional[Callable[[dict], bool]] = None

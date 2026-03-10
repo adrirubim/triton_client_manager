@@ -42,7 +42,6 @@ Reference for `apps/manager/config/*.yaml`.
 | `queue_cleanup_interval`, `queue_idle_threshold` | Queue cleanup behavior |
 | `info_actions_available` | e.g. `[queue, queue_stats]` |
 | `management_actions_available` | e.g. `[creation, deletion, create_vm, ...]` |
-| `inference_actions_available` | e.g. `[grpc, http]` |
 
 ## websocket.yaml
 
@@ -186,6 +185,25 @@ If `auth_url` returns 404, try alternative paths: `/identity/v3/auth/tokens`, `/
 | `OPENSTACK_VERIFY_SSL` | verify_ssl (true/false) |
 
 Example: `export OPENSTACK_AUTH_URL=https://keystone.example.com:5000/v3/auth/tokens`
+
+### Environment file (`.env`)
+
+For local development and simple deployments you can use a `.env` file at the
+repository root and let your process manager (or shell) load it before starting
+the manager.
+
+- The canonical template lives in: `.env.example`.
+- Copy it to `.env` and adjust values for your environment.
+- Do **not** commit `.env` to version control.
+
+The template covers at least:
+
+- `TCM_ENV` — runtime environment (`development`, `staging`, `production`).
+- `OPENSTACK_...` — auth URL, application credentials, region and SSL verify flag.
+- `GITLAB_TOKEN`, `GITLAB_TOKEN_NAME` — used by `apps/docker_controller` when
+  interacting with a GitLab container registry.
+- Optional `MINIO_...` variables for MinIO/S3-style storage, if you prefer to
+  inject credentials via environment variables instead of payloads.
 
 ## Other Config Files
 

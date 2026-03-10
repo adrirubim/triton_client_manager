@@ -123,7 +123,6 @@ class JobThread(threading.Thread):
             self.docker,
             self.openstack,
             self.websocket,
-            self.kwargs.get("inference_actions_available", []),
         )
 
         self._ready_event.set()  # Signal that initialization is complete

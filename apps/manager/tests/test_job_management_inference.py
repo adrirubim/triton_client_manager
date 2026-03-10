@@ -120,7 +120,6 @@ def test_job_inference_http_success_and_failed_protocol():
         docker=docker,
         openstack=openstack,
         websocket=ws,
-        inference_actions_available=[],
     )
 
     # Stub HTTP handler
@@ -172,7 +171,6 @@ def test_job_inference_missing_uuid_and_errors():
         docker=docker,
         openstack=openstack,
         websocket=ws,
-        inference_actions_available=[],
     )
 
     # Missing uuid should raise JobInferenceMissingField before sending anything

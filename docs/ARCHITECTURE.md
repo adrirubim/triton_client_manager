@@ -62,7 +62,7 @@ Dependencies are set by `ClientManager.setup()`:
 | `JobThread` | Constructed with queue/executor parameters from `config/jobs.yaml`; later receives `docker`, `openstack`, `triton`, `websocket` as attributes before `start()` |
 | `JobInfo` | Initialized in `JobThread.start()` with `(docker, openstack, websocket, get_queue_stats)` |
 | `JobManagement` | Initialized in `JobThread.start()` with `(docker, triton, openstack, websocket, management_actions_available)` |
-| `JobInference` | Initialized in `JobThread.start()` with `(triton, docker, openstack, websocket, inference_actions_available)` |
+| `JobInference` | Initialized in `JobThread.start()` with `(triton, docker, openstack, websocket)` |
 | Cross-thread | `docker.openstack`, `openstack.websocket`, `triton.websocket` are set in `ClientManager.setup()`; WebSocket uses `get_queue_stats` for metrics |
 
 ## WebSocket Request Flow

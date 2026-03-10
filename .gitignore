@@ -17,6 +17,9 @@ apps/manager/config/openstack.local.yaml
 _TRITON_ML
 MODEL_CONVERSION
 
+# Local environment (never commit)
+.env
+
 # Python
 __pycache__/
 *.py[cod]

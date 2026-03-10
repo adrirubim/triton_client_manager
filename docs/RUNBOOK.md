@@ -125,6 +125,38 @@ cd apps/manager
 
 With mocks (smoke test), OpenStack/Docker/Triton are not required.
 
+### Deployment checklist (configuration and environment)
+
+Before deploying to a shared environment (staging/production), verify:
+
+1. **Environment variables**
+   - `.env` has been created from `.env.example` and filled with
+     environment‑specific values (no `CHANGE_ME_...` leftovers).
+   - `TCM_ENV` correctly reflects the target environment
+     (`development`, `staging`, `production`).
+   - OpenStack variables are set when the full pipeline is used:
+     `OPENSTACK_AUTH_URL`, `OPENSTACK_APPLICATION_CREDENTIAL_ID`,
+     `OPENSTACK_APPLICATION_CREDENTIAL_SECRET`, `OPENSTACK_REGION_NAME`,
+     `OPENSTACK_VERIFY_SSL`.
+   - Docker/GitLab registry variables are set when using
+     `apps/docker_controller`:
+     `GITLAB_TOKEN`, `GITLAB_TOKEN_NAME`.
+   - Optional MinIO/S3 variables are set if required:
+     `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_REGION`.
+
+2. **Auth and rate‑limits**
+   - `apps/manager/config/websocket.yaml` uses `auth.mode: "strict"` with
+     `require_token: true` for internet‑exposed deployments.
+   - When `auth.mode: "strict"` is used, either `jwks_url` or
+     `public_key_pem` (RSA/ECDSA) is configured; no HS* algorithms are used in
+     `staging`/`production` (see `SECURITY.md`).
+
+3. **Images and manifests**
+   - Kubernetes manifests under `infra/k8s/` and
+     `docker-compose.multi-node.yml` use **versioned** image tags (no
+     `:latest` in production‑style manifests) consistent with
+     `docs/VERSION_STACK.md`.
+
 ## Pre-Push Validation
 
 Recommended full validation before pushing:
@@ -473,6 +505,10 @@ To validate horizontal scaling behaviour using Docker Compose:
 
 5. If you are also running the monitoring stack (`infra/monitoring/docker-compose.yml`):
 
+- Remember that this compose file is intended **only for local development**:
+  - It uses trivial Grafana credentials (`admin` / `admin`).
+  - For any shared/staging/production environment, you **must** override these
+    via secrets or environment variables and avoid committing real credentials.
 - Check in Prometheus that metrics from both instances aggregate correctly
      (for example `tcm_ws_connections_total` and `tcm_queue_total_queued`).
 
@@ -582,14 +618,27 @@ docker run -d \
 
 Reference manifests live under `infra/k8s/`:
 
-- `infra/k8s/deployment.yaml` — Deployment + HPA (`triton-client-manager-hpa`).
+- `infra/k8s/deployment-single.yaml` — Single‑replica Deployment.
+- `infra/k8s/hpa-single.yaml` — HorizontalPodAutoscaler for the single‑replica deployment.
+- `infra/k8s/deployment-multi.yaml` — Multi‑replica Deployment (production‑style, `TCM_ENV=production`).
+- `infra/k8s/hpa-multi.yaml` — HorizontalPodAutoscaler for the multi‑replica deployment.
 - `infra/k8s/service.yaml` — ClusterIP Service exposing port 80 → container 8000.
 - `infra/k8s/ingress.yaml` — NGINX Ingress with WebSocket support.
 
-Apply them from the repo root:
+Apply them from the repo root (choose one scenario or both, as needed):
 
 ```bash
-kubectl apply -f infra/k8s/
+# Single-replica
+kubectl apply -f infra/k8s/deployment-single.yaml
+kubectl apply -f infra/k8s/hpa-single.yaml
+
+# Multi-replica (production-style)
+kubectl apply -f infra/k8s/deployment-multi.yaml
+kubectl apply -f infra/k8s/hpa-multi.yaml
+
+# Common resources
+kubectl apply -f infra/k8s/service.yaml
+kubectl apply -f infra/k8s/ingress.yaml
 ```
 
 Then:
@@ -697,14 +746,13 @@ This section describes how to deploy Triton Client Manager to Kubernetes using t
 
 ### Manifests overview (`infra/k8s/`)
 
-The `infra/k8s/` directory contains a minimal but production‑oriented example:
+The `infra/k8s/` directory contains minimal but production‑oriented examples:
 
-- `infra/k8s/deployment.yaml`
-  - `Deployment` for `triton-client-manager` with:
-    - Container image (for example `ghcr.io/triton-client-manager/triton-client-manager:<version>` — avoid `:latest` in production).
-    - `readinessProbe` on `GET /ready`.
-    - `livenessProbe` on `GET /health`.
-    - Resource `requests`/`limits` for CPU and memory.
+- `infra/k8s/deployment-single.yaml` / `infra/k8s/hpa-single.yaml`
+  - Single‑replica Deployment for `triton-client-manager` and associated HPA.
+- `infra/k8s/deployment-multi.yaml` / `infra/k8s/hpa-multi.yaml`
+  - Multi‑replica Deployment (with `TCM_ENV=production`) and associated HPA.
+  - Container image should use explicit tags (for example `ghcr.io/triton-client-manager/triton-client-manager:<version>` — avoid `:latest` in production).
   - `HorizontalPodAutoscaler` (`triton-client-manager-hpa`) targeting the Deployment:
     - `minReplicas` / `maxReplicas` for the manager.
     - CPU utilization target (for example `averageUtilization: 70`).
