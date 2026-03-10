@@ -1,7 +1,7 @@
 import logging
 from typing import TYPE_CHECKING, Callable
 
-from classes.triton import TritonInfer
+from classes.triton.inference_orchestrator import TritonInference, TritonRequest
 from classes.triton.tritonerrors import TritonInferenceFailed
 
 from .base import check_instance, validate_fields
@@ -19,11 +19,15 @@ class JobInferenceGrpc:
     def __init__(
         self,
         docker: "DockerThread",
-        triton_infer: TritonInfer,
+        triton_infer_or_inference,
         triton: "TritonThread" = None,
     ):
         self.docker = docker
-        self.triton_infer = triton_infer
+        # Backwards compatibility: accept either TritonInfer or TritonInference
+        if isinstance(triton_infer_or_inference, TritonInference):
+            self.triton_inference = triton_infer_or_inference
+        else:
+            self.triton_inference = TritonInference(triton_infer_or_inference)
         self.triton = triton
 
     def handle(self, msg_uuid: str, payload: dict, send: Callable) -> None:
@@ -45,12 +49,17 @@ class JobInferenceGrpc:
 
         send("START")
 
-        self.triton_infer.stream(
-            server.client,
-            model_name,
-            inputs,
-            on_chunk=lambda chunk: send("ONGOING", chunk),
+        request = TritonRequest(
+            model_name=model_name,
+            inputs=inputs,
+            protocol="grpc",
             output_name=output_name,
+        )
+
+        self.triton_inference.handle(
+            server,
+            request,
+            on_chunk=lambda chunk: send("ONGOING", chunk),
         )
 
         logger.info(" ✓ gRPC stream complete for model '{model_name}'")

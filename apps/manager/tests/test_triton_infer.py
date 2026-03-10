@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 
 from classes.triton.infer import TritonInfer
+from classes.triton.inference_orchestrator import TritonInference, TritonRequest
 from classes.triton.tritonerrors import TritonInferenceFailed
 
 
@@ -201,3 +202,85 @@ def test_stream_errors_and_timeout():
             HangClient(), "model-z", inputs=[], on_chunk=lambda _: None, timeout=0
         )
     assert "timed out" in str(exc2.value)
+
+
+def test_triton_inference_http_and_invalid_protocol():
+    """TritonInference should delegate to TritonInfer for HTTP and validate protocol."""
+    runner = MagicMock(spec=TritonInfer)
+    server = MagicMock()
+
+    # HTTP path
+    request = TritonRequest(model_name="m-http", inputs=[], protocol="http")
+    fake_result = MagicMock()
+    runner.infer.return_value = fake_result
+
+    with patch.object(
+        TritonInfer,
+        "decode_response",
+        return_value={"ok": True},
+    ) as decode_mock:
+        orchestrator = TritonInference(runner)
+        out = orchestrator.handle(server, request)
+
+    runner.infer.assert_called_once()
+    decode_mock.assert_called_once_with(fake_result)
+    assert out == {"ok": True}
+
+    # Invalid protocol
+    bad_request = TritonRequest(model_name="m-bad", inputs=[], protocol="smtp")
+    with pytest.raises(TritonInferenceFailed):
+        TritonInference(runner).handle(server, bad_request)
+
+
+def test_triton_inference_pipeline_and_retries():
+    """TritonInference should support simple HTTP pipelines and retry on failures."""
+    runner = MagicMock(spec=TritonInfer)
+    server = MagicMock()
+
+    # Configure infer to succeed twice
+    result1 = MagicMock()
+    result2 = MagicMock()
+    runner.infer.side_effect = [result1, result2]
+
+    # Make decode_response deterministic
+    with patch.object(
+        TritonInfer,
+        "decode_response",
+        side_effect=[{"out": 1}, {"out": 2}],
+    ):
+        req1 = TritonRequest(model_name="m1", inputs=[{"x": 1}], protocol="http")
+        req2 = TritonRequest(model_name="m2", inputs=[{"x": 2}], protocol="http")
+        pipeline_req = TritonRequest(pipeline=[req1, req2])
+
+        orchestrator = TritonInference(runner)
+        out = orchestrator.handle(server, pipeline_req)
+
+    assert out == {"m1": {"out": 1}, "m2": {"out": 2}}
+    assert runner.infer.call_count == 2
+
+    # Retry path: first attempt fails, second succeeds
+    failing_runner = MagicMock(spec=TritonInfer)
+
+    def _fail_once(*_args, **_kwargs):
+        if not hasattr(_fail_once, "called"):
+            _fail_once.called = True  # type: ignore[attr-defined]
+            raise TritonInferenceFailed("m-retry", "boom")
+        return result1
+
+    failing_runner.infer.side_effect = _fail_once
+
+    with patch.object(
+        TritonInfer,
+        "decode_response",
+        return_value={"out": 42},
+    ):
+        retry_req = TritonRequest(
+            model_name="m-retry",
+            inputs=[{"x": 0}],
+            protocol="http",
+            retry_attempts=1,
+        )
+        orchestrator_retry = TritonInference(failing_runner)
+        out_retry = orchestrator_retry.handle(server, retry_req)
+
+    assert out_retry == {"out": 42}

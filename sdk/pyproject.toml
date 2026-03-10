@@ -36,3 +36,6 @@ package-dir = {"" = "src"}
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[project.scripts]
+tcm-client-cli = "tcm_client.cli:main"
+

@@ -152,6 +152,35 @@ class TcmWebSocketClient:
         }
         return await self._send(msg)
 
+    async def inference_pipeline(
+        self,
+        vm_id: str,
+        container_id: str,
+        pipeline: list[JsonDict],
+    ) -> JsonDict:
+        """
+        Send a simple HTTP pipeline (multi-model, sequential) inference request.
+
+        The `pipeline` argument is a list of JSON dicts, each describing one
+        step with at least:
+
+        - name (optional, string)
+        - model_name (string)
+        - protocol (optional, defaults to "http")
+        - inputs (list of Triton input dicts)
+        """
+        msg: JsonDict = {
+            "uuid": self._auth_ctx.uuid,
+            "type": "inference",
+            "payload": {
+                "vm_id": vm_id,
+                "container_id": container_id,
+                "pipeline": pipeline,
+                "request": {"protocol": "http"},
+            },
+        }
+        return await self._send(msg)
+
 
 async def quickstart_queue_stats(uri: str) -> JsonDict:
     """

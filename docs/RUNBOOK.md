@@ -262,6 +262,20 @@ Additional security-related metrics:
   unsafe configuration has been detected (for example,
   `strict_without_signature_verification`, `hs_algorithm_in_non_dev_env`).
 
+### Rate limiting responsibilities (gateway vs manager)
+
+- In production environments, treat Triton Client Manager’s in‑memory rate limits
+  as a **second line of defence**:
+  - they are configured per replica via `apps/manager/config/websocket.yaml`;
+  - they are best used to protect a single process and to expose detailed metrics.
+- Global limits (per IP / tenant / route) and abuse protection should usually live
+  in the **API gateway / ingress** layer (NGINX, Envoy, Kong, etc.), using a
+  shared backend when strict global quotas are required.
+- When documenting or changing rate‑limit policies:
+  - keep `websocket.yaml`, `SECURITY.md` and this runbook aligned;
+  - be explicit about which component (gateway vs manager) is the “source of truth”
+    for each type of limit.
+
 ### Operational playbooks (backpressure, dependency failures, unsafe configs)
 
 #### Queues saturated / backpressure active

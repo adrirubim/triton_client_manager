@@ -57,6 +57,12 @@ If you discover a security vulnerability in this project, please report it **res
 - Avoid logging credentials, tokens, or full request/response payloads that may contain sensitive data.
 - Review [`apps/manager/config/`](apps/manager/config/) before committing to ensure no accidental credential inclusion.
 
+### Example vs production stacks
+
+- The monitoring stack under `infra/monitoring/` (Prometheus + Grafana) is intended **only for local development**.
+- Default credentials such as `GF_SECURITY_ADMIN_USER=admin` / `GF_SECURITY_ADMIN_PASSWORD=admin` must **never** be reused in shared, staging or production environments.
+- For any non-local deployment, always override example credentials via secrets or environment-specific configuration and treat monitoring access as sensitive (VPN, restricted ingress, strong auth).
+
 ### WebSocket auth tokens
 
 - The WebSocket entrypoint (`/ws`) accepts an `auth` message whose
@@ -87,6 +93,24 @@ If you discover a security vulnerability in this project, please report it **res
     authentication truth and run Triton Client Manager behind that layer.
   - `auth.mode: "strict"` + `jwks_url` / `public_key_pem` should be treated as
     an additional defence‑in‑depth layer, not the only line of defence.
+
+### Rate limiting: gateway vs manager
+
+- The manager implements **per‑replica, in‑memory rate limiting** for WebSocket traffic,
+  configured via [`apps/manager/config/websocket.yaml`](apps/manager/config/websocket.yaml)
+  under the `rate_limits` section and surfaced as Prometheus metrics:
+  - `tcm_rate_limit_violations_total{scope="messages"|"auth"}`
+  - `tcm_unsafe_config_startups_total`
+- In production, global rate limiting (per IP / tenant / route) should be enforced
+  primarily at the **API gateway / ingress** layer (for example, NGINX, Envoy, Kong),
+  using a shared backend (such as Redis) when strict global quotas are required.
+- Recommended pattern:
+  - Use the gateway as the **source of truth** for global limits and abuse protection.
+  - Use Triton Client Manager’s in‑memory limits as a **defence‑in‑depth** mechanism
+    to protect individual replicas and to expose detailed metrics for SRE teams.
+  - Document which limits live in the gateway and which live in the manager, and
+    keep `websocket.yaml`, this `SECURITY.md` and `docs/RUNBOOK.md` in sync when
+    policies change.
 
 ---
 

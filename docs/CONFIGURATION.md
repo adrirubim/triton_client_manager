@@ -204,6 +204,29 @@ The template covers at least:
   interacting with a GitLab container registry.
 - Optional `MINIO_...` variables for MinIO/S3-style storage, if you prefer to
   inject credentials via environment variables instead of payloads.
+- Variables de testing opcionales (`TCM_RUN_REAL_BACKENDS`, `TCM_REAL_MANAGER_WS_URL`, `TCM_REAL_MODEL_NAME`) usadas solo en entornos controlados para pruebas de integración con backends reales.
+
+### Environment variables reference (from `.env.example`)
+
+| Variable                     | Purpose                                                                 | Type    | Environments                    | Required |
+|------------------------------|-------------------------------------------------------------------------|---------|---------------------------------|----------|
+| `TCM_ENV`                    | Runtime environment for the manager and manifests                      | string  | dev / staging / prod           | yes      |
+| `TCM_RUN_REAL_BACKENDS`      | Enable integration tests against real OpenStack/Docker/Triton backends | int (0/1) | test / staging (controlled)  | optional |
+| `TCM_REAL_MANAGER_WS_URL`    | WebSocket URL of a running manager instance for real-backend tests     | string  | test / staging (when enabled)  | optional |
+| `TCM_REAL_MODEL_NAME`        | Name of a real Triton model used in integration tests                  | string  | test / staging (when enabled)  | optional |
+| `OPENSTACK_AUTH_URL`         | Keystone authentication endpoint (v3)                                  | string  | staging / prod                 | yes\*    |
+| `OPENSTACK_APPLICATION_CREDENTIAL_ID` | OpenStack application credential ID                            | string  | staging / prod                 | yes\*    |
+| `OPENSTACK_APPLICATION_CREDENTIAL_SECRET` | OpenStack application credential secret                    | string  | staging / prod                 | yes\*    |
+| `OPENSTACK_REGION_NAME`      | OpenStack region name (e.g. `RegionOne`)                               | string  | staging / prod                 | yes\*    |
+| `OPENSTACK_VERIFY_SSL`       | Whether to verify SSL certificates when talking to OpenStack           | bool    | all (recommended `true` in prod) | optional (default `true`) |
+| `GITLAB_TOKEN`               | Token with permissions to read from the GitLab container registry      | string  | staging / prod (and some dev)  | yes\*\*  |
+| `GITLAB_TOKEN_NAME`          | Logical name for the pull token used by the Docker controller          | string  | staging / prod (and some dev)  | optional (required if `GITLAB_TOKEN` is used) |
+| `MINIO_ACCESS_KEY`           | Access key for MinIO/S3-style storage                                  | string  | staging / prod (when used)     | optional |
+| `MINIO_SECRET_KEY`           | Secret key for MinIO/S3-style storage                                  | string  | staging / prod (when used)     | optional |
+| `MINIO_REGION`               | Region for MinIO/S3-style storage                                      | string  | staging / prod (when used)     | optional |
+
+\* Required only when using the OpenStack integration (full pipeline).  
+\*\* Required when `apps/docker_controller` needs to access a private GitLab container registry.
 
 ## Other Config Files
 

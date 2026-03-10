@@ -84,7 +84,11 @@ def test_http_handler_happy_and_errors():
 
     decoded = handler.handle("uuid", _basic_payload(), send)
     assert decoded == {"decoded": True}
-    triton_infer.infer.assert_called_once_with(server.client, "m", [1, 2, 3])
+    triton_infer.infer.assert_called_once()
+    args, kwargs = triton_infer.infer.call_args
+    assert args[0] is server.client
+    assert args[1] == "m"
+    assert args[2] == [1, 2, 3]
 
     # Without TritonThread it must raise TritonInferenceFailed
     handler_no_triton = JobInferenceHttp(docker, triton_infer, None)

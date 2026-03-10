@@ -137,9 +137,11 @@ Required: `vm_id` and `container_id`. Sub-handlers receive a normalized structur
 
 ## Inference
 
+### Single-model inference
+
 **Required fields:** `vm_id`, `container_id`, `model_name`, `inputs`
 
-Inference routes by `vm_id` and `container_id` (matches Triton server registration). Optional: `vm_ip` for handlers that use it; `request.inputs` for nested structure.
+Inference routes by `vm_id` and `container_id` (matches Triton server registration). Optional: `vm_ip` for handlers that use it; `request.protocol` to select HTTP/gRPC.
 
 **Request:**
 
@@ -151,12 +153,108 @@ Inference routes by `vm_id` and `container_id` (matches Triton server registrati
     "vm_id": "openstack-vm-uuid",
     "container_id": "docker-container-id",
     "model_name": "my-model-name",
-    "inputs": [{"name": "input_0", "type": "TYPE_FP32", "dims": 4, "value": [1.0, 2.0, 3.0, 4.0]}]
+    "inputs": [
+      {
+        "name": "input_0",
+        "type": "TYPE_FP32",
+        "dims": 4,
+        "value": [1.0, 2.0, 3.0, 4.0]
+      }
+    ],
+    "request": {
+      "protocol": "http"
+    }
   }
 }
 ```
 
 **Protocol:** `payload.request.protocol` (`grpc` or `http`); default `http`.
+
+### Pipeline (multi‑model, HTTP)
+
+For simple, sequential multi‑model pipelines (A → B → C) sobre el mismo `vm_id` /
+`container_id`, el `payload` admite una clave `pipeline`:
+
+```json
+{
+  "type": "inference",
+  "uuid": "user-123",
+  "payload": {
+    "vm_id": "openstack-vm-uuid",
+    "container_id": "docker-container-id",
+    "pipeline": [
+      {
+        "name": "encode",
+        "model_name": "encoder",
+        "protocol": "http",
+        "inputs": [
+          {
+            "name": "input_0",
+            "type": "TYPE_FP32",
+            "dims": 4,
+            "value": [1.0, 2.0, 3.0, 4.0]
+          }
+        ]
+      },
+      {
+        "name": "rerank",
+        "model_name": "reranker",
+        "protocol": "http",
+        "inputs": [
+          {
+            "name": "input_0",
+            "type": "TYPE_FP32",
+            "dims": 4,
+            "value": [0.1, 0.9, 0.2, 0.8]
+          }
+        ]
+      }
+    ],
+    "request": {
+      "protocol": "http"
+    }
+  }
+}
+```
+
+Notas:
+
+- Todos los pasos del pipeline comparten `vm_id` y `container_id`.
+- Cada paso debe aportar sus propios `inputs`; el servidor no infiere
+  automáticamente tipos ni formas a partir de la salida de pasos anteriores.
+- El campo `name` se utiliza como clave en la respuesta agregada; si se omite,
+  se usa `model_name`.
+
+**Respuesta HTTP (pipeline):**
+
+```json
+{
+  "type": "inference",
+  "uuid": "user-123",
+  "payload": {
+    "status": "COMPLETED",
+    "model_name": null,
+    "data": {
+      "encode": { "...": "..." },
+      "rerank": { "...": "..." }
+    }
+  }
+}
+```
+
+En caso de error en alguno de los pasos, el pipeline se aborta y se devuelve:
+
+```json
+{
+  "type": "inference",
+  "uuid": "user-123",
+  "payload": {
+    "status": "FAILED",
+    "model_name": "encoder",
+    "data": "TritonInferenceFailed: error while running step 'encode'"
+  }
+}
+```
 
 ### Reference Pydantic models
 

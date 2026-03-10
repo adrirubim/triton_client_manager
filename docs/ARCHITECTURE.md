@@ -124,13 +124,30 @@ Deletion is best-effort: failures are collected and reported at the end.
 High-level design:
 
 - **Protocol selection**: `payload.request.protocol` (`http` or `grpc`); defaults to `http` if absent.
-- **HTTP**: one request → one response; on success, a single message is sent back with `status="COMPLETED"` and the handler result in `data`.
-- **gRPC**: target design is streaming with multiple responses via `status="ONGOING"` chunks followed by a terminal status; the plumbing exists but is considered experimental/incomplete.
+- **Orchestration layer**:
+  - `TritonThread` mantiene un registro de instancias `TritonServer` (`dict_servers[(vm_id, container_id)]`).
+  - `TritonInference` (en `classes.triton.inference_orchestrator`) recibe un `TritonServer` y una descripción de petición (`TritonRequest`) y:
+    - parsea inputs/outputs (delegando en `TritonInfer`);
+    - elige protocolo (`http`/`grpc`);
+    - delega en `TritonInfer` (cliente HTTP/gRPC);
+    - normaliza errores vía `TritonInferenceFailed`;
+    - soporta **pipelines multi‑modelo simples** (lista de `TritonRequest`) ejecutadas secuencialmente.
+- **HTTP**:
+  - un request → un response;
+  - en pipelines, se devuelven resultados agregados `{model_name: decoded_outputs}`.
+- **gRPC**:
+  - streaming con múltiples respuestas `status="ONGOING"` seguido de `status="COMPLETED"`;
+  - los chunks se producen desde `TritonInference` vía callbacks `on_chunk(...)`.
 
 **Current state:**
 
-- The HTTP path is implemented and covered by unit tests in `tests/test_job_management_inference.py`.
-- The gRPC path exists but is not yet considered production‑ready; clients should treat HTTP as the stable protocol until documentation and tests for gRPC are extended.
+- `JobInference` (capa WebSocket) decide protocolo según `payload.request.protocol` y:
+  - construye un `TritonRequest` con `model_name`, `inputs`, `protocol` y, si aplica, `output_name`;
+  - lo pasa, junto con el `TritonServer` seleccionado, a `TritonInference.handle(...)`.
+- HTTP, gRPC y la capa de orquestación están cubiertos por:
+  - `tests/test_job_inference_handlers.py` (handlers HTTP/gRPC),
+  - `tests/test_job_management_inference.py` (JobInference end‑to‑end),
+  - `tests/test_triton_infer.py` (TritonInfer + TritonInference, incluyendo pipelines y reintentos).
 
 ## Integration Points
 

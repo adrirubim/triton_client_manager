@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Callable
 
 from classes.job.joberrors import JobInferenceMissingField
 from classes.triton import TritonInfer
+from classes.triton.inference_orchestrator import TritonInference
 from classes.triton.tritonerrors import TritonInferenceFailed
 
 from .handlers.grpc import JobInferenceGrpc
@@ -35,12 +36,20 @@ class JobInference:
         self.websocket = websocket
         self.openstack = openstack
 
+        # Orchestration layer on top of TritonInfer
+        self._triton_inference: TritonInference | None = None
+
         # Handlers are created lazily on first inference to support tests/mocks
         self._http: JobInferenceHttp | None = None
         self._grpc: JobInferenceGrpc | None = None
 
     def _ensure_handlers(self) -> None:
-        """Initialize HTTP/GRPC handlers once TritonInfer is available."""
+        """Initialize HTTP/GRPC handlers once TritonInfer is available.
+
+        If tests or callers have already injected custom handlers into
+        `self._http` / `self._grpc`, they are respected and not replaced.
+        """
+        # Respect pre-injected handlers (for tests/mocks)
         if self._http is not None and self._grpc is not None:
             return
 
@@ -49,12 +58,10 @@ class JobInference:
         ):
             raise RuntimeError("TritonThread.triton_infer is not initialized")
 
-        self._http = JobInferenceHttp(
-            self.docker, self.triton.triton_infer, self.triton
-        )
-        self._grpc = JobInferenceGrpc(
-            self.docker, self.triton.triton_infer, self.triton
-        )
+        # Build orchestration layer and handlers
+        self._triton_inference = TritonInference(self.triton.triton_infer)
+        self._http = JobInferenceHttp(self.docker, self._triton_inference, self.triton)
+        self._grpc = JobInferenceGrpc(self.docker, self._triton_inference, self.triton)
 
     def handle_inference(self, msg: dict):
         """

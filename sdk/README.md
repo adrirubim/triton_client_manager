@@ -62,6 +62,38 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
+## Command-line interface (`tcm-client-cli`)
+
+For quick checks and lightweight load tests, the SDK exposes a small CLI entrypoint:
+
+```bash
+python -m pip install tcm-client
+
+# Basic smoke: auth + info.queue_stats once
+tcm-client-cli --uri ws://127.0.0.1:8000/ws queue-stats
+
+# Or with environment variables (recommended in CI / shared envs):
+export TCM_WS_URI=ws://manager.example.com/ws
+export TCM_CLIENT_UUID=ci-smoke-client
+export TCM_CLIENT_TOKEN="opaque-or-jwt-token"
+export TCM_CLIENT_TENANT_ID="tenant-ci"
+export TCM_CLIENT_ROLES="inference,management"
+
+tcm-client-cli queue-stats
+
+# Small load test feeding /metrics (N requests, M concurrent tasks)
+tcm-client-cli queue-stats --repeat 50 --concurrency 5
+```
+
+Environment variables understood by the CLI:
+
+- `TCM_WS_URI` – WebSocket URI (defaults to `ws://127.0.0.1:8000/ws`).
+- `TCM_CLIENT_UUID` – client UUID for the session.
+- `TCM_CLIENT_TOKEN` – auth token sent in the `auth` payload.
+- `TCM_CLIENT_SUB` – subject (`sub`) claim; falls back to UUID when not set.
+- `TCM_CLIENT_TENANT_ID` – tenant/project identifier; defaults to `dev-tenant`.
+- `TCM_CLIENT_ROLES` – comma-separated roles, e.g. `inference,management`.
+
 ## API overview
 
 `TcmWebSocketClient` provides a small set of focused methods that mirror the
@@ -73,6 +105,7 @@ main WebSocket flows:
 | `info_queue_stats()` | Sends an `info` message with `action: "queue_stats"` and returns the full `info_response`. |
 | `management_creation(action=\"creation\", **kwargs)` | Sends a `management` message; you pass the `action` and any OpenStack/Docker/MinIO fields via `kwargs`. |
 | `inference_http(vm_id, container_id, model_name, inputs)` | Sends an HTTP inference request routed to a specific Triton server (`vm_id` + `container_id`) with typed `inputs` entries. |
+| `inference_pipeline(vm_id, container_id, pipeline)` | Sends a simple HTTP pipeline (multi‑model, sequential) over the same Triton server. |
 
 The low-level JSON contracts for these flows are documented in
 `docs/WEBSOCKET_API.md` / `docs/API_CONTRACTS.md`.
@@ -223,6 +256,74 @@ async def main() -> None:
         else:
             # Typical error handling path: log message, maybe retry or reconnect.
             print("Inference FAILED:", payload.get("data"))
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+### Inference – HTTP pipeline (multi‑modelo secuencial)
+
+```python
+import asyncio
+
+from tcm_client import AuthContext, TcmWebSocketClient
+
+
+async def main() -> None:
+    uri = "ws://127.0.0.1:8000/ws"
+    ctx = AuthContext(
+        uuid="sdk-pipeline-client",
+        token="opaque-or-jwt-token",
+        sub="user-pipeline",
+        tenant_id="tenant-inf",
+        roles=["inference"],
+    )
+
+    async with TcmWebSocketClient(uri, ctx) as client:
+        await client.auth()
+
+        pipeline = [
+            {
+                "name": "encode",
+                "model_name": "encoder",
+                "protocol": "http",
+                "inputs": [
+                    {
+                        "name": "input_0",
+                        "type": "TYPE_FP32",
+                        "dims": 4,
+                        "value": [1.0, 2.0, 3.0, 4.0],
+                    }
+                ],
+            },
+            {
+                "name": "rerank",
+                "model_name": "reranker",
+                "protocol": "http",
+                "inputs": [
+                    {
+                        "name": "input_0",
+                        "type": "TYPE_FP32",
+                        "dims": 4,
+                        "value": [0.1, 0.9, 0.2, 0.8],
+                    }
+                ],
+            },
+        ]
+
+        resp = await client.inference_pipeline(
+            vm_id="openstack-vm-uuid",
+            container_id="docker-container-id",
+            pipeline=pipeline,
+        )
+        payload = resp.get("payload", {})
+        if payload.get("status") == "COMPLETED":
+            data = payload.get("data", {})
+            print("Encode result:", data.get("encode"))
+            print("Rerank result:", data.get("rerank"))
+        else:
+            print("Pipeline FAILED:", payload.get("data"))
 
 
 if __name__ == "__main__":
