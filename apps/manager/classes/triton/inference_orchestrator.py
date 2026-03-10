@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Iterable, List, Optional
+from typing import Callable, List, Optional
 
 from .infer import TritonInfer
 from .info.data.server import TritonServer
@@ -154,4 +154,3 @@ class TritonInference:
             request.model_name or "unknown",
             "Inference failed without a specific TritonInferenceFailed error",
         )
-

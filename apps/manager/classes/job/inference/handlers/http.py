@@ -68,9 +68,7 @@ class JobInferenceHttp:
             pipeline_request = TritonRequest(pipeline=steps)
             decoded = self.triton_inference.handle(server, pipeline_request)
 
-            logger.info(
-                " ✓ HTTP pipeline inference complete for %d steps", len(steps)
-            )
+            logger.info(" ✓ HTTP pipeline inference complete for %d steps", len(steps))
             return decoded
 
         # Single-model path
