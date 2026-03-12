@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/triton-client-manager-logo.png" alt="Triton Client Manager logo" width="96" />
+</p>
+
 # Triton Client Manager
 
 Python-based orchestration service for AI inference that coordinates OpenStack VMs, Docker containers, and NVIDIA Triton Inference Server via WebSockets. It provides per-user job queues, management pipelines (VM/container/server creation & deletion), and HTTP/gRPC inference endpoints.
