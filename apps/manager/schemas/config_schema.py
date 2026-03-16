@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 from typing import List, Optional
 
 from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field, PositiveInt
 
 
 class JobsConfig(BaseModel):
-    """Typed schema for jobs.yaml."""
+    """Esquema tipado para `jobs.yaml`."""
 
     max_queue_size_info_per_user: PositiveInt
     max_queue_size_management_per_user: PositiveInt
@@ -28,7 +30,7 @@ class JobsConfig(BaseModel):
 
 
 class WebsocketAuthConfig(BaseModel):
-    """`auth` subsection of websocket.yaml."""
+    """Subsección `auth` de `websocket.yaml`."""
 
     mode: str = Field(default="strict")
     require_token: bool = Field(default=True)
@@ -44,7 +46,7 @@ class WebsocketAuthConfig(BaseModel):
 
 
 class WebsocketRateLimitsConfig(BaseModel):
-    """`rate_limits` subsection of websocket.yaml."""
+    """Subsección `rate_limits` de `websocket.yaml`."""
 
     messages_per_second_per_client: int = 0
     auth_failures_per_minute_per_client: int = 0
@@ -53,7 +55,7 @@ class WebsocketRateLimitsConfig(BaseModel):
 
 
 class WebsocketConfig(BaseModel):
-    """Typed schema for websocket.yaml."""
+    """Esquema tipado para `websocket.yaml`."""
 
     host: str
     port: PositiveInt
@@ -66,7 +68,7 @@ class WebsocketConfig(BaseModel):
 
 
 class DockerConfig(BaseModel):
-    """Typed schema for docker.yaml."""
+    """Esquema tipado para `docker.yaml`."""
 
     refresh_time: PositiveInt
     registry_timeout: PositiveInt
@@ -80,7 +82,7 @@ class DockerConfig(BaseModel):
 
 
 class TritonConfig(BaseModel):
-    """Typed schema for triton.yaml."""
+    """Esquema tipado para `triton.yaml`."""
 
     refresh_time: PositiveInt
     health_check_timeout: PositiveInt
@@ -91,10 +93,26 @@ class TritonConfig(BaseModel):
 
 
 class MinioConfig(BaseModel):
-    """Typed schema for minio.yaml (optional)."""
+    """Esquema tipado para `minio.yaml`.
 
+    Los campos `endpoint` y `bucket` pueden omitirse en entornos donde MinIO no
+    está configurado todavía; en ese caso se consideran deshabilitados.
+    """
+
+    endpoint: Optional[str] = None
     access_key: Optional[str] = None
     secret_key: Optional[str] = None
+    secure: bool = True
+    bucket: Optional[str] = None
     region: Optional[str] = None
 
     model_config = ConfigDict(extra="forbid")
+
+
+__all__ = [
+    "JobsConfig",
+    "WebsocketConfig",
+    "DockerConfig",
+    "TritonConfig",
+    "MinioConfig",
+]

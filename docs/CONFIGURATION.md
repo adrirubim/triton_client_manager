@@ -204,7 +204,7 @@ The template covers at least:
   interacting with a remote container registry.
 - Optional `MINIO_...` variables for MinIO/S3-style storage, if you prefer to
   inject credentials via environment variables instead of payloads.
-- Variables de testing opcionales (`TCM_RUN_REAL_BACKENDS`, `TCM_REAL_MANAGER_WS_URL`, `TCM_REAL_MODEL_NAME`) usadas solo en entornos controlados para pruebas de integración con backends reales.
+- Optional testing variables (`TCM_RUN_REAL_BACKENDS`, `TCM_REAL_MANAGER_WS_URL`, `TCM_REAL_MODEL_NAME`) used only in controlled environments for integration tests against real backends.
 
 ### Environment variables reference (from `.env.example`)
 

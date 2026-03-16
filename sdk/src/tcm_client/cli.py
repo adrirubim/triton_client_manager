@@ -7,7 +7,8 @@ import os
 import time
 from typing import List, Optional
 
-from .sdk import AuthContext, TcmWebSocketClient
+from .sdk import AuthContext, InferenceInput, TcmWebSocketClient
+from .model_analyze import AnalyzeModelAction
 
 
 def _parse_roles(raw: Optional[str]) -> List[str]:
@@ -133,9 +134,14 @@ async def _run_inference_http(
     with open(payload_path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
-    inputs = data.get("inputs")
-    if not isinstance(inputs, list):
+    raw_inputs = data.get("inputs")
+    if not isinstance(raw_inputs, list):
         raise SystemExit("inference-http payload JSON must contain an `inputs` list")
+
+    try:
+        inputs = [InferenceInput(**item) for item in raw_inputs]
+    except Exception as exc:
+        raise SystemExit(f"Invalid `inputs` payload for Triton inference: {exc}") from exc
 
     async with TcmWebSocketClient(uri, ctx) as client:
         await client.auth()
@@ -146,6 +152,10 @@ async def _run_inference_http(
             inputs=inputs,
         )
         print(json.dumps(resp, indent=2))
+
+
+def _run_model_analyze(path: str, name: str) -> None:
+    AnalyzeModelAction(model_path=path, name=name).run(print_json=True)
 
 
 def main() -> None:
@@ -260,6 +270,22 @@ def main() -> None:
         ),
     )
 
+    # model-analyze: inspect ONNX file and print typed report
+    analyze = subparsers.add_parser(
+        "model-analyze",
+        help="Inspect an ONNX model file and print a typed inputs/outputs report.",
+    )
+    analyze.add_argument(
+        "--path",
+        required=True,
+        help="Path to an ONNX model file.",
+    )
+    analyze.add_argument(
+        "--name",
+        required=True,
+        help="Logical model name to include in the report.",
+    )
+
     args = parser.parse_args()
     if not args.command:
         args.command = "queue-stats"
@@ -302,6 +328,8 @@ def main() -> None:
                 payload_path=args.payload,
             )
         )
+    elif args.command == "model-analyze":
+        _run_model_analyze(path=args.path, name=args.name)
     else:
         raise SystemExit(f"Unknown command: {args.command!r}")
 

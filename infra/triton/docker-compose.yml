@@ -1,0 +1,17 @@
+version: "3.9"
+
+services:
+  triton:
+    image: nvcr.io/nvidia/tritonserver:24.11-py3
+    container_name: tcm-triton-ephemeral
+    restart: unless-stopped
+    command: >
+      tritonserver
+      --model-repository=/models
+      --allow-http=true
+      --allow-grpc=false
+      --model-control-mode=none
+    volumes:
+      - ../../infra/models:/models:ro
+    ports:
+      - "8001:8000"

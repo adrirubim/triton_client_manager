@@ -1,0 +1,9 @@
+name: "MINIO_DOWNLOAD_IMG_TO_BYTES"
+backend: "python"
+max_batch_size: 0
+input [
+  { name: "MINIO_URL" data_type: TYPE_STRING dims: [ 1 ] }
+]
+output [
+  { name: "BYTES" data_type: TYPE_BYTES dims: [ -1 ] }
+]

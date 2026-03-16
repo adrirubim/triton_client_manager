@@ -12,7 +12,11 @@ from __future__ import annotations
 import asyncio
 import json
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from types import TracebackType
+from typing import Any, Dict, List, Optional, Sequence, Type
+
+import numpy as np
+from pydantic import BaseModel, Field, ValidationError
 
 try:
     # Prefer the modern asyncio client API when available (websockets >= 12).
@@ -31,6 +35,49 @@ class AuthContext:
     sub: Optional[str] = None
     tenant_id: Optional[str] = None
     roles: Optional[List[str]] = None
+
+
+class AuthClientInfo(BaseModel):
+    sub: str
+    tenant_id: str
+    roles: List[str] = Field(default_factory=list)
+
+
+class AuthPayload(BaseModel):
+    token: Optional[str] = None
+    client: Optional[AuthClientInfo] = None
+
+
+class BaseRequest(BaseModel):
+    uuid: str
+    type: str
+    payload: Dict[str, Any]
+
+
+class InferenceInput(BaseModel):
+    name: str
+    shape: List[int]
+    datatype: str
+    data: Any
+
+
+class InferenceRequestPayload(BaseModel):
+    vm_id: str
+    container_id: str
+    model_name: Optional[str] = None
+    inputs: Optional[List[InferenceInput]] = None
+    pipeline: Optional[List[Dict[str, Any]]] = None
+    request: Dict[str, Any] = Field(default_factory=lambda: {"protocol": "http"})
+
+
+class InferenceRequest(BaseRequest):
+    type: str = "inference"
+    payload: InferenceRequestPayload
+
+
+class InferenceResponse(BaseModel):
+    type: str
+    payload: Dict[str, Any]
 
 
 class TcmWebSocketClient:
@@ -55,7 +102,12 @@ class TcmWebSocketClient:
         self._sock = await connect(self._uri)
         return self
 
-    async def __aexit__(self, exc_type, exc, tb) -> None:
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc: Optional[BaseException],
+        tb: Optional[TracebackType],
+    ) -> None:
         if self._sock is not None:
             await self._sock.close()
             self._sock = None
@@ -89,12 +141,19 @@ class TcmWebSocketClient:
                 },
             }
 
-        msg: JsonDict = {
-            "uuid": self._auth_ctx.uuid,
-            "type": "auth",
-            "payload": payload,
-        }
-        resp = await self._send(msg)
+        auth_payload = AuthPayload(
+            token=self._auth_ctx.token,
+            client=AuthClientInfo(
+                sub=self._auth_ctx.sub or self._auth_ctx.uuid,
+                tenant_id=self._auth_ctx.tenant_id or "dev-tenant",
+                roles=self._auth_ctx.roles or [],
+            )
+            if payload
+            else None,
+        )
+
+        msg = BaseRequest(uuid=self._auth_ctx.uuid, type="auth", payload=auth_payload.model_dump(exclude_none=True))
+        resp = await self._send(msg.model_dump())
         if resp.get("type") != "auth.ok":
             raise RuntimeError(f"Auth failed: {resp}")
         return resp
@@ -111,9 +170,7 @@ class TcmWebSocketClient:
             raise RuntimeError(f"Unexpected info response: {resp}")
         return resp
 
-    async def management_creation(
-        self, action: str = "creation", **kwargs: Any
-    ) -> JsonDict:
+    async def management_creation(self, action: str = "creation", **kwargs: Any) -> JsonDict:
         """
         Send a generic `management` message.
 
@@ -134,29 +191,26 @@ class TcmWebSocketClient:
         vm_id: str,
         container_id: str,
         model_name: str,
-        inputs: list[JsonDict],
+        inputs: Sequence[InferenceInput],
     ) -> JsonDict:
         """
         Send a minimal HTTP inference request.
         """
-        msg: JsonDict = {
-            "uuid": self._auth_ctx.uuid,
-            "type": "inference",
-            "payload": {
-                "vm_id": vm_id,
-                "container_id": container_id,
-                "model_name": model_name,
-                "inputs": inputs,
-                "request": {"protocol": "http"},
-            },
-        }
-        return await self._send(msg)
+        payload = InferenceRequestPayload(
+            vm_id=vm_id,
+            container_id=container_id,
+            model_name=model_name,
+            inputs=list(inputs),
+        )
+        request = InferenceRequest(uuid=self._auth_ctx.uuid, payload=payload)
+        resp = await self._send(request.model_dump())
+        return resp
 
     async def inference_pipeline(
         self,
         vm_id: str,
         container_id: str,
-        pipeline: list[JsonDict],
+        pipeline: List[JsonDict],
     ) -> JsonDict:
         """
         Send a simple HTTP pipeline (multi-model, sequential) inference request.
@@ -169,17 +223,105 @@ class TcmWebSocketClient:
         - protocol (optional, defaults to "http")
         - inputs (list of Triton input dicts)
         """
-        msg: JsonDict = {
-            "uuid": self._auth_ctx.uuid,
-            "type": "inference",
-            "payload": {
-                "vm_id": vm_id,
-                "container_id": container_id,
-                "pipeline": pipeline,
-                "request": {"protocol": "http"},
-            },
-        }
-        return await self._send(msg)
+        payload = InferenceRequestPayload(
+            vm_id=vm_id,
+            container_id=container_id,
+            pipeline=pipeline,
+        )
+        request = InferenceRequest(uuid=self._auth_ctx.uuid, payload=payload)
+        resp = await self._send(request.model_dump())
+        return resp
+
+
+class TcmClient:
+    """
+    Synchronous, high-level helper that wraps the async WebSocket client.
+
+    It takes care of:
+    - opening/closing the WebSocket,
+    - performing the auth handshake,
+    - sending a single inference request and validating the response.
+    """
+
+    def __init__(self, uri: str, auth_ctx: AuthContext) -> None:
+        self._uri = uri
+        self._auth_ctx = auth_ctx
+
+    def infer(
+        self,
+        vm_id: str,
+        container_id: str,
+        model_name: str,
+        inputs: Sequence[InferenceInput],
+    ) -> InferenceResponse:
+        """
+        High-level synchronous helper for a single HTTP-style inference.
+
+        Usage:
+
+            client = TcmClient("ws://127.0.0.1:8000/ws", auth_ctx)
+            result = client.infer("vm-1", "ctr-1", "model", inputs)
+        """
+
+        async def _run() -> InferenceResponse:
+            async with TcmWebSocketClient(self._uri, self._auth_ctx) as client:
+                await client.auth()
+                raw = await client.inference_http(
+                    vm_id=vm_id,
+                    container_id=container_id,
+                    model_name=model_name,
+                    inputs=inputs,
+                )
+                return InferenceResponse(type=raw.get("type", ""), payload=raw.get("payload", {}))
+
+        return asyncio.run(_run())
+
+    def run_inference(
+        self,
+        vm_id: str,
+        container_id: str,
+        model_name: str,
+        data: np.ndarray | List[float],
+        *,
+        input_name: str = "INPUT__0",
+        datatype: str = "FP32",
+    ) -> InferenceResponse:
+        """
+        Convenience helper that builds a single `InferenceInput` from raw numeric data.
+
+        This forces callers to go through the strongly-typed DTO path while still
+        offering a simple entrypoint for common use cases.
+        """
+
+        if isinstance(data, list):
+            array = np.asarray(data, dtype=np.float32)
+        elif isinstance(data, np.ndarray):
+            if data.dtype != np.float32:
+                array = data.astype(np.float32)
+            else:
+                array = data
+        else:  # pragma: no cover - defensive, typing should prevent this
+            raise TypeError(f"Unsupported data type for run_inference: {type(data)!r}")
+
+        flat = array.reshape(-1).tolist()
+        shape = list(array.shape) if array.shape else [len(flat)]
+
+        try:
+            inference_input = InferenceInput(
+                name=input_name,
+                shape=shape,
+                datatype=datatype,
+                data=flat,
+            )
+        except ValidationError as exc:  # pragma: no cover - unexpected schema errors
+            raise ValueError(f"Invalid inference input: {exc}") from exc
+
+        return self.infer(
+            vm_id=vm_id,
+            container_id=container_id,
+            model_name=model_name,
+            inputs=[inference_input],
+        )
 
 
 async def quickstart_queue_stats(uri: str) -> JsonDict:

@@ -1,0 +1,159 @@
+## Triton Client Manager CLI (`tcm`)
+
+This document describes the unified CLI entrypoint for Triton Client Manager.
+The CLI is implemented in `apps/manager/tcm_cli.py`.
+
+> Note: Commands below assume you are in the repository root and running inside
+> the virtualenv under `apps/manager/.venv`.
+
+---
+
+### Installation / Environment
+
+```bash
+cd /var/www/triton_client_manager
+cd apps/manager
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+pip install "typer"
+```
+
+You can then invoke the CLI as:
+
+```bash
+cd /var/www/triton_client_manager
+./apps/manager/.venv/bin/python3 apps/manager/tcm_cli.py --help
+```
+
+---
+
+### Command Groups
+
+The CLI groups commands under three main namespaces:
+
+- `tcm manager ...` – runtime and test orchestration for the manager.
+- `tcm config ...` – configuration validation.
+- `tcm model ...` – Triton model repository tooling (scaffold, analysis, pipelines, validation).
+
+In code, you currently execute them via:
+
+```bash
+./apps/manager/.venv/bin/python3 apps/manager/tcm_cli.py <group> <command> [options...]
+```
+
+---
+
+### `tcm manager` commands
+
+#### `tcm manager dev`
+
+Start the manager in development mode using `apps/manager/dev_server.py`.
+
+```bash
+tcm manager dev
+```
+
+Options:
+
+- `--dry-run` – print the Python command that would be executed without running it.
+
+#### `tcm manager test`
+
+Run the manager test suite (via `pytest` in `apps/manager`):
+
+```bash
+tcm manager test
+```
+
+Options:
+
+- `--dry-run` – print the `pytest` command that would be executed without running it.
+
+---
+
+### `tcm config` commands
+
+#### `tcm config validate`
+
+Validate all YAML files under `apps/manager/config/` against **Pydantic
+schemas** defined in `apps/manager/config_schema.py`.
+
+```bash
+tcm config validate
+```
+
+Options:
+
+- `--base-dir PATH` – base directory containing `config/` (default: `apps/manager`).
+- `--dry-run` – print which files and schemas would be used without executing validation.
+
+---
+
+### `tcm model` commands
+
+#### `tcm model scaffold`
+
+Create a Triton model repository structure under `infra/models/{NAME}` from
+an existing weights file (`.onnx` or `.safetensors`).
+
+```bash
+tcm model scaffold \
+  --name YOLO_TEST \
+  --format onnx \
+  --path /tmp/model.onnx
+```
+
+This generates:
+
+```text
+infra/models/YOLO_TEST/
+  config.pbtxt
+  1/
+    weights/
+      model.onnx
+```
+
+The `config.pbtxt` file is generated using the Pydantic schemas in
+`apps/manager/schemas/triton_model_config.py`. You can later refine `inputs`,
+`outputs`, and `max_batch_size` manually or via future automation.
+
+#### `tcm model analyze`
+
+Analyze a model artifact (local path or `s3://...`) and print a typed JSON report with
+size, detected format, inputs, and outputs:
+
+```bash
+tcm model analyze --miniopath s3://bucket/path/model.onnx --name MYMODEL --category ML
+```
+
+#### `tcm model pipeline`
+
+Generate a basic Triton ensemble pipeline for an existing model, scaffolding helper
+steps (MinIO download, bytes→uint8, upload):
+
+```bash
+tcm model pipeline --name YOLO_TEST
+```
+
+This creates `infra/models/YOLO_TEST_PIPELINE/config.pbtxt` wiring:
+
+- `MINIO_DOWNLOAD_IMG_TO_BYTES`
+- `BYTES_TO_UINT8`
+- `YOLO_TEST`
+- `MINIO_UPLOAD_IMG_BYTES`
+
+#### `tcm model validate`
+
+Run an end‑to‑end smoke test to ensure a model is deployed and responding
+correctly:
+
+```bash
+tcm model validate --name YOLO_TEST --vm-id vm-1 --container-id cont-1 --ws-uri ws://127.0.0.1:8000/ws
+```
+
+This wraps `ValidateModelAction` and reports whether:
+
+- The Triton healthcheck `/v2/health/ready` succeeds.
+- A minimal inference via the manager returns without errors and matches Triton metadata.
+

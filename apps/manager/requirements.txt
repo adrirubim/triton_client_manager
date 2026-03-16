@@ -19,6 +19,10 @@ protobuf>=5.26.0
 
 # MinIO / S3
 boto3>=1.35.0
+safetensors>=0.4.0
+onnx>=1.14.0
+pydantic>=2.0.0
+Pillow>=10.0.0
 
 # Testing
 pytest>=8.0.0

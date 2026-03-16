@@ -536,17 +536,17 @@ OpenStack/Docker/Triton backends:
 
 By default, this workflow is safe to enable in environments without real
 backends because the test module is skipped unless `TCM_RUN_REAL_BACKENDS=1`.
-In environments con infraestructura real, se recomienda:
+In environments with real infrastructure, it is recommended to:
 
-1. Configurar `TCM_RUN_REAL_BACKENDS=1` como variable de entorno/secret en el
-   runner que tenga acceso a OpenStack/Docker/Triton.
-2. Extender `test_integration_backends.py` con flujos end‑to‑end:
-   - creación de recursos → inferencia → teardown;
-   - escenarios de error típicos (timeouts de Triton, fallos de creación de VM,
-     credenciales erróneas, etc.).
-3. Activar el workflow `Integration Backends (nightly)` para que se ejecute
-   nightly o bajo demanda, y revisar métricas/logs resultantes como parte de la
-   validación operacional.
+1. Configure `TCM_RUN_REAL_BACKENDS=1` as an env var/secret in the runner that
+   has access to OpenStack/Docker/Triton.
+2. Extend `test_integration_backends.py` with end‑to‑end flows:
+   - resource creation → inference → teardown;
+   - typical error scenarios (Triton timeouts, VM creation failures, invalid
+     credentials, etc.).
+3. Enable the `Integration Backends (nightly)` workflow so that it runs
+   nightly or on demand, and review resulting metrics/logs as part of
+   operational validation.
 
 ## Health and Readiness Probes
 

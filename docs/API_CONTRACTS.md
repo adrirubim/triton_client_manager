@@ -185,8 +185,8 @@ Inference routes by `vm_id` and `container_id` (matches Triton server registrati
 
 ### Pipeline (multi‑model, HTTP)
 
-For simple, sequential multi‑model pipelines (A → B → C) sobre la **misma instancia** (`vm_id` /
-`container_id` y su `vm_ip` asociada), el `payload` admite una clave `pipeline`:
+For simple, sequential multi‑model pipelines (A → B → C) on the **same instance** (`vm_id` /
+`container_id` and its associated `vm_ip`), the `payload` accepts a `pipeline` key:
 
 ```json
 {
@@ -231,13 +231,11 @@ For simple, sequential multi‑model pipelines (A → B → C) sobre la **misma 
 }
 ```
 
-Notas:
+Notes:
 
-- Todos los pasos del pipeline comparten `vm_id`, `container_id` **y** `vm_ip`, que deben apuntar a la misma instancia Docker registrada.
-- Cada paso debe aportar sus propios `inputs`; el servidor no infiere
-  automáticamente tipos ni formas a partir de la salida de pasos anteriores.
-- El campo `name` se utiliza como clave en la respuesta agregada; si se omite,
-  se usa `model_name`.
+- All pipeline steps share `vm_id`, `container_id` **and** `vm_ip`, which must point to the same registered Docker instance.
+- Each step must provide its own `inputs`; the server does **not** automatically infer types or shapes from previous steps.
+- The `name` field is used as the key in the aggregated response; if omitted, `model_name` is used instead.
 
 **Respuesta HTTP (pipeline):**
 
@@ -256,7 +254,7 @@ Notas:
 }
 ```
 
-En caso de error en alguno de los pasos, el pipeline se aborta y se devuelve:
+If any step fails, the pipeline is aborted and the following response is returned:
 
 ```json
 {

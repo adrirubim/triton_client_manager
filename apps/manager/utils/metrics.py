@@ -71,6 +71,22 @@ JOB_PROCESSING_SECONDS = Histogram(
     registry=registry,
 )
 
+# Latencia de inferencia por modelo
+INFERENCE_LATENCY_SECONDS = Histogram(
+    "tcm_inference_latency_seconds",
+    "Latency of inference requests by model",
+    ["model"],
+    registry=registry,
+)
+
+# Errores por backend
+BACKEND_ERRORS_TOTAL = Counter(
+    "tcm_backend_errors_total",
+    "Total errors grouped by backend",
+    ["backend"],
+    registry=registry,
+)
+
 # Queue / executor metrics, refreshed on scrape
 QUEUE_TOTAL_USERS = Gauge(
     "tcm_queue_total_users",
@@ -164,6 +180,16 @@ def observe_job_processing(job_type: str, duration_seconds: float) -> None:
     Observe job processing duration for the given job type.
     """
     JOB_PROCESSING_SECONDS.labels(type=job_type).observe(duration_seconds)
+
+
+def observe_inference_latency(model_name: str, duration_seconds: float) -> None:
+    """Observe inference latency for a given model."""
+    INFERENCE_LATENCY_SECONDS.labels(model=model_name).observe(duration_seconds)
+
+
+def observe_backend_error(backend: str) -> None:
+    """Increment error counter for a given backend (e.g. triton, docker, minio)."""
+    BACKEND_ERRORS_TOTAL.labels(backend=backend).inc()
 
 
 def generate_metrics_response(

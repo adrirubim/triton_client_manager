@@ -1,0 +1,10 @@
+name: "MINIO_UPLOAD_IMG_BYTES"
+backend: "python"
+max_batch_size: 0
+input [
+  { name: "MINIO_URL" data_type: TYPE_STRING dims: [ 1 ] }
+  { name: "BYTES" data_type: TYPE_BYTES dims: [ -1 ] }
+]
+output [
+  { name: "OUT_URL" data_type: TYPE_STRING dims: [ 1 ] }
+]

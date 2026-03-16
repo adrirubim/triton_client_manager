@@ -1,0 +1,51 @@
+{
+  "title": "TCM Omega 2026 - Model Observability",
+  "timezone": "browser",
+  "panels": [
+    {
+      "type": "graph",
+      "title": "Inference latency by model (p95)",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(tcm_inference_latency_seconds_bucket[5m])) by (le, model))",
+          "legendFormat": "{{model}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "Queue sizes by type",
+      "targets": [
+        {
+          "expr": "tcm_queue_info_total",
+          "legendFormat": "info",
+          "refId": "A"
+        },
+        {
+          "expr": "tcm_queue_management_total",
+          "legendFormat": "management",
+          "refId": "B"
+        },
+        {
+          "expr": "tcm_queue_inference_total",
+          "legendFormat": "inference",
+          "refId": "C"
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "Backend errors by backend",
+      "targets": [
+        {
+          "expr": "rate(tcm_backend_errors_total[5m])",
+          "legendFormat": "{{backend}}",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "version": 1
+}
