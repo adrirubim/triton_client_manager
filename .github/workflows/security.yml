@@ -40,7 +40,11 @@ jobs:
           # Audit direct dependencies as declared in requirements files.
           # The build fails if ANY vulnerability is found. If an exception is
           # required, it must be justified and handled via explicit ignore rules.
-          pip-audit -r requirements.txt -r requirements-test.txt
+          # NOTE: ONNX is only used for offline model inspection, never for
+          # handling untrusted inputs at runtime. CVE-2026-28500 is therefore
+          # explicitly ignored here, but tracked in CHANGELOG_INTERNAL.
+          pip-audit -r requirements.txt -r requirements-test.txt \
+            --ignore-vuln CVE-2026-28500
 
       - name: Static application security testing (Bandit)
         working-directory: apps/manager

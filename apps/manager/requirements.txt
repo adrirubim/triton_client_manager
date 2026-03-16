@@ -17,10 +17,13 @@ tritonclient[grpc,http]>=2.48.0
 numpy>=1.26.0
 protobuf>=5.26.0
 
-# MinIO / S3
+# MinIO / S3 / model tooling
 boto3>=1.35.0
 safetensors>=0.4.0
-onnx>=1.14.0
+# ONNX is only used for offline model analysis (never exposed to untrusted input
+# in production traffic). We pin to the latest stable release and track known
+# CVEs via pip-audit ignore rules in CI.
+onnx==1.20.1
 pydantic>=2.0.0
 Pillow>=10.0.0
 
