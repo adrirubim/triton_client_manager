@@ -49,3 +49,14 @@ Thumbs.db
 # Coverage / local infra (do not commit)
 apps/manager/.coverage
 apps/manager/coverage.xml
+
+# Python bytecode
+__pycache__/
+*.pyc
+
+# Local env files
+.env
+
+# Virtualenvs
+.venv/
+apps/manager/.venv/
