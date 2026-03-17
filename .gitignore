@@ -4,9 +4,6 @@ fix_merge.py
 fix_all.py
 resolve_del.py
 
-# Internal documentation (do not push to GitLab)
-docs/internal/
-
 # Sensitive keys (never commit)
 *.pem
 apps/manager/config/*.pem
@@ -31,9 +28,18 @@ __pycache__/
 dist/
 build/
 
-# Virtual environments (create inside apps/manager/ only)
+# Python tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Virtual environments (venv must live inside apps/manager/)
 .venv/
 venv/
+apps/manager/.venv/
 .MOCK_SERVER/mockvenv
 
 # IDE
@@ -49,14 +55,3 @@ Thumbs.db
 # Coverage / local infra (do not commit)
 apps/manager/.coverage
 apps/manager/coverage.xml
-
-# Python bytecode
-__pycache__/
-*.pyc
-
-# Local env files
-.env
-
-# Virtualenvs
-.venv/
-apps/manager/.venv/
