@@ -46,4 +46,3 @@ def test_no_onnx_hub_usage_in_repo() -> None:
                 f"Forbidden ONNX hub usage found in {path}.\n"
                 "Policy: do not use `onnx.hub` / `onnx.hub.load()` in this repository."
             )
-
