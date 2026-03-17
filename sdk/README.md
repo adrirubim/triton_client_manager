@@ -16,9 +16,6 @@ Supported Python versions: **3.10 – 3.12**.
 Install from PyPI:
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-
 python -m pip install --upgrade pip
 python -m pip install tcm-client
 ```

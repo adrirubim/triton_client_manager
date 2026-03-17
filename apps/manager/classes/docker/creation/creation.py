@@ -11,7 +11,7 @@ class DockerCreation:
     def __init__(self, config):
         self.remote_api_timeout = config.get("remote_api_timeout", 5)
         self.remote_api_port = config.get("remote_api_port", 2376)
-        self.registry_address = config.get("registry_address", "10.50.0.4:5000")
+        self.registry_address = config.get("registry_address", "localhost:5000")
 
     def handle(self, worker_ip: str, image: str, **kwargs) -> str:
         client = None

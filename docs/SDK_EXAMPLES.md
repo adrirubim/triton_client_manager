@@ -9,7 +9,7 @@ pip install tcm-client
 ### High-level helper `TcmClient.infer`
 
 ```python
-from tcm_client.sdk import AuthContext, TcmClient
+from tcm_client.sdk import AuthContext, InferenceInput, TcmClient
 
 auth_ctx = AuthContext(
     uuid="my-client-uuid",
@@ -22,12 +22,12 @@ auth_ctx = AuthContext(
 client = TcmClient("ws://127.0.0.1:8000/ws", auth_ctx)
 
 inputs = [
-    {
-        "name": "INPUT__0",
-        "shape": [1, 3, 224, 224],
-        "datatype": "FP32",
-        "data": [0.0] * (1 * 3 * 224 * 224),
-    }
+    InferenceInput(
+        name="INPUT__0",
+        shape=[1, 3, 224, 224],
+        datatype="FP32",
+        data=[0.0] * (1 * 3 * 224 * 224),
+    )
 ]
 
 response = client.infer(
@@ -48,7 +48,11 @@ print(response.payload)
 ```bash
 cd /var/www/triton_client_manager
 source apps/manager/.venv/bin/activate
-export PYTHONPATH=$(pwd):$(pwd)/src:$(pwd)/sdk/src
+
+# Option A (recommended): installed CLI entrypoint
+tcm manager dev
+
+# Option B: run the CLI module directly
 python apps/manager/tcm_cli.py manager dev
 ```
 

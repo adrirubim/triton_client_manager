@@ -12,18 +12,18 @@ Central index for Triton Client Manager documentation.
 | [VERSION_STACK.md](VERSION_STACK.md) | Reference versions (Python, FastAPI, uvicorn, Triton client, etc.) |
 | [API_CONTRACTS.md](API_CONTRACTS.md) | WebSocket message formats, auth, payloads, and error contracts |
 | [RUNBOOK.md](RUNBOOK.md) | Operations, deployment, validation, health/ready/metrics endpoints |
+| [DEVELOPMENT.md](DEVELOPMENT.md) | Canonical dev workflow (venv, installs, CI-like validation) |
 | [TESTING.md](TESTING.md) | Smoke, regression, integration, coverage, and linting strategy |
-| [MODEL_ANALYSIS.md](MODEL_ANALYSIS.md) | Internal model analysis utilities and conventions |
-| [MODELS.md](MODELS.md) | Model cards (per-model technical documentation) |
 | [CONFIGURATION.md](CONFIGURATION.md) | Config files reference and environment/runtime assumptions |
 | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | Common issues, root causes, and fixes |
-| [CHANGELOG_INTERNAL.md](CHANGELOG_INTERNAL.md) | Internal engineering changelog (non-marketing) |
+| [CHANGELOG_INTERNAL.md](CHANGELOG_INTERNAL.md) | Engineering changelog (non-marketing) |
+| [models/](models/) | Public model cards (per-model technical documentation) |
 
 ## Audience and Reading Paths
 
 - **Developers (backend / platform)**:
   - Start with: `README.md` (repo root) → `ARCHITECTURE.md` → `CONFIGURATION.md`.
-  - Then: `TESTING.md` and `CHANGELOG_INTERNAL.md` for validation and historical context.
+  - Then: `TESTING.md` for validation and historical context.
 
 - **Operations / SRE**:
   - Start with: `RUNBOOK.md` (day‑to‑day operations) → `TROUBLESHOOTING.md`.

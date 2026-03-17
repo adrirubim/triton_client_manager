@@ -26,14 +26,12 @@ Operations and deployment guidance for Triton Client Manager.
 
 Run all commands from `apps/manager` or ensure the current working directory is `apps/manager` when starting the application. `client_manager.py` loads `config/*.yaml` relative to the current directory.
 
+> **Prerequisite:** complete the one-time setup in [DEVELOPMENT.md](DEVELOPMENT.md) so
+> `apps/manager/.venv` exists and dependencies are installed.
+
 ## Local Setup (Development)
 
-```bash
-cd apps/manager
-python3 -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -r requirements.txt -r requirements-test.txt
-```
+Follow the canonical one-time setup in [DEVELOPMENT.md](DEVELOPMENT.md).
 
 > **Note:** On Ubuntu/WSL (PEP 668), system-wide `pip install` may fail; use a virtual environment. See [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
 
@@ -43,9 +41,7 @@ Minimal flow for a new developer:
 
 ```bash
 cd apps/manager
-python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt -r requirements-test.txt
 
 # Lint & format
 black .
@@ -162,9 +158,11 @@ Recommended full validation before pushing:
 
 ```bash
 cd apps/manager
-python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt -r requirements-test.txt
+
+# One-time (only if deps are not installed yet):
+# pip install -r requirements.txt -r requirements-test.txt
+# pip install -e ../../sdk
 
 # 1. Lint & format
 black .
@@ -588,8 +586,8 @@ After=network.target
 
 [Service]
 Type=simple
-WorkingDirectory=/var/www/triton_client_manager/apps/manager
-ExecStart=/var/www/triton_client_manager/apps/manager/.venv/bin/python client_manager.py
+WorkingDirectory=/opt/triton_client_manager/apps/manager
+ExecStart=/opt/triton_client_manager/apps/manager/.venv/bin/python client_manager.py
 Restart=on-failure
 Environment="PYTHONUNBUFFERED=1"
 
@@ -621,7 +619,7 @@ Run with config mounted (use an explicit version tag rather than `:latest` in pr
 
 ```bash
 docker run -d \
-  -v /var/www/triton_client_manager/apps/manager/config:/app/config:ro \
+  -v /opt/triton_client_manager/apps/manager/config:/app/config:ro \
   -p 8000:8000 \
   --name triton-client-manager \
   triton-client-manager:<version>
@@ -748,7 +746,7 @@ The main state is external (OpenStack, Docker, Triton). The manager itself is mo
 - Extract the archived `config/` into the new deployment directory:
 
 ```bash
-tar xzf triton_client_manager-config-YYYY-MM-DD.tar.gz -C /var/www/triton_client_manager
+tar xzf triton_client_manager-config-YYYY-MM-DD.tar.gz -C /opt/triton_client_manager
 ```
 
 - Restart the service / Deployment so it reloads the configuration.

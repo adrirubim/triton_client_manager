@@ -16,12 +16,98 @@ def check_instance(docker: "DockerThread", vm_ip: str, container_id: str) -> Non
         )
 
 
+def _normalize_triton_inputs(inputs: object) -> list:
+    """
+    Normalize inference inputs to the internal manager shape used by `classes.triton.infer`:
+
+    - Internal (manager) format: {name, dims, type, value}
+    - SDK (tcm-client) format:   {name, shape, datatype, data}
+    """
+    if not isinstance(inputs, list):
+        return []
+
+    # If the caller passes a non-dict list (e.g. tests, or future extensions),
+    # preserve it as-is instead of accidentally erasing it to [].
+    if any(not isinstance(item, dict) for item in inputs):
+        return inputs
+
+    normalized: list = []
+    for item in inputs:
+        # Preferred internal shape
+        if {"name", "dims", "type", "value"}.issubset(item.keys()):
+            normalized.append(item)
+            continue
+
+        # SDK-friendly shape (tcm-client)
+        if {"name", "shape", "datatype", "data"}.issubset(item.keys()):
+            normalized.append(
+                {
+                    "name": item.get("name"),
+                    "dims": item.get("shape"),
+                    "type": item.get("datatype"),
+                    "value": item.get("data"),
+                }
+            )
+            continue
+
+        # Unknown/partial shapes: keep as-is so downstream can error clearly
+        normalized.append(item)
+
+    return normalized
+
+
+def normalize_inference_payload(payload: dict, docker: "DockerThread") -> dict:
+    """
+    Best-effort backwards compatibility normalizer for inference payloads.
+
+    Current runtime handlers validate against:
+      - payload.vm_ip
+      - payload.container_id
+      - payload.model_name
+      - payload.request.inputs
+
+    But docs/payload examples/SDK may send:
+      - payload.inputs (top-level)
+      - payload.vm_id (and omit vm_ip)
+      - SDK-style input dicts (shape/datatype/data)
+    """
+    if not isinstance(payload, dict):
+        return {}
+
+    # Ensure `request` exists.
+    request = payload.get("request")
+    if not isinstance(request, dict):
+        request = {}
+        payload["request"] = request
+
+    # Accept legacy top-level `inputs` by mapping to request.inputs.
+    if "inputs" in payload and "inputs" not in request:
+        request["inputs"] = payload.get("inputs")
+
+    # Normalize input shapes (both request.inputs and pipeline step inputs).
+    if "inputs" in request:
+        request["inputs"] = _normalize_triton_inputs(request.get("inputs"))
+
+    # If vm_ip is missing but container_id is present, derive vm_ip from Docker cache.
+    if not payload.get("vm_ip"):
+        container_id = payload.get("container_id")
+        if isinstance(container_id, str) and container_id:
+            container = docker.dict_containers.get(container_id)
+            if container is not None and getattr(container, "worker_ip", None):
+                payload["vm_ip"] = container.worker_ip
+
+    return payload
+
+
 def validate_fields(payload: dict) -> tuple:
     """Returns (vm_ip, container_id, model_name, inputs). Raises ValueError if any missing."""
     vm_ip = payload.get("vm_ip")
     container_id = payload.get("container_id")
     model_name = payload.get("model_name")
-    inputs = payload.get("request", {}).get("inputs", [])
+    request = payload.get("request")
+    if not isinstance(request, dict) or "inputs" not in request:
+        raise ValueError("Missing required field 'request.inputs'")
+    inputs = request.get("inputs", [])
 
     if not vm_ip:
         raise ValueError("Missing required field 'vm_ip'")
@@ -29,7 +115,5 @@ def validate_fields(payload: dict) -> tuple:
         raise ValueError("Missing required field 'container_id'")
     if not model_name:
         raise ValueError("Missing required field 'model_name'")
-    if not inputs:
-        raise ValueError("Missing required field 'request.inputs'")
 
     return vm_ip, container_id, model_name, inputs

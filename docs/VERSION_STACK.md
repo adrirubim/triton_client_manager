@@ -8,7 +8,12 @@ Reference for Triton Client Manager (`apps/manager`). `requirements.txt` uses mi
 
 | Component | Minimum |
 |-----------|---------|
-| Python | 3.12+ |
+| Python | 3.10+ (tested in CI on 3.12) |
+
+Notes:
+
+- The manager and SDK are routinely validated on **Python 3.12** in GitHub Actions.
+- `apps/manager/pyproject.toml` and `sdk/pyproject.toml` currently declare `requires-python = ">=3.10"`.
 
 ## Core Dependencies
 

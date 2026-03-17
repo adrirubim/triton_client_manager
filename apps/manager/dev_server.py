@@ -13,7 +13,7 @@ you:
 - Generate stable metrics for Prometheus / Grafana.
 
 Usage:
-    cd MANAGER
+    cd apps/manager
     .venv/bin/python dev_server.py
 """
 
@@ -59,7 +59,7 @@ def _load_yaml(path: str) -> dict:
 
 
 def main() -> None:
-    # Ensure CWD is MANAGER so config relative paths resolve correctly
+    # Ensure CWD is apps/manager so config relative paths resolve correctly
     here = os.path.dirname(os.path.abspath(__file__))
     os.chdir(here)
 

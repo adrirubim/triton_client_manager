@@ -17,5 +17,5 @@ max_executor_queue_inference: 200
 queue_cleanup_interval: 300
 queue_idle_threshold: 900
 
-info_actions_available: [queue]
+info_actions_available: [queue, queue_stats]
 management_actions_available: [creation, deletion, create_vm, create_container, create_server, delete_server, delete_container, delete_vm]

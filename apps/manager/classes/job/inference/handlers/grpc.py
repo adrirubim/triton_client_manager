@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Callable
 from classes.triton.inference_orchestrator import TritonInference, TritonRequest
 from classes.triton.tritonerrors import TritonInferenceFailed
 
-from .base import check_instance, validate_fields
+from .base import check_instance, normalize_inference_payload, validate_fields
 
 if TYPE_CHECKING:
     from classes.docker import DockerThread
@@ -33,6 +33,7 @@ class JobInferenceGrpc:
     def handle(self, msg_uuid: str, payload: dict, send: Callable) -> None:
         logger.info(" Running gRPC inference...")
 
+        payload = normalize_inference_payload(payload, self.docker)
         vm_ip, container_id, model_name, inputs = validate_fields(payload)
         check_instance(self.docker, vm_ip, container_id)
 

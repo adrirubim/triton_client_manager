@@ -6,7 +6,7 @@ scrape_configs:
   - job_name: "triton-client-manager"
     static_configs:
       - targets:
-          # Default target when running `MANAGER/dev_server.py` on the host.
+          # Default target when running `apps/manager/dev_server.py` on the host.
           # On Linux without `host.docker.internal`, replace this with the host IP.
           - "host.docker.internal:8000"
 

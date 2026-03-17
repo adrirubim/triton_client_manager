@@ -1,7 +1,7 @@
 """
 Regression tests for dependency injection, deletion payload normalization,
 auth contract, and inference example alignment.
-Run: cd MANAGER && python -m unittest tests.test_regression -v
+Run: cd apps/manager && python -m unittest tests.test_regression -v
 """
 
 import json
@@ -9,7 +9,7 @@ import os
 import sys
 import unittest
 
-# Add MANAGER to path
+# Add apps/manager to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 

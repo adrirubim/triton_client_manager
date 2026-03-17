@@ -20,6 +20,9 @@ Canonical source of truth for test execution and coverage.
 - `GET /health` — Liveness probe
 - `GET /ready` — Readiness probe
 
+> **Prerequisite:** complete the one-time setup in [DEVELOPMENT.md](DEVELOPMENT.md) so
+> `apps/manager/.venv` exists and dependencies are installed.
+
 ## Smoke Test
 
 | Field | Value |
@@ -39,9 +42,8 @@ Uses mocks for OpenStack, Docker, Triton. Verifies:
 
 ```bash
 cd apps/manager
-python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt -r requirements-test.txt
+
 .venv/bin/python tests/smoke_runtime.py
 ```
 
@@ -198,9 +200,11 @@ To run the full pytest suite with coverage over the core modules (`classes`, `ut
 
 ```bash
 cd apps/manager
-python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt -r requirements-test.txt
+
+# One-time (only if deps are not installed yet):
+# pip install -r requirements.txt -r requirements-test.txt
+# pip install -e ../../sdk
 
 .venv/bin/pytest --cov=classes --cov=utils --cov=client_manager --cov-report=term-missing
 ```
@@ -220,9 +224,11 @@ CI runs **Ruff** and **Black** on every push and pull request. You should run th
 
 ```bash
 cd apps/manager
-python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt -r requirements-test.txt
+
+# One-time (only if deps are not installed yet):
+# pip install -r requirements.txt -r requirements-test.txt
+# pip install -e ../../sdk
 
 # Auto-format (Black) and autofix (Ruff)
 black .
@@ -241,9 +247,11 @@ Full verification flow (recommended after upgrades or dependency changes):
 
 ```bash
 cd apps/manager
-python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt -r requirements-test.txt
+
+# One-time (only if deps are not installed yet):
+# pip install -r requirements.txt -r requirements-test.txt
+# pip install -e ../../sdk
 
 # 1. Lint & format
 black .

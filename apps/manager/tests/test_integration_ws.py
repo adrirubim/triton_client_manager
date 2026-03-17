@@ -1,7 +1,7 @@
 """
 Integration tests for WebSocket server (auth, info, multi-client).
 Requires: pytest, pytest-asyncio, websockets.
-Run: cd MANAGER && pytest tests/test_integration_ws.py -v
+Run: cd apps/manager && pytest tests/test_integration_ws.py -v
 """
 
 import json

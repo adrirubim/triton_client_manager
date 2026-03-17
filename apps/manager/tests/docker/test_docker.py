@@ -100,12 +100,12 @@ def test_3_container_discovery(config):
     docker_info = DockerInfo(config)
     mock_vms = {
         "vm-001": MockVM(
-            id="vm-001", name="docker-worker-1", address_private="10.50.0.234"
+            id="vm-001", name="docker-worker-1", address_private="10.0.0.5"
         )
     }
 
     print("\n📡 Querying worker VMs...")
-    print(f"   Worker: 10.50.0.234:{config['remote_api_port']}")
+    print(f"   Worker: 10.0.0.5:{config['remote_api_port']}")
 
     containers_by_ip = docker_info.load_containers(mock_vms)
     assert containers_by_ip is not None, "Failed to load containers"
@@ -129,7 +129,7 @@ def test_3_container_discovery(config):
 
 def test_4_container_lifecycle(config, mock_vms):
     """Test 4: Create and delete container lifecycle (requires reachable Docker worker)."""
-    worker_ip = "10.50.0.234"
+    worker_ip = "10.0.0.5"
     worker_port = config.get("remote_api_port", 2376)
     if not _docker_worker_reachable(worker_ip, worker_port):
         pytest.skip(
@@ -267,7 +267,7 @@ def main():
     config = None
     mock_vms = {
         "vm-001": MockVM(
-            id="vm-001", name="docker-worker-1", address_private="10.50.0.234"
+            id="vm-001", name="docker-worker-1", address_private="10.0.0.5"
         )
     }
 

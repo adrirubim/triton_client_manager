@@ -35,14 +35,15 @@ python client_manager.py
 
 **Symptom:** `ModuleNotFoundError` for fastapi, uvicorn, etc.
 
-**Fix:** Create and activate venv:
+**Fix:** Complete the one-time setup in [DEVELOPMENT.md](DEVELOPMENT.md). Then activate the venv:
 
 ```bash
 cd apps/manager
-python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
 ```
+
+> Policy: keep the venv in `apps/manager/.venv` only. Avoid creating additional
+> virtual environments at the repository root.
 
 ## PEP 668 / externally-managed-environment
 
@@ -51,7 +52,7 @@ pip install -r requirements.txt
 **Fix:** Use a virtual environment; do not use `--break-system-packages`. On Debian/Ubuntu, install `python3-venv` if needed:
 
 ```bash
-sudo apt install python3.12-venv
+sudo apt install python3-venv
 ```
 
 ## Missing Python Packages

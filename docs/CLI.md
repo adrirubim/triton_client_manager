@@ -3,27 +3,41 @@
 This document describes the unified CLI entrypoint for Triton Client Manager.
 The CLI is implemented in `apps/manager/tcm_cli.py`.
 
-> Note: Commands below assume you are in the repository root and running inside
-> the virtualenv under `apps/manager/.venv`.
+> Note: This project uses a single virtual environment location:
+> `apps/manager/.venv`. Do not create a second venv at the repo root.
 
 ---
 
 ### Installation / Environment
 
 ```bash
-cd /var/www/triton_client_manager
+# From repository root
 cd apps/manager
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
-pip install "typer"
+pip install -r requirements.txt -r requirements-test.txt
+
+# Optional (recommended): install the CLI entrypoint `tcm`
+# This repo defines `tcm = apps.manager.tcm_cli:main` in apps/manager/pyproject.toml
+pip install -e .
 ```
 
 You can then invoke the CLI as:
 
 ```bash
-cd /var/www/triton_client_manager
+# From repository root:
+./apps/manager/.venv/bin/tcm --help
+
+# Or, without installing the script:
 ./apps/manager/.venv/bin/python3 apps/manager/tcm_cli.py --help
+```
+
+Or if you are already inside `apps/manager`:
+
+```bash
+# From apps/manager:
+.venv/bin/tcm --help
+.venv/bin/python3 tcm_cli.py --help
 ```
 
 ---
@@ -39,6 +53,10 @@ The CLI groups commands under three main namespaces:
 In code, you currently execute them via:
 
 ```bash
+# From repository root:
+./apps/manager/.venv/bin/tcm <group> <command> [options...]
+
+# Or:
 ./apps/manager/.venv/bin/python3 apps/manager/tcm_cli.py <group> <command> [options...]
 ```
 

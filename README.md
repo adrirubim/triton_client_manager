@@ -6,7 +6,7 @@
 
 Python-based orchestration service for AI inference that coordinates OpenStack VMs, Docker containers, and NVIDIA Triton Inference Server via WebSockets. It provides per-user job queues, management pipelines (VM/container/server creation & deletion), and HTTP/gRPC inference endpoints.
 
-[![Python 3.12+](https://img.shields.io/badge/python-3.12+-3776AB?logo=python&logoColor=white)](https://www.python.org/) [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/) [![Uvicorn](https://img.shields.io/badge/Uvicorn-0.30+-499848)](https://www.uvicorn.org/) [![Docker](https://img.shields.io/badge/Docker-24+-2496ED?logo=docker&logoColor=white)](https://www.docker.com/) [![Triton Client](https://img.shields.io/badge/Triton_Client-2.65-76B900)](https://github.com/triton-inference-server/client) [![Tests](https://github.com/adrirubim/triton_client_manager/actions/workflows/tests.yml/badge.svg)](https://github.com/adrirubim/triton_client_manager/actions/workflows/tests.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-3776AB?logo=python&logoColor=white)](https://www.python.org/) [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/) [![Uvicorn](https://img.shields.io/badge/Uvicorn-0.30+-499848)](https://www.uvicorn.org/) [![Docker](https://img.shields.io/badge/Docker-24+-2496ED?logo=docker&logoColor=white)](https://www.docker.com/) [![Triton Client](https://img.shields.io/badge/Triton_Client-2.48+-76B900)](https://github.com/triton-inference-server/client) [![Tests](https://github.com/adrirubim/triton_client_manager/actions/workflows/tests.yml/badge.svg)](https://github.com/adrirubim/triton_client_manager/actions/workflows/tests.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ## 📋 Table of Contents
 
@@ -92,7 +92,7 @@ The system exposes inference endpoints (HTTP and gRPC) and manages per-user job 
 
 ### Key Highlights
 
-- **Modern stack:** Python 3.12, FastAPI, uvicorn, PyYAML, Triton client
+- **Modern stack:** Python 3.10+ (validated in CI on 3.12), FastAPI, uvicorn, PyYAML, Triton client
 - **OpenStack integration:** VM lifecycle, application credentials, region-aware service catalog
 - **Docker integration:** Container management for Triton workers
 - **Triton integration:** HTTP/gRPC inference, health checks, routing by `vm_id` / `container_id`
@@ -136,7 +136,7 @@ The system exposes inference endpoints (HTTP and gRPC) and manages per-user job 
 - ✅ **Dependency Injection** — Job threads receive clear dependencies (Docker, OpenStack, Triton, WebSocket)
 - ✅ **Regression tests** — Contracts for DI, deletion normalization, auth, and inference examples
 - ✅ **Smoke test** — Validates startup, WebSocket auth, and `queue_stats` with mocks
-- ✅ **Internal changelog** — [CHANGELOG_INTERNAL](docs/CHANGELOG_INTERNAL.md) tracks notable engineering changes
+- ✅ **Engineering changelog** — [CHANGELOG_INTERNAL](docs/CHANGELOG_INTERNAL.md) tracks notable engineering changes
 - ✅ **Observability stack** — Sample Prometheus + Grafana setup with a ready‑to‑use dashboard ([infra/monitoring/](infra/monitoring/), [infra/grafana/tcm_dashboard.json](infra/grafana/tcm_dashboard.json))
 
 ### 👥 Target users & use cases
@@ -154,7 +154,7 @@ The system exposes inference endpoints (HTTP and gRPC) and manages per-user job 
 
 ### Backend
 
-- **Language:** Python 3.12+
+- **Language:** Python 3.10+ (CI validates on 3.12)
 - **Framework:** FastAPI
 - **ASGI server:** uvicorn
 - **Configuration:** PyYAML
@@ -176,10 +176,10 @@ The system exposes inference endpoints (HTTP and gRPC) and manages per-user job 
 <a id="requirements"></a>
 ## 📦 Requirements
 
-- **Python** ≥ 3.12  
+- **Python** ≥ 3.10 (CI validates on 3.12)  
   Check: `python3 --version`
 - **Virtual environment** (mandatory on Ubuntu/WSL due to PEP 668)  
-  Create: `python3 -m venv .venv` (inside `apps/manager/`)
+  Canonical setup: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) (venv lives in `apps/manager/.venv`)
 - **OpenStack access** (for full pipeline)  
   - Keystone URL (`OPENSTACK_AUTH_URL`)
   - Application credential ID and secret
@@ -208,22 +208,11 @@ cd apps/manager
 
 > **Important:** The virtual environment should live **inside** `apps/manager/`, not at the repository root.
 
-### 3. Create Virtual Environment
+### 3. One-time local setup (venv + deps)
 
-```bash
-python3 -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
-```
+Follow: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
-### 4. Install Dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-> On Ubuntu/WSL, system-wide `pip install` may fail because of PEP 668. Always use a virtual environment. See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
-
-### 5. Configure
+### 4. Configure
 
 - Ensure `config/*.yaml` exists inside `apps/manager/config/`:
   - `jobs.yaml`
@@ -372,11 +361,11 @@ For a full local run that matches CI:
 
 ```bash
 cd apps/manager
-python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt -r requirements-test.txt
 .venv/bin/pytest tests/ -v
 ```
+
+Prerequisite: complete the one-time setup in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
 ---
 
@@ -497,9 +486,6 @@ An official Python SDK is published for talking to the Triton Client Manager Web
 Install from PyPI:
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-
 python -m pip install --upgrade pip
 python -m pip install tcm-client
 ```

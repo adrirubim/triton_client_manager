@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Callable
 from classes.triton.inference_orchestrator import TritonInference, TritonRequest
 from classes.triton.tritonerrors import TritonInferenceFailed
 
-from .base import check_instance, validate_fields
+from .base import check_instance, normalize_inference_payload, validate_fields
 
 if TYPE_CHECKING:
     from classes.docker import DockerThread
@@ -33,6 +33,8 @@ class JobInferenceHttp:
     def handle(self, msg_uuid: str, payload: dict, send: Callable) -> dict:
         logger.info(" Running HTTP inference...")
 
+        payload = normalize_inference_payload(payload, self.docker)
+
         # Pipeline path (multi-model, sequential, HTTP only)
         if "pipeline" in payload:
             vm_ip = payload.get("vm_ip")
@@ -56,6 +58,19 @@ class JobInferenceHttp:
             steps_cfg = payload.get("pipeline") or []
             steps: list[TritonRequest] = []
             for step in steps_cfg:
+                if isinstance(step, dict) and "inputs" in step:
+                    step["inputs"] = (
+                        normalize_inference_payload(
+                            {
+                                "container_id": container_id,
+                                "vm_ip": vm_ip,
+                                "request": {"inputs": step.get("inputs")},
+                            },
+                            self.docker,
+                        )
+                        .get("request", {})
+                        .get("inputs", step.get("inputs"))
+                    )
                 steps.append(
                     TritonRequest(
                         name=step.get("name"),

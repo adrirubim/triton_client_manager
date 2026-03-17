@@ -127,7 +127,7 @@ Required: `vm_id` and `container_id`. Sub-handlers receive a normalized structur
   "uuid": "user-123",
   "payload": {
     "action": "deletion",
-    "openstack": {"vm_ip": "x.x.x.x", "vm_id": "openstack-vm-uuid"},
+    "openstack": {"vm_ip": "192.0.2.10", "vm_id": "openstack-vm-uuid"},
     "docker": {"container_id": "docker-container-id"}
   }
 }
@@ -143,7 +143,7 @@ Required: `vm_id` and `container_id`. Sub-handlers receive a normalized structur
     "action": "deletion",
     "vm_id": "openstack-vm-uuid",
     "container_id": "docker-container-id",
-    "vm_ip": "10.0.0.1"
+    "vm_ip": "192.0.2.10"
   }
 }
 ```
@@ -195,7 +195,7 @@ For simple, sequential multi‑model pipelines (A → B → C) on the **same ins
   "payload": {
     "vm_id": "openstack-vm-uuid",
     "container_id": "docker-container-id",
-    "vm_ip": "10.0.0.1",
+    "vm_ip": "192.0.2.10",
     "pipeline": [
       {
         "name": "encode",

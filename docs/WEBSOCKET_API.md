@@ -23,8 +23,8 @@ There you will find:
   - WebSocket close codes (for example `1008`, `1009`) and typical causes.
 
 When you see references to `docs/WEBSOCKET_API.md` in this repository (for example in
-`docs/internal/PROJECT_STATES.md` or comments in `apps/manager/tests/test_client_sdk_contract.py`),
-you should treat them as a direct alias to `docs/API_CONTRACTS.md`.
+comments in `apps/manager/tests/test_client_sdk_contract.py`), you should treat them
+as a direct alias to `docs/API_CONTRACTS.md`.
 
 When in doubt, **always consider `API_CONTRACTS.md` as the most up‑to‑date
 contract** and keep your integrations and contract tests in sync with that
@@ -358,6 +358,14 @@ On error (for example, unknown action, OpenStack/Docker/Triton failure) the resp
 
 Inference requests use messages of type `inference`. The server orchestrates the call to Triton and sends one or more responses using the same `uuid`.
 
+Compatibility notes:
+
+- The manager may accept inputs either as `payload.inputs` (canonical) or `payload.request.inputs` (runtime handler compatibility).
+- The manager normalizes input dicts in either of these shapes:
+  - manager internal: `{name, dims, type, value}`
+  - SDK-friendly: `{name, shape, datatype, data}`
+- If `payload.vm_ip` is omitted, the manager may derive it from its in-memory Docker container cache using `container_id` (when available).
+
 **Generic request (HTTP):**
 
 ```json
@@ -379,9 +387,17 @@ Inference requests use messages of type `inference`. The server orchestrates the
 **SDK equivalent (Python):**
 
 ```python
+from tcm_client.sdk import InferenceInput
+
 inputs = [
-    {"name": "input_0", "type": "TYPE_FP32", "dims": 4, "value": [1.0, 2.0, 3.0, 4.0]},
+    InferenceInput(
+        name="input_0",
+        shape=[4],
+        datatype="FP32",
+        data=[1.0, 2.0, 3.0, 4.0],
+    )
 ]
+
 resp = await client.inference_http(
     vm_id="openstack-vm-uuid",
     container_id="docker-container-id",

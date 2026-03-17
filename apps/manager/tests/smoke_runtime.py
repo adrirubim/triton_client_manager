@@ -1,6 +1,6 @@
 """
 Runtime smoke test: JobThread DI, WebSocket auth, info queue_stats.
-Uses mocks for OpenStack/Docker/Triton. Run from MANAGER: python tests/smoke_runtime.py
+Uses mocks for OpenStack/Docker/Triton. Run from apps/manager: python tests/smoke_runtime.py
 """
 
 import json

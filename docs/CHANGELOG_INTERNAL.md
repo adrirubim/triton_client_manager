@@ -1,6 +1,6 @@
-# Internal Changelog
+# Engineering Changelog
 
-Engineering changelog for Triton Client Manager. Not for product marketing.
+Engineering changelog for Triton Client Manager (non-marketing).
 
 ---
 
@@ -23,8 +23,10 @@ Engineering changelog for Triton Client Manager. Not for product marketing.
 ### Auth / Inference Contract Alignment
 
 - Auth uses top-level `uuid` (not `payload.user_id`)
-- Inference uses `vm_id` and `container_id` for routing (matches Triton server registration)
-- `payload_examples/inference.json` uses `vm_id`
+- Inference accepts payloads that identify the target instance via `container_id` + `vm_ip` (current handler validation), and also supports backwards-compatible shapes that provide `container_id` and omit `vm_ip` (deriving it from the known Docker container cache).
+- Inference inputs are normalized for compatibility between:
+  - manager internal format: `{name, dims, type, value}`
+  - SDK-friendly format: `{name, shape, datatype, data}`
 
 ### Creation Rollback Fix
 
@@ -33,7 +35,7 @@ Engineering changelog for Triton Client Manager. Not for product marketing.
 
 ### Config Updates
 
-- `inspect_config` in `management_actions_available` in jobs.yaml; regression test `test_inspect_config_not_in_actions` expects it removed — known inconsistency
+- `info_actions_available` now includes `queue_stats` in `apps/manager/config/jobs.yaml` to match default schemas and test flows.
 
 ### Python 3.12 Compatibility
 
@@ -55,3 +57,4 @@ Engineering changelog for Triton Client Manager. Not for product marketing.
 
 - Introduced `utils/metrics.py` with Prometheus counters and gauges for WebSocket traffic and job queues/executors.
 - Exposed `/metrics` endpoint in `WebSocketThread` (FastAPI) wired to `JobThread.get_queue_stats()` for queue/executor statistics.
+

@@ -7,7 +7,7 @@ import sys
 
 import pytest
 
-# Add MANAGER to path when running pytest from project root or MANAGER
+# Add apps/manager to path when running pytest from project root or apps/manager
 _here = os.path.dirname(os.path.abspath(__file__))
 _manager = os.path.join(_here, "..")
 for p in (_manager, _here):
@@ -80,5 +80,5 @@ def ws_server():
 
 
 def pytest_configure(config):
-    """Ensure tests run from MANAGER directory."""
+    """Ensure tests run from apps/manager directory."""
     os.chdir(_manager)

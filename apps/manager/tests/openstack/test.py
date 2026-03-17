@@ -6,8 +6,9 @@ from vm import VM
 
 
 def main() -> None:
-    os.environ["OS_CLIENT_CONFIG_FILE"] = (
-        "/home/marco/avolu/git-InternetOne/triton_client_manager/MANAGER/config/openstack.yaml"
+    # Prefer a repo-relative config path over a hardcoded local path.
+    os.environ["OS_CLIENT_CONFIG_FILE"] = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "..", "config", "openstack.yaml")
     )
     os.environ["OS_CLOUD"] = "kolla-admin"
 

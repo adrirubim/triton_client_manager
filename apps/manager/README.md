@@ -8,8 +8,8 @@ This directory contains the main Python application. **Full documentation is in 
 
 ```bash
 # From apps/manager/
-python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
 python client_manager.py
 ```
+
+One-time setup (venv + deps) is documented in `docs/DEVELOPMENT.md`.

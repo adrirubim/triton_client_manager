@@ -16,7 +16,9 @@ Thank you for your interest in contributing to this project. Please read this gu
 
 Always validate locally with the same steps that CI will run.
 
-### 1. Smoke test
+> **Prerequisite:** complete the one-time setup in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)
+> so `apps/manager/.venv` exists and dependencies are installed.
+
 
 Runtime validation with mocks (JobThread, WebSocket, auth, info):
 
@@ -38,9 +40,7 @@ cd apps/manager
 
 ```bash
 cd apps/manager
-python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt -r requirements-test.txt
 .venv/bin/pytest tests/ -v
 ```
 
@@ -96,6 +96,7 @@ To update all packages to the latest stable versions:
 
 ```bash
 cd apps/manager
+source .venv/bin/activate
 .venv/bin/pip install -r requirements.txt -r requirements-test.txt --upgrade
 ```
 
@@ -120,7 +121,7 @@ Fix any reported issues before pushing.
 ## Documentation
 
 - Update [`docs/`](docs/) when changing architecture, API contracts, configuration, or operations.
-- Update [`docs/CHANGELOG_INTERNAL.md`](docs/CHANGELOG_INTERNAL.md) for notable internal changes.
+- Keep internal-only notes out of public docs.
 - Keep [`apps/manager/README.md`](apps/manager/README.md) as a slim quick-start; move detailed content to `docs/`.
 
 ---
