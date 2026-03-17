@@ -146,7 +146,9 @@ If you discover a security vulnerability in this project, please report it **res
 
 ### ONNX model loading policy (supply-chain safety)
 
-- `onnx` is used for **offline model analysis** and metadata inspection.
+- `onnx` is used for **offline model analysis** and metadata inspection (see
+  `apps/manager/requirements-model-tools.txt`). It is **not** required for the
+  manager runtime dependencies.
 - This project must **not** use `onnx.hub` / `onnx.hub.load()` to fetch models from remote Git repositories (GitHub/GitLab) at runtime.
   - Treat models as **controlled artifacts** (filesystem, MinIO/S3, registry) with environment-specific governance.
   - This mitigates hub-related supply-chain risks (including cases where security prompts/warnings can be suppressed).

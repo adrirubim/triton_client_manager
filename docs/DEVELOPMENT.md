@@ -24,6 +24,14 @@ Notes:
 
 - Keep the venv **only** in `apps/manager/.venv`. Do not create a second venv at the repository root.
 - If you see `externally-managed-environment`, you are trying to run `pip` outside the venv.
+- Optional: offline model tooling (ONNX inspection) is not required for runtime.
+  Install only when needed:
+
+```bash
+cd apps/manager
+source .venv/bin/activate
+pip install -r requirements-model-tools.txt
+```
 
 ---
 

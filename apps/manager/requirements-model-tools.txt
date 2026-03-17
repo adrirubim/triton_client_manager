@@ -1,0 +1,13 @@
+# Optional model tooling dependencies (NOT required for manager runtime).
+#
+# Install only when you need offline model inspection / analysis:
+#
+#   cd apps/manager
+#   source .venv/bin/activate
+#   pip install -r requirements-model-tools.txt
+#
+# Security note:
+# - Do not use `onnx.hub` / `onnx.hub.load()` in this repository.
+# - Treat models as controlled artifacts (filesystem / MinIO / registry).
+onnx==1.20.1
+
