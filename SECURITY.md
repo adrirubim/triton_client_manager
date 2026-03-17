@@ -144,6 +144,14 @@ If you discover a security vulnerability in this project, please report it **res
     [`apps/manager/client_manager.py`](apps/manager/client_manager.py) (tests excluded to reduce noise).
 - This policy reflects the current stance: **no known vulnerabilities are accepted** in the main branch without an explicit, documented exception.
 
+### ONNX model loading policy (supply-chain safety)
+
+- `onnx` is used for **offline model analysis** and metadata inspection.
+- This project must **not** use `onnx.hub` / `onnx.hub.load()` to fetch models from remote Git repositories (GitHub/GitLab) at runtime.
+  - Treat models as **controlled artifacts** (filesystem, MinIO/S3, registry) with environment-specific governance.
+  - This mitigates hub-related supply-chain risks (including cases where security prompts/warnings can be suppressed).
+- A security guardrail test (`apps/manager/tests/test_security_no_onnx_hub.py`) enforces this policy.
+
 ---
 
 ## Logging and Debugging Caution
