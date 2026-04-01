@@ -1,4 +1,5 @@
 import logging
+import time
 from typing import TYPE_CHECKING, Callable
 
 from classes.job.joberrors import JobInferenceMissingField
@@ -8,6 +9,7 @@ from classes.triton.tritonerrors import TritonInferenceFailed
 
 from .handlers.grpc import JobInferenceGrpc
 from .handlers.http import JobInferenceHttp
+from utils.metrics import observe_inference_latency
 
 if TYPE_CHECKING:
     from classes.docker import DockerThread
@@ -98,6 +100,8 @@ class JobInference:
                 self._make_payload(msg_uuid, status, model_name, data),
             )
 
+        start = time.perf_counter()
+        model_name_for_metrics = payload.get("model_name") or "unknown"
         try:
             if protocol == "http":
                 decoded = self._http.handle(msg_uuid, payload, send)
@@ -140,6 +144,9 @@ class JobInference:
                 msg_uuid,
                 self._make_payload(msg_uuid, "FAILED", None, f"Unexpected error: {e}"),
             )
+        finally:
+            elapsed = time.perf_counter() - start
+            observe_inference_latency(model_name_for_metrics, elapsed)
 
     # -------------------------------------------- #
     #              WEBSOCKET HELPERS                #

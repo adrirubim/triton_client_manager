@@ -18,6 +18,7 @@ from .openstackerrors import (
     OpenstackResourceNotFound,
     OpenstackVMStateChanged,
 )
+from utils.metrics import observe_backend_error
 
 ###################################
 #      OpenStack Thread           #
@@ -88,6 +89,7 @@ class OpenstackThread(threading.Thread):
                 time.sleep(self.refresh_time)
 
             except Exception as e:
+                observe_backend_error("openstack")
                 logger.exception("OpenstackThread main loop error: %s", e)
 
         logger.info("[OpenstackThread] Stopped")
@@ -174,12 +176,16 @@ class OpenstackThread(threading.Thread):
 
         return vm_ip, vm_id
 
-    def delete_vm(self, data: dict) -> bool:
+    def delete_vm(self, data: dict | str) -> bool:
 
         # --- Check ---
-        if "vm_id" not in data:
-            raise OpenstackMissingArgument("vm_id")
-        vm_id = data["vm_id"]
+        if isinstance(data, str):
+            vm_id = data
+            data = {"vm_id": vm_id}
+        else:
+            if "vm_id" not in data:
+                raise OpenstackMissingArgument("vm_id")
+            vm_id = data["vm_id"]
 
         # --- Exist ---
         with self._data_lock:
@@ -193,5 +199,5 @@ class OpenstackThread(threading.Thread):
         with self._data_lock:
             self.dict_vms.pop(vm_id, None)
 
-        logger.info(" Deregistered {vm_id}")
+        logger.info(" Deregistered %s", vm_id)
         return data

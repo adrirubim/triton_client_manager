@@ -16,6 +16,7 @@ from .dockererrors import (
     DockerMissingContainer,
 )
 from .info import DockerInfo
+from utils.metrics import observe_backend_error
 
 if TYPE_CHECKING:
     from ..openstack import OpenstackThread
@@ -76,6 +77,7 @@ class DockerThread(threading.Thread):
                 time.sleep(self.refresh_time)
 
             except Exception as e:
+                observe_backend_error("docker")
                 logger.exception("DockerThread main loop error: %s", e)
 
         logger.info("[DockerThread] Stopped")

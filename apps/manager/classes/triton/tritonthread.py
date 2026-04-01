@@ -15,6 +15,7 @@ from .tritonerrors import (
     TritonMissingInstance,
     TritonServerStateChanged,
 )
+from utils.metrics import observe_backend_error
 
 ###################################
 #        Triton Thread            #
@@ -62,8 +63,9 @@ class TritonThread(threading.Thread):
             try:
                 self.load()
                 time.sleep(self.refresh_time)
-            except Exception:
-                logger.info(" TritonThread main loop: {e}")
+            except Exception as e:
+                observe_backend_error("triton")
+                logger.info(" TritonThread main loop: %s", e)
         logger.info("[TritonThread] Stopped")
 
     def _send_alert(self, error: Exception):
@@ -76,8 +78,8 @@ class TritonThread(threading.Thread):
                     "timestamp": time.time(),
                 }
                 self.websocket(alert_payload)
-            except Exception:
-                logger.info(" TritonThread failed to send alert: {e}")
+            except Exception as e:
+                logger.info(" TritonThread failed to send alert: %s", e)
 
     def load(self) -> None:
         """Health-check all known servers; detect and alert on status changes."""
@@ -107,6 +109,7 @@ class TritonThread(threading.Thread):
                         )
                     )
             except Exception:
+                observe_backend_error("triton")
                 logger.info(
                     " Health check failed for ({vm_id}, {container_id[:12]}): {e}"
                 )

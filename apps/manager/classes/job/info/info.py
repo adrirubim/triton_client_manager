@@ -1,9 +1,12 @@
+import logging
 from typing import TYPE_CHECKING, Callable
 
 # Only import for type checking, not at runtime
 if TYPE_CHECKING:
     from classes.docker import DockerThread
     from classes.openstack import OpenstackThread
+
+logger = logging.getLogger(__name__)
 
 ###################################
 #        Job Info Handler         #
@@ -28,11 +31,11 @@ class JobInfo:
 
     def handle_info(self, msg: dict):
         """Process info request and send response"""
-        try:
-            msg_uuid = msg.get("uuid")
-            payload = msg.get("payload", {})
-            request_type = payload.get("action", payload.get("request_type", "unknown"))
+        msg_uuid = msg.get("uuid")
+        payload = msg.get("payload", {}) or {}
+        request_type = payload.get("action", payload.get("request_type", "unknown"))
 
+        try:
             # Handle different info request types
             if request_type in ("queue", "queue_stats"):
                 # Get queue statistics
@@ -56,25 +59,47 @@ class JobInfo:
             if self.websocket and msg_uuid:
                 self.websocket(msg_uuid, result)
             else:
-                print("[Error] JobInfo.handle_info: Missing uuid or websocket")
+                logger.error(
+                    "JobInfo.handle_info: Missing uuid or websocket",
+                    extra={
+                        "client_uuid": msg_uuid or "-",
+                        "job_id": payload.get("job_id") or "-",
+                        "job_type": "info",
+                    },
+                )
 
-        except Exception as e:
-            print(f"[Error] JobInfo.handle_info: {e}")
+        except Exception as e:  # noqa: BLE001
+            logger.exception(
+                "JobInfo.handle_info failed",
+                extra={
+                    "client_uuid": msg_uuid or "-",
+                    "job_id": payload.get("job_id") or "-",
+                    "job_type": "info",
+                    "request_type": request_type,
+                },
+            )
 
             # Try to send error response
             try:
-                msg_uuid = msg.get("uuid")
                 if self.websocket and msg_uuid:
                     error_result = {
                         "type": "info_response",
                         "payload": {
                             "job_id": payload.get("job_id"),
+                            "request_type": request_type,
                             "status": "error",
-                            "error": str(e),
+                            "data": {"error": str(e)},
                         },
                     }
                     self.websocket(msg_uuid, error_result)
             except Exception as send_err:
-                print(
-                    f"[Error] JobInfo.handle_info: failed to send error response: {send_err}"
+                logger.exception(
+                    "JobInfo.handle_info: failed to send error response",
+                    extra={
+                        "client_uuid": msg_uuid or "-",
+                        "job_id": payload.get("job_id") or "-",
+                        "job_type": "info",
+                        "request_type": request_type,
+                        "send_error": str(send_err),
+                    },
                 )

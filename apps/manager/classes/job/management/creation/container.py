@@ -1,11 +1,15 @@
+import logging
 import uuid
 from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
 from classes.job.joberrors import JobContainerCreationFailed
+from utils.config_env import overlay_minio_payload
 
 if TYPE_CHECKING:
     from classes.docker import DockerThread
+
+logger = logging.getLogger(__name__)
 
 
 class JobCreateContainer:
@@ -13,7 +17,10 @@ class JobCreateContainer:
         self.docker = docker
 
     def handle(self, msg_uuid: str, payload: dict, vm_ip: str = None) -> tuple:
-        print(f"[Creation-{msg_uuid}] Step 2: Creating Docker container...")
+        logger.info(
+            "Creation step 2: creating Docker container",
+            extra={"client_uuid": msg_uuid, "job_id": "-", "job_type": "management_create_container"},
+        )
 
         # --- Extrapolate DOCKER Data ---
         docker_config: dict = payload.get("docker", {})
@@ -26,7 +33,7 @@ class JobCreateContainer:
             docker_config["name"] = str(uuid.uuid4())
 
         # --- Extrapolate MINIO data ---
-        minio_config = payload.get("minio", {})
+        minio_config = overlay_minio_payload(payload.get("minio", {}) or {})
         if minio_config:
             # --- Model repository ---
             parsed = urlparse(minio_config["endpoint"])
@@ -48,7 +55,10 @@ class JobCreateContainer:
             docker_config["environment"]["AWS_SECRET_ACCESS_KEY"] = minio_config[
                 "secret_key"
             ]
-            docker_config["environment"].setdefault("AWS_DEFAULT_REGION", "us-east-1")
+            docker_config["environment"].setdefault(
+                "AWS_DEFAULT_REGION",
+                minio_config.get("region") or "us-east-1",
+            )
 
         # --- Port mappings ---
         ports_config = docker_config.get("ports", {})
@@ -65,5 +75,13 @@ class JobCreateContainer:
         if not container_id:
             raise JobContainerCreationFailed("create_container() returned None")
 
-        print(f"[Creation-{msg_uuid}] ✓ Container created: {container_id[:12]}")
+        logger.info(
+            "Creation step 2 complete: container created",
+            extra={
+                "client_uuid": msg_uuid,
+                "job_id": "-",
+                "job_type": "management_create_container",
+                "container_id": container_id,
+            },
+        )
         return container_id, docker_config

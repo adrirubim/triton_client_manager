@@ -17,6 +17,30 @@ STREAM_TIMEOUT = 120  # seconds before a hung gRPC stream is abandoned
 class TritonInfer:
     """Sends inference requests to Triton — gRPC streaming (LLM) or HTTP (ML)."""
 
+    @staticmethod
+    def _to_numpy(datatype: str, value):
+        """
+        Avoid corrupting tensor dimensions by wrapping everything in [value].
+        - If value is list/tuple/np.ndarray: np.asarray(value)
+        - If scalar: np.asarray([value]) (preserves a batch-like dimension)
+        Special case BYTES: produce dtype=object and encode strings.
+        """
+        if datatype == "BYTES":
+            if isinstance(value, (list, tuple, np.ndarray)):
+                encoded = [
+                    v.encode("utf-8") if isinstance(v, str) else v
+                    for v in np.asarray(value).tolist()
+                ]
+                return np.asarray(encoded, dtype=object)
+            return np.asarray(
+                [value.encode("utf-8") if isinstance(value, str) else value],
+                dtype=object,
+            )
+
+        if isinstance(value, (list, tuple, np.ndarray)):
+            return np.asarray(value)
+        return np.asarray([value])
+
     # -------------------------------------------- #
     #               INPUT BUILDERS                  #
     # -------------------------------------------- #
@@ -32,13 +56,7 @@ class TritonInfer:
 
             infer_input = grpcclient.InferInput(inp["name"], shape, datatype)
 
-            if datatype == "BYTES":
-                data = np.array(
-                    [value.encode("utf-8") if isinstance(value, str) else value],
-                    dtype=object,
-                )
-            else:
-                data = np.array([value])
+            data = TritonInfer._to_numpy(datatype, value)
 
             infer_input.set_data_from_numpy(data)
             grpc_inputs.append(infer_input)
@@ -57,13 +75,7 @@ class TritonInfer:
 
             infer_input = httpclient.InferInput(inp["name"], shape, datatype)
 
-            if datatype == "BYTES":
-                data = np.array(
-                    [value.encode("utf-8") if isinstance(value, str) else value],
-                    dtype=object,
-                )
-            else:
-                data = np.array([value])
+            data = TritonInfer._to_numpy(datatype, value)
 
             infer_input.set_data_from_numpy(data)
             http_inputs.append(infer_input)

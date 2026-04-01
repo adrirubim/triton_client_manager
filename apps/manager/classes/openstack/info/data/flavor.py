@@ -18,7 +18,7 @@ class Flavor:
     def from_api(cls, data: dict) -> dict[str, "Flavor"]:
         flavors: dict[str, Flavor] = {}
 
-        for raw in flavors["flavors"]:
+        for raw in data.get("flavors", []):
             needed = {
                 # --- Identity ---
                 "id": raw["id"],

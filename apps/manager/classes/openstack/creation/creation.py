@@ -82,7 +82,7 @@ class OpenstackCreation:
 
     def loop_status(self, vm_id: str) -> str:
 
-        # --- Fucking stupid endpoints ---
+        # --- Endpoint ---
         full_endpoint = (
             self.auth.catalog.compute.endpoint_internal + self.endpoint + "/" + vm_id
         )
@@ -101,7 +101,7 @@ class OpenstackCreation:
                 )
                 # --- Parse ---
                 data: dict = response.json()["server"]
-                vm_ip = data.get("ip", "") or None
+                vm_ip = self._extract_primary_ipv4(data.get("addresses", {}))
                 vm_status = data.get("status", "")
 
                 # --- I want to break free ---
@@ -121,3 +121,41 @@ class OpenstackCreation:
             return None
 
         return vm_ip
+
+    @staticmethod
+    def _extract_primary_ipv4(addresses: dict) -> str | None:
+        """
+        Nova returns IPs under server.addresses:
+        {
+          "<network_name>": [{"addr": "10.0.0.5", "version": 4, "OS-EXT-IPS:type": "fixed"}, ...],
+          ...
+        }
+        Prefer IPv4 floating, then IPv4 fixed, else first IPv4 found.
+        """
+        if not isinstance(addresses, dict):
+            return None
+
+        ipv4_floating = None
+        ipv4_fixed = None
+        ipv4_any = None
+
+        for _, iface_list in addresses.items():
+            if not isinstance(iface_list, list):
+                continue
+            for iface in iface_list:
+                if not isinstance(iface, dict):
+                    continue
+                if iface.get("version") != 4:
+                    continue
+                addr = iface.get("addr")
+                if not addr:
+                    continue
+                ip_type = iface.get("OS-EXT-IPS:type")
+                if ip_type == "floating" and not ipv4_floating:
+                    ipv4_floating = addr
+                elif ip_type == "fixed" and not ipv4_fixed:
+                    ipv4_fixed = addr
+                elif not ipv4_any:
+                    ipv4_any = addr
+
+        return ipv4_floating or ipv4_fixed or ipv4_any

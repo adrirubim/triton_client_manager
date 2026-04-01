@@ -10,6 +10,7 @@ from tcm.job import JobThread  # -> Conccurent multiple threads (LOTS of REQUEST
 from tcm.openstack import OpenstackThread
 from tcm.triton import TritonThread
 from tcm.websocket import WebSocketThread
+from utils.config_env import overlay_openstack_config
 from utils.logging_config import configure_logging
 from utils.metrics import UNSAFE_CONFIG_STARTUPS_TOTAL
 
@@ -58,6 +59,10 @@ class ClientManager:
         self.config_websocket = websocket_cfg.dict()
         self.config_triton = triton_cfg.dict()
 
+        # Apply environment variable overlays for secrets/runtime overrides.
+        # This keeps YAML files free of real secrets and enables environment-specific deployments.
+        self.config_openstack = overlay_openstack_config(self.config_openstack or {})
+
         # Hardening checks for WebSocket auth configuration.
         auth_cfg = (self.config_websocket or {}).get("auth") or {}
         mode = auth_cfg.get("mode", "simple")
@@ -66,17 +71,27 @@ class ClientManager:
         algorithms = auth_cfg.get("algorithms") or []
         env = os.getenv("TCM_ENV", "development").lower()
 
-        # Detect strict mode without any signature verification configured.
+        # Strict mode without signature verification is allowed only in development.
+        # In staging/production we fail fast to avoid a "false sense of security".
         if mode == "strict" and not (jwks_url or public_key_pem):
             UNSAFE_CONFIG_STARTUPS_TOTAL.labels(
                 reason="strict_without_signature_verification",
             ).inc()
-            logger.error(
-                "Unsafe auth config detected: auth.mode='strict' sin JWKS/PEM; "
-                "degradando explícitamente a mode='simple' para evitar falsa seguridad",
+            if env in {"staging", "production"}:
+                logger.critical(
+                    "Unsafe auth config: auth.mode='strict' requires JWKS/PEM in '%s' "
+                    "(configure auth.jwks_url or auth.public_key_pem). Refusing to start.",
+                    env,
+                )
+                raise RuntimeError(
+                    "Unsafe auth config: strict mode requires signature verification in staging/production",
+                )
+            logger.warning(
+                "Auth config warning: auth.mode='strict' without JWKS/PEM in '%s'. "
+                "Token signatures will not be verified; only claim semantics may be enforced. "
+                "This is supported for development only.",
+                env,
             )
-            auth_cfg["mode"] = "simple"
-            self.config_websocket["auth"] = auth_cfg
 
         # Detect HS* usage in non‑dev environments and refuse to start.
         uses_hs = any(

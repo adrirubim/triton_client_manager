@@ -49,7 +49,7 @@ class TritonInfo:
         start = time.time()
         while (time.time() - start) < timeout:
             if self.is_server_ready(vm_ip):
-                logger.info(" Server ready at {vm_ip}:{self.http_port}")
+                logger.info(" Server ready at %s:%s", vm_ip, self.http_port)
                 return True
             time.sleep(2)
         return False
@@ -77,8 +77,8 @@ class TritonInfo:
             )
             logger.info(" Load request sent for model '{model_name}'")
             return True
-        except Exception:
-            logger.info(" Failed to load model '{model_name}': {e}")
+        except Exception as e:
+            logger.info(" Failed to load model '%s': %s", model_name, e)
             return False
 
     def unload_model(self, vm_ip: str, model_name: str, timeout: int = 30) -> bool:
@@ -86,8 +86,8 @@ class TritonInfo:
             self._client(vm_ip, timeout=timeout).unload_model(model_name)
             logger.info(" Unload request sent for model '{model_name}'")
             return True
-        except Exception:
-            logger.info(" Failed to unload model '{model_name}': {e}")
+        except Exception as e:
+            logger.info(" Failed to unload model '%s': %s", model_name, e)
             return False
 
     # -------------------------------------------- #
@@ -96,13 +96,13 @@ class TritonInfo:
     def get_server_metadata(self, vm_ip: str) -> dict:
         try:
             return self._client(vm_ip).get_server_metadata()
-        except Exception:
-            logger.info(" Failed to get server metadata: {e}")
+        except Exception as e:
+            logger.info(" Failed to get server metadata: %s", e)
             return {}
 
     def get_model_metadata(self, vm_ip: str, model_name: str) -> dict:
         try:
             return self._client(vm_ip).get_model_metadata(model_name)
-        except Exception:
-            logger.info(" Failed to get model metadata: {e}")
+        except Exception as e:
+            logger.info(" Failed to get model metadata: %s", e)
             return {}

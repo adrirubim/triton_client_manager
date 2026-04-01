@@ -8,7 +8,7 @@ from typing import Callable, Dict, List, Optional
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
-from utils.auth import validate_token
+from utils.auth import SecurityError, validate_token
 from utils.metrics import (
     AUTH_FAILURES_TOTAL,
     RATE_LIMIT_VIOLATIONS_TOTAL,
@@ -273,9 +273,18 @@ class WebSocketThread(threading.Thread):
                     await websocket.close(code=1008)
                     return
 
-            # Optional token validation (claims-level, no signature verification).
+            # Optional token validation (claims + optional cryptographic verification when configured).
             token = payload.get("token")
-            ok, token_error = validate_token(token, self.auth_config)
+            try:
+                ok, token_error = validate_token(token, self.auth_config)
+            except SecurityError as exc:
+                AUTH_FAILURES_TOTAL.labels(reason="auth_config").inc()
+                await self._send_error(
+                    websocket,
+                    f"Auth configuration error: {exc}",
+                )
+                await websocket.close(code=1008)
+                return
             if not ok:
                 AUTH_FAILURES_TOTAL.labels(reason="token").inc()
                 if not self._record_auth_failure(client_id):

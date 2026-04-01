@@ -29,10 +29,18 @@ class JobCreation:
 
         # ------------ Create VM ------------
         vm_ip, vm_id = self._vm.handle(msg_uuid, payload)
+        payload["vm_id"] = vm_id
+        payload["vm_ip"] = vm_ip
+        payload.setdefault("openstack", {})
+        payload["openstack"]["vm_id"] = vm_id
+        payload["openstack"]["vm_ip"] = vm_ip
 
         # ------------ Create Container ------------
         try:
             container_id, _ = self._container.handle(msg_uuid, payload, vm_ip=vm_ip)
+            payload["container_id"] = container_id
+            payload.setdefault("docker", {})
+            payload["docker"]["container_id"] = container_id
         except Exception:
             # --- Rollback VM on container creation failure ---
             if vm_id:
@@ -49,7 +57,7 @@ class JobCreation:
             if container_id:
                 self._container.docker.delete_container(
                     {
-                        "worker_ip": vm_ip,
+                        "vm_id": vm_id,
                         "container_id": container_id,
                         "force": True,
                     }
