@@ -5,5 +5,5 @@ input [
   { name: "MINIO_URL" data_type: TYPE_STRING dims: [ 1 ] }
 ]
 output [
-  { name: "BYTES" data_type: TYPE_BYTES dims: [ -1 ] }
+  { name: "BYTES" data_type: TYPE_UINT8 dims: [ -1 ] }
 ]

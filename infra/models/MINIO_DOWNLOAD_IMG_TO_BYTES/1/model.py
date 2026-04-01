@@ -2,6 +2,7 @@ import os
 from urllib.parse import urlparse
 
 import boto3
+from botocore.config import Config
 import numpy as np
 import triton_python_backend_utils as pb_utils
 
@@ -16,10 +17,24 @@ def _parse_s3(uri: str) -> tuple[str, str]:
 class TritonPythonModel:
     def initialize(self, args):
         endpoint = os.getenv("TCM_S3_ENDPOINT")
+        if not endpoint:
+            raise ValueError("TCM_S3_ENDPOINT must be set (MinIO/S3 endpoint URL)")
         region = os.getenv("AWS_REGION") or os.getenv("MINIO_REGION") or "us-east-1"
         secure = (os.getenv("TCM_S3_SECURE", "true").strip().lower() in {"1","true","yes","on"})
+        connect_timeout_s = float(os.getenv("TCM_S3_CONNECT_TIMEOUT_SECONDS", "5.0"))
+        read_timeout_s = float(os.getenv("TCM_S3_READ_TIMEOUT_SECONDS", "30.0"))
+        boto_cfg = Config(
+            connect_timeout=connect_timeout_s,
+            read_timeout=read_timeout_s,
+            retries={"max_attempts": 3, "mode": "standard"},
+        )
         session = boto3.session.Session(region_name=region)
-        self.s3 = session.client("s3", endpoint_url=endpoint, use_ssl=secure)
+        self.s3 = session.client(
+            "s3",
+            endpoint_url=endpoint,
+            use_ssl=secure,
+            config=boto_cfg,
+        )
 
     def execute(self, requests):
         responses = []
