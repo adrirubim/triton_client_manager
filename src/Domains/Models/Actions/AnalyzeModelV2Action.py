@@ -4,7 +4,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from src.Domains.Models.Actions.FetchModelArtifactAction import FetchModelArtifactAction
+from src.Domains.Models.Analysis.GgufInspector import GgufInspector
 from src.Domains.Models.Analysis.OnnxInspector import OnnxInspector
+from src.Domains.Models.Analysis.PyTorchInspector import PyTorchInspector
 from src.Domains.Models.Analysis.SafetensorsInspector import SafetensorsInspector
 from src.Domains.Models.Schemas.ModelAnalysisReport import (
     ModelAnalysisReport,
@@ -19,6 +21,10 @@ def _detect_format(path: str, explicit: str | None = None) -> ModelFormat:
     suffix = Path(path).suffix.lower()
     if suffix == ".onnx":
         return ModelFormat.onnx
+    if suffix == ".gguf":
+        return ModelFormat.gguf
+    if suffix in {".pt", ".pth"}:
+        return ModelFormat.pytorch
     if suffix in {".safetensors"}:
         return ModelFormat.safetensors
     raise ValueError(f"Unsupported model format for analysis: {suffix!r}")
@@ -45,6 +51,19 @@ class AnalyzeModelV2Action:
             outputs = ins.outputs
             if not inputs or not outputs:
                 warnings.append("ONNX graph has empty inputs/outputs (possible invalid export).")
+        elif fmt == ModelFormat.gguf:
+            ins = GgufInspector(model_path=fetched.local_path).run()
+            inputs = ins.inputs
+            outputs = ins.outputs
+            warnings.extend(ins.warnings)
+        elif fmt == ModelFormat.pytorch:
+            ins = PyTorchInspector(model_path=fetched.local_path).run()
+            inputs = ins.inputs
+            outputs = ins.outputs
+            warnings.extend(ins.warnings)
+            warnings.append(
+                f"PyTorch ZIP weights size (uncompressed, recorded) ~{ins.total_uncompressed_size_recorded} bytes (members_recorded={ins.members_recorded}, member_count={ins.member_count})."
+            )
         elif fmt == ModelFormat.safetensors:
             ins = SafetensorsInspector(model_path=fetched.local_path).run()
             # safetensors does not define an IO contract; report tensors as a flat list in `inputs`
@@ -57,6 +76,14 @@ class AnalyzeModelV2Action:
         # Basic safety heuristics
         if fmt == ModelFormat.onnx:
             warnings.append("ONNX is data-only, but always treat untrusted models as untrusted artifacts.")
+        if fmt == ModelFormat.gguf:
+            warnings.append(
+                "GGUF inspection is KV-metadata only; weights are not loaded and deep tensor IO cannot be safely inferred."
+            )
+        if fmt == ModelFormat.pytorch:
+            warnings.append(
+                "PyTorch inspection is inspection-only for safety: no pickle, no extraction, no execution."
+            )
         if fmt == ModelFormat.safetensors:
             warnings.append("safetensors is data-only; loading is generally safe, but inference wrapper may execute code.")
 

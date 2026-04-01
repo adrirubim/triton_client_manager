@@ -14,6 +14,8 @@ class ModelCategory(str, Enum):
 class ModelFormat(str, Enum):
     onnx = "onnx"
     safetensors = "safetensors"
+    gguf = "gguf"
+    pytorch = "pytorch"
 
 
 class ModelIO(BaseModel):
