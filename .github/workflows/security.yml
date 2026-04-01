@@ -30,12 +30,17 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt -r requirements-test.txt
 
+      - name: Install dependencies for apps/docker_controller
+        working-directory: apps/docker_controller
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
       - name: Install security tooling
         run: |
           python -m pip install pip-audit bandit
 
       - name: Dependency vulnerability scan (pip-audit)
-        working-directory: apps/manager
         run: |
           # Audit direct dependencies as declared in requirements files.
           # The build fails if ANY vulnerability is found. If an exception is
@@ -43,7 +48,9 @@ jobs:
           # NOTE: ONNX is only used for offline model inspection, never for
           # handling untrusted inputs at runtime. CVE-2026-28500 is therefore
           # explicitly ignored here, but tracked in CHANGELOG_INTERNAL.
-          pip-audit -r requirements.txt -r requirements-test.txt \
+          pip-audit -r apps/manager/requirements.txt -r apps/manager/requirements-test.txt \
+            --ignore-vuln CVE-2026-28500
+          pip-audit -r apps/docker_controller/requirements.txt \
             --ignore-vuln CVE-2026-28500
 
       - name: Static application security testing (Bandit)
