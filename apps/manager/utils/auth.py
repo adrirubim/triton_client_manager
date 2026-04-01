@@ -14,6 +14,7 @@ Main goals:
 
 import base64
 import json
+import os
 import time
 from typing import Any, Dict, Optional, Tuple
 
@@ -24,6 +25,10 @@ from jwt import (
     InvalidIssuerError,
     PyJWKClient,
 )
+
+
+class SecurityError(RuntimeError):
+    """Raised when authentication configuration is insecure for the current environment."""
 
 
 def _b64url_decode(data: str) -> bytes:
@@ -90,11 +95,30 @@ def validate_token(
 
     jwks_url = cfg.get("jwks_url")
     public_key_pem = cfg.get("public_key_pem")
-    algorithms = cfg.get("algorithms") or ["RS256", "ES256", "HS256"]
+    algorithms_cfg = cfg.get("algorithms") or []
     audience = cfg.get("audience")
     expected_iss = cfg.get("issuer")
     leeway = int(cfg.get("leeway_seconds", 60))
     required_claims = cfg.get("required_claims") or []
+    env = os.getenv("TCM_ENV", "development").lower()
+
+    def _default_algorithms() -> list[str]:
+        """
+        Safe defaults:
+        - Prefer asymmetric algorithms by default.
+        - HS* must be explicitly configured and is only allowed in development.
+        """
+        return ["RS256", "ES256"]
+
+    algorithms: list[str] = list(algorithms_cfg) if algorithms_cfg else _default_algorithms()
+
+    # Guardrail: HS* algorithms are only allowed in development and must be explicit.
+    uses_hs = any(isinstance(a, str) and a.upper().startswith("HS") for a in algorithms)
+    if uses_hs and env != "development":
+        return False, "HS* algorithms are not allowed outside development"
+    if env == "development" and not algorithms_cfg and uses_hs:
+        # Defensive: should not happen because defaults exclude HS*, but keep for clarity.
+        return False, "HS* algorithms must be explicitly configured"
 
     def _validate_required_claims(claims: Dict[str, Any]) -> Tuple[bool, str]:
         for name in required_claims:
@@ -135,8 +159,15 @@ def validate_token(
             return ok, err
         return True, ""
 
-    # Fallback: strict mode without key material – preserve previous behaviour
-    # (no signature verification, only payload/claims checks).
+    # Strict mode without key material.
+    # In non-development environments this is considered insecure and must fail-fast.
+    if env != "development":
+        raise SecurityError(
+            "auth.mode='strict' requiere verificación criptográfica (JWKS/PEM). "
+            f"TCM_ENV='{env}' no permite validación 'claims-only'."
+        )
+
+    # Development fallback: allow claims-only validation to keep local workflows simple.
     # Decode payload without verifying signature.
     try:
         claims = _decode_jwt_payload(token)
@@ -180,4 +211,4 @@ def validate_token(
     return True, ""
 
 
-__all__ = ["validate_token"]
+__all__ = ["SecurityError", "validate_token"]
