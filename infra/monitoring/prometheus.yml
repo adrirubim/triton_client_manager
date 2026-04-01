@@ -1,16 +1,4 @@
 global:
-  scrape_interval: 5s
-  evaluation_interval: 5s
-
-scrape_configs:
-  - job_name: "triton-client-manager"
-    static_configs:
-      - targets:
-          # Default target when running `apps/manager/dev_server.py` on the host.
-          # On Linux without `host.docker.internal`, replace this with the host IP.
-          - "host.docker.internal:8000"
-
-global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
