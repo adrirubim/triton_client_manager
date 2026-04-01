@@ -24,7 +24,7 @@ Common issues and fixes for Triton Client Manager.
 
 **Symptom:** `FileNotFoundError` for `config/jobs.yaml` or similar.
 
-**Fix:** Run from `apps/manager`:
+**Fix:** Run from `apps/manager` (the manager loads `config/*.yaml` relative to CWD):
 
 ```bash
 cd apps/manager
@@ -38,12 +38,11 @@ python client_manager.py
 **Fix:** Complete the one-time setup in [DEVELOPMENT.md](DEVELOPMENT.md). Then activate the venv:
 
 ```bash
-cd apps/manager
+cd /var/www/triton_client_manager
 source .venv/bin/activate
 ```
 
-> Policy: keep the venv in `apps/manager/.venv` only. Avoid creating additional
-> virtual environments at the repository root.
+> Policy: use a single venv for this monorepo, recommended at repo root (`.venv/`), to avoid dependency drift.
 
 ## PEP 668 / externally-managed-environment
 
@@ -58,12 +57,12 @@ sudo apt install python3-venv
 Then (canonical for this repo):
 
 ```bash
-cd apps/manager
+cd /var/www/triton_client_manager
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
-pip install -r requirements.txt -r requirements-test.txt
-pip install -e ../../sdk
+pip install -r apps/manager/requirements.txt
+pip install -e ./sdk
 ```
 
 ## Missing Python Packages
@@ -73,17 +72,18 @@ pip install -e ../../sdk
 **Fix:** Install dependencies in the venv:
 
 ```bash
-cd apps/manager
+cd /var/www/triton_client_manager
 source .venv/bin/activate
-pip install -r requirements.txt -r requirements-test.txt
-pip install -e ../../sdk
+pip install -r apps/manager/requirements.txt
+pip install -e ./sdk
 ```
 
 If you use `devtools/ws_client.py`, ensure test dependencies are installed:
 
 ```bash
-cd apps/manager
-pip install -r requirements-test.txt
+cd /var/www/triton_client_manager
+source .venv/bin/activate
+pip install -r apps/manager/requirements.txt
 ```
 
 If you want the minimal dependency only (without installing the full test stack), install `websockets` directly:

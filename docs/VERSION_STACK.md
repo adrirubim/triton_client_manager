@@ -1,6 +1,6 @@
 # Version Stack
 
-Reference for Triton Client Manager (`apps/manager`). `requirements.txt` uses minimum versions; upgrade to latest inside the venv with `.venv/bin/pip install -r requirements.txt -r requirements-test.txt --upgrade`.
+Reference for Triton Client Manager (`apps/manager`). This repo uses minimum versions in `apps/manager/requirements.txt`; upgrade to latest inside the repo-root venv (`.venv/`).
 
 **Last updated:** March 2026
 
@@ -55,16 +55,19 @@ Notes:
 ## Upgrade
 
 ```bash
-cd apps/manager
-.venv/bin/pip install -r requirements.txt -r requirements-test.txt --upgrade
+cd /var/www/triton_client_manager
+source .venv/bin/activate
+pip install -U -r apps/manager/requirements.txt
+pip install -e ./sdk
 ```
 
 Then run the full test suite to verify:
 
 ```bash
-.venv/bin/python tests/smoke_runtime.py --with-ws-client
-.venv/bin/python -m unittest tests.test_regression -v
-.venv/bin/pytest tests/test_integration_ws.py -v
+cd apps/manager
+python tests/smoke_runtime.py --with-ws-client
+python -m unittest tests.test_regression -v
+python -m pytest tests/test_integration_ws.py -v
 ```
 
 ## Upgrade Constraints (tritonclient)

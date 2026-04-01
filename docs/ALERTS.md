@@ -2,7 +2,7 @@
 
 This document describes recommended alert rules for Triton Client Manager based
 on Prometheus metrics exposed at `/metrics` and the dashboards under
-`infra/monitoring/grafana/`.
+`infra/grafana/` (and the optional local stack under `infra/monitoring/`).
 
 ---
 
@@ -47,7 +47,11 @@ Assuming you expose:
 - `GET /health` – liveness
 - `GET /ready` – readiness
 
-and scrape them via blackbox exporter or a custom probe, define:
+and scrape them via a blackbox exporter or a custom probe, define:
+
+> Note: Triton Client Manager does **not** export `http_server_requests_seconds_*`
+> metrics by default. If you want HTTP request metrics, add an explicit FastAPI
+> instrumentation middleware (or use blackbox probing) and adjust rules accordingly.
 
 #### Manager readiness failures
 
@@ -60,8 +64,8 @@ increase(http_server_requests_seconds_count{path="/ready",status!~"2.."}[5m]) > 
 
 #### Triton healthcheck failures
 
-If you export a numeric gauge `tcm_triton_health{instance="..."}` where `1`
-means healthy and `0` means unhealthy:
+If you export a numeric gauge such as `tcm_triton_health{instance="..."}` where `1`
+means healthy and `0` means unhealthy (this gauge is **not** shipped by default; it is a suggested extension):
 
 ```promql
 avg_over_time(tcm_triton_health[5m]) < 0.5

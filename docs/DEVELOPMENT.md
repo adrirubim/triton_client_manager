@@ -9,28 +9,29 @@ This repository runs on Ubuntu/WSL with **PEP 668**, so you must use a virtual e
 ## One-time setup (create venv + install deps)
 
 ```bash
-cd apps/manager
+cd /var/www/triton_client_manager
 python3 -m venv .venv
 source .venv/bin/activate
 
 python -m pip install --upgrade pip
-pip install -r requirements.txt -r requirements-test.txt
+pip install -r apps/manager/requirements.txt
 
-# Install the SDK in editable mode (mirrors CI contract tests)
-pip install -e ../../sdk
+# Optional: install the SDK in editable mode
+pip install -e ./sdk
 ```
 
 Notes:
 
-- Keep the venv **only** in `apps/manager/.venv`. Do not create a second venv at the repository root.
+- The recommended venv location for this monorepo is **repo root**: `.venv/`.
+- Avoid keeping two separate active venvs (for example a second venv under `apps/manager/.venv`) to prevent drift in installed deps.
 - If you see `externally-managed-environment`, you are trying to run `pip` outside the venv.
 - Optional: offline model tooling (ONNX inspection) is not required for runtime.
   Install only when needed:
 
 ```bash
-cd apps/manager
+cd /var/www/triton_client_manager
 source .venv/bin/activate
-pip install -r requirements-model-tools.txt
+pip install -r apps/manager/requirements-model-tools.txt
 ```
 
 ---
@@ -40,15 +41,15 @@ pip install -r requirements-model-tools.txt
 ### Run dev server (mocked backends)
 
 ```bash
-cd apps/manager
+cd /var/www/triton_client_manager/apps/manager
 source .venv/bin/activate
-.venv/bin/python dev_server.py
+python dev_server.py
 ```
 
 ### Run full manager (real backends required)
 
 ```bash
-cd apps/manager
+cd /var/www/triton_client_manager/apps/manager
 source .venv/bin/activate
 python client_manager.py
 ```
@@ -58,7 +59,7 @@ python client_manager.py
 ## Validation (same shape as CI)
 
 ```bash
-cd apps/manager
+cd /var/www/triton_client_manager/apps/manager
 source .venv/bin/activate
 
 python -m py_compile client_manager.py
@@ -66,7 +67,7 @@ python -m compileall -q classes utils
 
 python tests/smoke_runtime.py --with-ws-client
 python -m unittest tests.test_regression -v
-pytest tests/ -v
+python -m pytest tests/ -v
 
 ruff check .
 black --check .
@@ -81,11 +82,11 @@ This project has real constraints (for example `tcm-client` pins `websockets<13`
 Recommended:
 
 ```bash
-cd apps/manager
+cd /var/www/triton_client_manager
 source .venv/bin/activate
 
-pip install -U -r requirements.txt -r requirements-test.txt
-pip install -e ../../sdk
+pip install -U -r apps/manager/requirements.txt
+pip install -e ./sdk
 
 python -m pip check
 python -m pip list --outdated

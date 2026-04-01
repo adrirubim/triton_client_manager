@@ -6,10 +6,11 @@ Tests connection to local registry on port 5000 and lists all images
 
 import sys
 
+import pytest
 import requests
 
 
-def test_registry_connection(registry_url="localhost:5000"):
+def test_registry_connection(registry_url="localhost:5000") -> None:
     """Test connection to local Docker registry"""
     print("\n" + "=" * 60)
     print("[TEST] Testing Local Registry Connection")
@@ -27,18 +28,19 @@ def test_registry_connection(registry_url="localhost:5000"):
         print("[INFO] Registry is responding on port 5000")
         print("[INFO] API Version: v2")
 
-        return True
+        assert response.status_code == 200
+        return
     except requests.exceptions.ConnectionError:
         print(f"[ERROR] ✗ Cannot connect to registry at {registry_url}")
         print("[INFO] Make sure the registry is running:")
         print("       docker run -d -p 5000:5000 --name registry registry:2")
-        return False
+        pytest.skip(f"Local registry not reachable at {registry_url}")
     except requests.exceptions.RequestException as e:
         print(f"[ERROR] ✗ Failed to connect to registry: {e}")
-        return False
+        pytest.skip(f"Local registry check failed: {e}")
 
 
-def test_registry_catalog(registry_url="localhost:5000"):
+def test_registry_catalog(registry_url="localhost:5000") -> None:
     """List all repositories in the registry"""
     print("\n" + "=" * 60)
     print("[TEST] Listing Registry Catalog")
@@ -54,7 +56,7 @@ def test_registry_catalog(registry_url="localhost:5000"):
 
         if not repositories:
             print("[WARNING] Registry is empty - no repositories found")
-            return []
+            return
 
         print(f"[SUCCESS] ✓ Found {len(repositories)} repositories")
         print("\n[DATA] Repositories:")
@@ -63,10 +65,11 @@ def test_registry_catalog(registry_url="localhost:5000"):
         for idx, repo in enumerate(repositories, 1):
             print(f"{idx}. {repo}")
 
-        return repositories
+        assert isinstance(repositories, list)
+        return
     except requests.exceptions.RequestException as e:
         print(f"[ERROR] ✗ Failed to get catalog: {e}")
-        return []
+        pytest.skip(f"Local registry catalog unavailable: {e}")
 
 
 def test_repository_tags(registry_url, repositories):

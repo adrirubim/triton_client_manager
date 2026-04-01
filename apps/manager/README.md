@@ -8,7 +8,7 @@ This directory contains the main Python application. **Full documentation is in 
 
 ```bash
 # From apps/manager/
-source .venv/bin/activate
+source ../.venv/bin/activate
 python client_manager.py
 ```
 

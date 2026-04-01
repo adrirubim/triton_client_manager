@@ -17,14 +17,15 @@ Thank you for your interest in contributing to this project. Please read this gu
 Always validate locally with the same steps that CI will run.
 
 > **Prerequisite:** complete the one-time setup in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)
-> so `apps/manager/.venv` exists and dependencies are installed.
+> so the repo-root venv `.venv/` exists and dependencies are installed.
 
 
 Runtime validation with mocks (JobThread, WebSocket, auth, info):
 
 ```bash
 cd apps/manager
-.venv/bin/python tests/smoke_runtime.py
+source ../.venv/bin/activate
+python tests/smoke_runtime.py
 ```
 
 ### 2. Regression tests
@@ -33,25 +34,27 @@ Unit tests for DI, deletion, auth, inference, and config:
 
 ```bash
 cd apps/manager
-.venv/bin/python -m unittest tests.test_regression -v
+source ../.venv/bin/activate
+python -m unittest tests.test_regression -v
 ```
 
 ### 3. Full test suite (pytest)
 
 ```bash
 cd apps/manager
-source .venv/bin/activate
-.venv/bin/pytest tests/ -v
+source ../.venv/bin/activate
+python -m pytest tests/ -v
 ```
 
 ### 4. Integration tests (WebSocket only)
 
-Requires: `pip install -r requirements-test.txt` (pytest, pytest-asyncio, websockets).  
+Requires: pytest + asyncio + websockets (installed via `apps/manager/requirements.txt` into the repo-root venv).  
 The server is started automatically by a session-scoped fixture:
 
 ```bash
 cd apps/manager
-.venv/bin/pytest tests/test_integration_ws.py -v
+source ../.venv/bin/activate
+python -m pytest tests/test_integration_ws.py -v
 ```
 
 Alternative: `python tests/smoke_runtime.py --with-ws-client` (standalone, no pytest).
@@ -60,8 +63,9 @@ Alternative: `python tests/smoke_runtime.py --with-ws-client` (standalone, no py
 
 ```bash
 cd apps/manager
-.venv/bin/python -m py_compile client_manager.py
-.venv/bin/python -m compileall -q classes utils
+source ../.venv/bin/activate
+python -m py_compile client_manager.py
+python -m compileall -q classes utils
 ```
 
 Continuous integration should run at least the regression suite and a subset of pytest on pull requests. Smoke and integration tests are recommended locally before pushing.
@@ -83,7 +87,8 @@ To run locally:
 ```bash
 cd apps/manager
 export TCM_RUN_REAL_BACKENDS=1
-.venv/bin/pytest tests/test_integration_backends.py -v
+source ../.venv/bin/activate
+python -m pytest tests/test_integration_backends.py -v
 ```
 
 See `docs/TESTING.md` for details and recommended usage in CI.
@@ -95,9 +100,10 @@ See `docs/TESTING.md` for details and recommended usage in CI.
 To update all packages to the latest stable versions:
 
 ```bash
-cd apps/manager
+cd /var/www/triton_client_manager
 source .venv/bin/activate
-.venv/bin/pip install -r requirements.txt -r requirements-test.txt --upgrade
+pip install -U -r apps/manager/requirements.txt
+pip install -e ./sdk
 ```
 
 Run smoke and regression tests afterward to verify.
@@ -110,8 +116,9 @@ Before opening a pull request, run the same linters that CI uses:
 
 ```bash
 cd apps/manager
-.venv/bin/ruff check .
-.venv/bin/black .
+source ../.venv/bin/activate
+ruff check .
+black .
 ```
 
 Fix any reported issues before pushing.

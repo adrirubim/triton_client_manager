@@ -4,6 +4,42 @@ import subprocess
 from pathlib import Path
 
 
+def _list_repo_python_files(repo_root: Path) -> list[Path]:
+    """
+    Return Python source files to scan.
+
+    Prefer `git ls-files` (stable + avoids venv/caches). If git is unavailable
+    (e.g. minimal Docker image), fall back to a filesystem walk with sensible
+    excludes.
+    """
+    try:
+        out = subprocess.check_output(
+            ["git", "ls-files", "*.py"],
+            cwd=str(repo_root),
+            text=True,
+        )
+        rel_paths = [p.strip() for p in out.splitlines() if p.strip()]
+        return [(repo_root / rel).resolve() for rel in rel_paths]
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        excluded_dirs = {
+            ".git",
+            ".venv",
+            "venv",
+            "__pycache__",
+            "node_modules",
+            "dist",
+            "build",
+            ".mypy_cache",
+            ".pytest_cache",
+        }
+        files: list[Path] = []
+        for path in repo_root.rglob("*.py"):
+            if any(part in excluded_dirs for part in path.parts):
+                continue
+            files.append(path.resolve())
+        return files
+
+
 def test_no_onnx_hub_usage_in_repo() -> None:
     """
     Security guardrail:
@@ -26,18 +62,8 @@ def test_no_onnx_hub_usage_in_repo() -> None:
         "hub.load(",
     )
 
-    # Only scan files tracked by git to avoid false positives from virtualenvs
-    # (e.g. apps/manager/.venv site-packages) or local caches.
-    out = subprocess.check_output(
-        ["git", "ls-files", "*.py"],
-        cwd=str(repo_root),
-        text=True,
-    )
-    rel_paths = [p.strip() for p in out.splitlines() if p.strip()]
-
     self_path = Path(__file__).resolve()
-    for rel in rel_paths:
-        path = (repo_root / rel).resolve()
+    for path in _list_repo_python_files(repo_root):
         if path == self_path:
             continue
         text = path.read_text(encoding="utf-8", errors="ignore")

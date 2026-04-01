@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from classes.job.management.management import JobManagement
-from utils.config_env import _bool_env, overlay_openstack_config
+from utils.config_env import _bool_env, overlay_minio_payload, overlay_openstack_config
 
 
 def test_bool_env_parses_truthy_and_falsy_values():
@@ -39,6 +39,24 @@ def test_overlay_openstack_config_overrides_and_preserves_base(monkeypatch):
     assert out["application_credential_secret"] == "env-secret"
     assert out["region_name"] == "env-region"
     assert out["verify_ssl"] is False
+
+
+def test_overlay_minio_payload_fills_missing_fields_without_overwriting(monkeypatch):
+    monkeypatch.setenv("MINIO_ACCESS_KEY", "AK")
+    monkeypatch.setenv("MINIO_SECRET_KEY", "SK")
+    monkeypatch.setenv("MINIO_REGION", "eu-west-1")
+
+    # Empty payload -> filled from env
+    out = overlay_minio_payload({})
+    assert out["access_key"] == "AK"
+    assert out["secret_key"] == "SK"
+    assert out["region"] == "eu-west-1"
+
+    # Explicit payload values must not be overwritten
+    out2 = overlay_minio_payload({"access_key": "X", "region": "us-east-1"})
+    assert out2["access_key"] == "X"
+    assert out2["secret_key"] == "SK"
+    assert out2["region"] == "us-east-1"
 
 
 def test_job_management_wraps_unknown_action_and_selected_errors():

@@ -10,6 +10,7 @@ import pytest
 from websockets.client import connect
 
 
+@pytest.mark.asyncio
 async def test_auth_and_info(ws_server):
     """Auth and queue_stats info work over WebSocket."""
     uri = ws_server
@@ -41,6 +42,7 @@ async def test_auth_and_info(ws_server):
         assert r.get("payload", {}).get("status") == "success", r
 
 
+@pytest.mark.asyncio
 async def test_multiple_clients(ws_server):
     """Multiple clients can connect and exchange messages concurrently."""
     from devtools.ws_client import test_multiple_clients as run_multiple_clients

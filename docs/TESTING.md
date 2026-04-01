@@ -21,7 +21,7 @@ Canonical source of truth for test execution and coverage.
 - `GET /ready` — Readiness probe
 
 > **Prerequisite:** complete the one-time setup in [DEVELOPMENT.md](DEVELOPMENT.md) so
-> `apps/manager/.venv` exists and dependencies are installed.
+> the repo-root venv `.venv/` exists and dependencies are installed.
 
 ## Smoke Test
 
@@ -42,9 +42,9 @@ Uses mocks for OpenStack, Docker, Triton. Verifies:
 
 ```bash
 cd apps/manager
-source .venv/bin/activate
+source ../.venv/bin/activate
 
-.venv/bin/python tests/smoke_runtime.py
+python tests/smoke_runtime.py
 ```
 
 **Output:** JSON with `startup`, `auth`, `info`; exit 0 on success.
@@ -63,17 +63,18 @@ source .venv/bin/activate
 - JobInfo, JobManagement, JobInference constructor signatures
 - Deletion payload normalization (flat and nested)
 - Auth contract (top-level `uuid`)
--- Inference example (`vm_id` in payload; see [API_CONTRACTS.md](API_CONTRACTS.md))
--- `inspect_config` absent from advertised actions (test expects it to be removed)
+- Inference example (`vm_id` and `container_id` in payload; see [API_CONTRACTS.md](API_CONTRACTS.md))
+- `inspect_config` absent from advertised actions (test expects it to be removed)
 
 As of March 2026, the regression suite is expected to be **fully green**.  
-Historically, the tests `test_job_inference_instantiation`, `test_inference_example_uses_vm_ip`, and `test_inspect_config_not_in_actions` caught specific regressions, but they are now part of the normal guardrail: **any failure in these tests should be treated as a bug to fix, not as an accepted “known failure”**.
+Historically, tests such as `test_job_inference_instantiation`, `test_inference_example_uses_vm_id_and_container_id`, and `test_inspect_config_not_in_actions` caught regressions, but they are now part of the normal guardrail: **any failure in these tests should be treated as a bug to fix, not as an accepted “known failure”**.
 
 **Run:**
 
 ```bash
 cd apps/manager
-.venv/bin/python -m unittest tests.test_regression -v
+source ../.venv/bin/activate
+python -m unittest tests.test_regression -v
 ```
 
 **Not covered:** Integration with real services; end-to-end creation/deletion; inference execution.
@@ -85,19 +86,23 @@ cd apps/manager
 | **File** | `apps/manager/tests/test_integration_ws.py` |
 | **Purpose** | Multi-client WebSocket auth and info flow |
 
-Requires: `pip install -r requirements-test.txt` (pytest, pytest-asyncio, websockets, httpx). The server is started automatically by a session-scoped fixture.
+Requires: pytest + asyncio + websockets (installed via `apps/manager/requirements.txt` into the repo-root venv).
+The server is started automatically by a session-scoped fixture.
 
 **Run:**
 
 ```bash
 cd apps/manager
-.venv/bin/pytest tests/test_integration_ws.py -v
+source ../.venv/bin/activate
+python -m pytest tests/test_integration_ws.py -v
 ```
 
 **Alternative (standalone, no pytest):**
 
 ```bash
-.venv/bin/python tests/smoke_runtime.py --with-ws-client
+cd apps/manager
+source ../.venv/bin/activate
+python tests/smoke_runtime.py --with-ws-client
 ```
 
 ## Integration tests with real backends (advanced / CI nightly)
@@ -117,7 +122,8 @@ variable `TCM_RUN_REAL_BACKENDS=1` is present (for example, configured as a
 ```bash
 cd apps/manager
 export TCM_RUN_REAL_BACKENDS=1
-.venv/bin/pytest tests/test_integration_backends.py -v
+source ../.venv/bin/activate
+python -m pytest tests/test_integration_backends.py -v
 ```
 
 In a production‑like CI environment, the workflow `Integration Backends (nightly)`
@@ -186,7 +192,7 @@ leaked into logs under backpressure scenarios (`info`, `management`,
 
 ```bash
 cd apps/manager
-source .venv/bin/activate
+source ../.venv/bin/activate
 python -m pytest tests/test_security_logging.py -v
 ```
 
@@ -203,10 +209,10 @@ cd apps/manager
 source .venv/bin/activate
 
 # One-time (only if deps are not installed yet):
-# pip install -r requirements.txt -r requirements-test.txt
-# pip install -e ../../sdk
+# (install into repo-root venv from repo root)
 
-.venv/bin/pytest --cov=classes --cov=utils --cov=client_manager --cov-report=term-missing
+source ../.venv/bin/activate
+python -m pytest --cov=classes --cov=utils --cov=client_manager --cov-report=term-missing
 ```
 
 To generate an HTML coverage report (written to `apps/manager/htmlcov/index.html`):
@@ -215,7 +221,8 @@ To generate an HTML coverage report (written to `apps/manager/htmlcov/index.html
 cd apps/manager
 source .venv/bin/activate
 
-.venv/bin/pytest --cov=classes --cov=utils --cov=client_manager --cov-report=html
+source ../.venv/bin/activate
+python -m pytest --cov=classes --cov=utils --cov=client_manager --cov-report=html
 ```
 
 ## Linting (Ruff + Black)
@@ -226,9 +233,7 @@ CI runs **Ruff** and **Black** on every push and pull request. You should run th
 cd apps/manager
 source .venv/bin/activate
 
-# One-time (only if deps are not installed yet):
-# pip install -r requirements.txt -r requirements-test.txt
-# pip install -e ../../sdk
+# One-time (if deps are not installed yet): from repo root, install `apps/manager/requirements.txt` into `.venv/`
 
 # Auto-format (Black) and autofix (Ruff)
 black .
@@ -239,7 +244,7 @@ ruff check .
 black --check .
 ```
 
-These tools come from `requirements-test.txt` and are required for CI to pass.
+These tools are installed via `apps/manager/requirements.txt` and are required for CI to pass.
 
 ## Before Pushing
 
@@ -249,9 +254,7 @@ Full verification flow (recommended after upgrades or dependency changes):
 cd apps/manager
 source .venv/bin/activate
 
-# One-time (only if deps are not installed yet):
-# pip install -r requirements.txt -r requirements-test.txt
-# pip install -e ../../sdk
+# One-time (if deps are not installed yet): from repo root, install `apps/manager/requirements.txt` into `.venv/`
 
 # 1. Lint & format
 black .
@@ -260,20 +263,31 @@ ruff check .
 black --check .
 
 # 2. Smoke with WebSocket client
-.venv/bin/python tests/smoke_runtime.py --with-ws-client
+python tests/smoke_runtime.py --with-ws-client
 
 # 3. Full pytest suite
-.venv/bin/pytest tests/ -v
+python -m pytest tests/ -v
 
 # 4. Regression (optional if pytest is already green)
-.venv/bin/python -m unittest tests.test_regression -v
+python -m unittest tests.test_regression -v
 ```
 
 Ensure all tests pass locally before pushing.
 
+## Auto-update local registry tests (optional)
+
+The test module under `apps/manager/openstack_tools/docker-vm/auto-update/tests/` probes a local Docker registry (default `localhost:5000`).
+If the registry is not reachable, the connectivity/catalog checks are **skipped** (not failed).
+
+- Override the registry address with `TCM_LOCAL_REGISTRY`, e.g.:
+
+```bash
+export TCM_LOCAL_REGISTRY="localhost:5000"
+```
+
 Continuous integration (for example, GitHub Actions) runs:
 
-- `pip install -r requirements.txt -r requirements-test.txt`
+- `pip install -r apps/manager/requirements.txt`
 - `ruff check .`
 - `black --check .`
 - smoke + regression tests

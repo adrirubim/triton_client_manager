@@ -5,6 +5,7 @@ import os
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import TimeoutError
 from typing import Any, Dict, List
 
 from tcm_client.sdk import AuthContext, InferenceInput, TcmClient
@@ -84,7 +85,9 @@ def main() -> None:
 
         for future in as_completed(futures):
             try:
-                latency = future.get_timeout(0) if hasattr(future, "get_timeout") else future.result()
+                latency = future.result(timeout=0)
+            except TimeoutError:
+                continue
             except Exception:
                 continue
             else:
