@@ -301,11 +301,17 @@ GitHub Actions (or any other CI) should run tests and basic checks on every push
 ```bash
 cd apps/manager
 
-pip install -r requirements.txt
+python3 -m venv .venv
+source .venv/bin/activate
+
+python -m pip install --upgrade pip
+pip install -r requirements.txt -r requirements-test.txt
+pip install -e ../../sdk
 python3 -m py_compile client_manager.py
 python3 -m compileall -q classes utils
-python3 tests/smoke_runtime.py
-python3 -m unittest tests.test_regression -v
+PYTHONPATH=. python3 tests/smoke_runtime.py --with-ws-client
+PYTHONPATH=. python3 -m unittest tests.test_regression -v
+PYTHONPATH=. pytest tests/ -v
 ```
 
 You can mirror this flow in workflows such as [tests.yml](.github/workflows/tests.yml), [lint.yml](.github/workflows/lint.yml), and [security.yml](.github/workflows/security.yml) to keep the main branch healthy (including dependency and SAST security checks).

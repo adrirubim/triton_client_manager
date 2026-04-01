@@ -55,6 +55,17 @@ source .venv/bin/activate
 sudo apt install python3-venv
 ```
 
+Then (canonical for this repo):
+
+```bash
+cd apps/manager
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+pip install -r requirements.txt -r requirements-test.txt
+pip install -e ../../sdk
+```
+
 ## Missing Python Packages
 
 **Symptom:** Import errors for `websockets`, `yaml`, etc.
@@ -64,7 +75,8 @@ sudo apt install python3-venv
 ```bash
 cd apps/manager
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements.txt -r requirements-test.txt
+pip install -e ../../sdk
 ```
 
 If you use `devtools/ws_client.py`, ensure test dependencies are installed:

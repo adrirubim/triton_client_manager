@@ -248,4 +248,4 @@ The template covers at least:
 | **uvicorn** | Minimum `>=0.30.0` (see [VERSION_STACK.md](VERSION_STACK.md)); programmatic lifespan/startup usage in WebSocketThread |
 | **Python** | 3.12 supported; dataclass field order matters (e.g. Flavor) |
 | **PEP 668** | On Ubuntu 24.04/WSL, use virtual environments; system-wide `pip install` may fail |
-| **Dev tools** | `ruff`, `black`, `pytest` and friends live in `requirements-test.txt` and are used by CI workflows (`tests.yml`, `lint.yml`). Install with `pip install -r requirements.txt -r requirements-test.txt` in dev. |
+| **Dev tools** | `ruff`, `black`, `pytest` and friends live in `requirements-test.txt` and are used by CI workflows (`tests.yml`, `lint.yml`). Install inside the venv with `pip install -r requirements.txt -r requirements-test.txt` in dev. |

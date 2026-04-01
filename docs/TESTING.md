@@ -186,7 +186,7 @@ leaked into logs under backpressure scenarios (`info`, `management`,
 
 ```bash
 cd apps/manager
-. .venv/bin/activate
+source .venv/bin/activate
 python -m pytest tests/test_security_logging.py -v
 ```
 

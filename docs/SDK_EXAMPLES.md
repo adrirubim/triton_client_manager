@@ -3,7 +3,7 @@
 ### Installation
 
 ```bash
-pip install tcm-client
+python -m pip install tcm-client
 ```
 
 ### High-level helper `TcmClient.infer`

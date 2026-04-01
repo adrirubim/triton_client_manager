@@ -138,21 +138,26 @@ def test_analyze_model_v2_detects_mock_gguf(tmp_path: Path) -> None:
     )
 
     p = tmp_path / "mock.gguf"
-    payload = _make_minimal_gguf(with_chat_template=True, kv_count=1)
-    p.write_bytes(payload)
+    gguf_bytes = _make_minimal_gguf(with_chat_template=True, kv_count=1)
+    p.write_bytes(gguf_bytes)
 
-    report = AnalyzeModelV2Action(
+    payload = AnalyzeModelV2Action(
         miniopath=str(p),
         name="mock",
         category=ModelCategory.llm,
         format=None,
     ).run()
 
-    assert report.format == ModelFormat.gguf
-    assert report.local_path == str(p)
-    assert report.size_bytes == len(payload)
-    assert report.inputs and report.outputs
-    assert any("GGUF inspection is KV-metadata only" in w for w in report.warnings)
+    assert payload.inspection.format == ModelFormat.gguf
+    assert payload.inspection.size_bytes == len(gguf_bytes)
+    assert payload.inspection.io_info.inputs and payload.inspection.io_info.outputs
+    assert any(
+        "GGUF inspection is KV-metadata only" in i.message
+        for i in payload.inspection.issues
+    )
+    assert 'backend: "python"' in payload.triton_config_pbtxt
+    assert 'name: "prompt"' in payload.triton_config_pbtxt
+    assert 'name: "text"' in payload.triton_config_pbtxt
 
 
 def test_mock_gguf_rejects_excessive_kv_count(tmp_path: Path) -> None:
@@ -188,19 +193,26 @@ def test_analyze_model_v2_inspects_mock_pytorch_zip_pt(tmp_path: Path) -> None:
     with zipfile.ZipFile(p, "w") as zf:
         zf.writestr(member_name, member_bytes)
 
-    report = AnalyzeModelV2Action(
+    payload = AnalyzeModelV2Action(
         miniopath=str(p),
         name="mock_pt",
         category=ModelCategory.llm,
         format=None,
     ).run()
 
-    assert report.format == ModelFormat.pytorch
-    assert report.inputs == []
-    assert report.outputs == []
-    assert any("inspection is ZIP central-directory only" in w for w in report.warnings)
-    assert any("inspection-only for safety" in w for w in report.warnings)
-    assert any(f"~{len(member_bytes)} bytes" in w for w in report.warnings)
+    assert payload.inspection.format == ModelFormat.pytorch
+    assert payload.inspection.io_info.inputs == []
+    assert payload.inspection.io_info.outputs == []
+    assert any(
+        "inspection is ZIP central-directory only" in i.message
+        for i in payload.inspection.issues
+    )
+    assert any(
+        "inspection-only for safety" in i.message for i in payload.inspection.issues
+    )
+    assert any(
+        f"~{len(member_bytes)} bytes" in i.message for i in payload.inspection.issues
+    )
 
 
 def test_analyze_model_v2_pytorch_non_zip_falls_back(tmp_path: Path) -> None:
@@ -214,15 +226,15 @@ def test_analyze_model_v2_pytorch_non_zip_falls_back(tmp_path: Path) -> None:
     p = tmp_path / "notzip.pth"
     p.write_bytes(b"not a zip")
 
-    report = AnalyzeModelV2Action(
+    payload = AnalyzeModelV2Action(
         miniopath=str(p),
         name="notzip",
         category=ModelCategory.llm,
         format=None,
     ).run()
 
-    assert report.format == ModelFormat.pytorch
-    assert report.inputs == []
-    assert report.outputs == []
-    assert any("not a ZIP container" in w for w in report.warnings)
-    assert any("~0 bytes" in w for w in report.warnings)
+    assert payload.inspection.format == ModelFormat.pytorch
+    assert payload.inspection.io_info.inputs == []
+    assert payload.inspection.io_info.outputs == []
+    assert any("not a ZIP container" in i.message for i in payload.inspection.issues)
+    assert any("~0 bytes" in i.message for i in payload.inspection.issues)

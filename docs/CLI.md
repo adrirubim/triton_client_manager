@@ -139,10 +139,50 @@ The `config.pbtxt` file is generated using the Pydantic schemas in
 #### `tcm model analyze`
 
 Analyze a model artifact (local path or `s3://...`) and print a typed JSON report with
-size, detected format, inputs, and outputs:
+inspection results and a generated Triton `config.pbtxt` skeleton:
 
 ```bash
 tcm model analyze --miniopath s3://bucket/path/model.onnx --name MYMODEL --category ML
+```
+
+Output shape (high-level):
+
+- `inspection`: unified Schema v2 (format, size, IO, modalities, issues)
+- `triton_config_pbtxt`: generated `config.pbtxt` text (static, infra-free)
+
+Example output (simplified):
+
+```json
+{
+  "inspection": {
+    "format": "gguf",
+    "size_bytes": 12345678,
+    "io_info": {
+      "inputs": [
+        {"name": "prompt", "dtype": "BYTES", "shape": [-1]}
+      ],
+      "outputs": [
+        {"name": "text", "dtype": "BYTES", "shape": [-1]}
+      ]
+    },
+    "supported_modalities": ["text"],
+    "issues": [
+      {
+        "level": "warning",
+        "message": "GGUF inspection is KV-metadata only; weights are not loaded and deep tensor IO cannot be safely inferred.",
+        "code": null,
+        "source": "AnalyzeModelV2Action"
+      },
+      {
+        "level": "warning",
+        "message": "GGUF does not map to a native Triton backend; generated Python backend skeleton IO (prompt/text as TYPE_BYTES).",
+        "code": "TRITON_GGUF_PYTHON_SKELETON",
+        "source": "TritonConfigBridge"
+      }
+    ]
+  },
+  "triton_config_pbtxt": "name: \"MYMODEL\"\\nbackend: \"python\"\\nmax_batch_size: 0\\ninput [\\n  { name: \"prompt\" data_type: TYPE_BYTES dims: [ -1 ] }\\n]\\noutput [\\n  { name: \"text\" data_type: TYPE_BYTES dims: [ -1 ] }\\n]\\n"
+}
 ```
 
 #### `tcm model pipeline`

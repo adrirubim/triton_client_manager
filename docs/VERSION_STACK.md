@@ -1,6 +1,6 @@
 # Version Stack
 
-Reference for Triton Client Manager (`apps/manager`). `requirements.txt` uses minimum versions; upgrade to latest with `pip install -r requirements.txt -r requirements-test.txt --upgrade`.
+Reference for Triton Client Manager (`apps/manager`). `requirements.txt` uses minimum versions; upgrade to latest inside the venv with `.venv/bin/pip install -r requirements.txt -r requirements-test.txt --upgrade`.
 
 **Last updated:** March 2026
 

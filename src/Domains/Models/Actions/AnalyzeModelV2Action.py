@@ -8,10 +8,18 @@ from src.Domains.Models.Analysis.GgufInspector import GgufInspector
 from src.Domains.Models.Analysis.OnnxInspector import OnnxInspector
 from src.Domains.Models.Analysis.PyTorchInspector import PyTorchInspector
 from src.Domains.Models.Analysis.SafetensorsInspector import SafetensorsInspector
+from src.Domains.Models.Analysis.TritonConfigBridge import TritonConfigBridge
 from src.Domains.Models.Schemas.ModelAnalysisReport import (
-    ModelAnalysisReport,
     ModelCategory,
     ModelFormat,
+)
+from src.Domains.Models.Schemas.ModelInspectionResult import (
+    AnalyzeModelV2Payload,
+    InspectionIssue,
+    IssueLevel,
+    ModelInspectionResult,
+    ModelIOInfo,
+    SupportedModality,
 )
 
 
@@ -37,7 +45,7 @@ class AnalyzeModelV2Action:
     category: ModelCategory
     format: str | None = None
 
-    def run(self) -> ModelAnalysisReport:
+    def run(self) -> AnalyzeModelV2Payload:
         fetched = FetchModelArtifactAction(miniopath=self.miniopath, name=self.name).run()
         fmt = _detect_format(fetched.local_path, self.format)
 
@@ -87,16 +95,26 @@ class AnalyzeModelV2Action:
         if fmt == ModelFormat.safetensors:
             warnings.append("safetensors is data-only; loading is generally safe, but inference wrapper may execute code.")
 
-        return ModelAnalysisReport(
-            name=self.name,
-            category=self.category,
+        issues: list[InspectionIssue] = [
+            InspectionIssue(level=IssueLevel.warning, message=w, source="AnalyzeModelV2Action") for w in warnings
+        ]
+
+        supported_modalities: list[SupportedModality] = []
+        if fmt == ModelFormat.gguf:
+            supported_modalities = [SupportedModality.text]
+        elif self.category == ModelCategory.llm:
+            supported_modalities = [SupportedModality.text]
+
+        inspection = ModelInspectionResult(
             format=fmt,
-            miniopath=self.miniopath,
-            local_path=fetched.local_path,
             size_bytes=fetched.size_bytes,
-            size_gb=fetched.size_gb,
-            inputs=inputs,
-            outputs=outputs,
-            warnings=warnings,
+            io_info=ModelIOInfo(inputs=inputs or [], outputs=outputs or []),
+            supported_modalities=supported_modalities,
+            issues=issues,
         )
+
+        pbtxt, gen_issues = TritonConfigBridge(model_name=self.name).generate(inspection)
+        inspection.issues = gen_issues
+
+        return AnalyzeModelV2Payload(inspection=inspection, triton_config_pbtxt=pbtxt)
 
