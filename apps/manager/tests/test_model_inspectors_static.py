@@ -8,7 +8,6 @@ from pathlib import Path
 
 import pytest
 
-
 #
 # Dependency stubs (must run BEFORE importing any project modules)
 #
@@ -51,7 +50,7 @@ if "pydantic" not in sys.modules:
         def __init__(self, default_factory=None):
             self.default_factory = default_factory
 
-    def Field(*, default_factory=None, **_kwargs):
+    def field(*, default_factory=None, **_kwargs):
         return _FieldInfo(default_factory=default_factory)
 
     class BaseModel:
@@ -63,7 +62,9 @@ if "pydantic" not in sys.modules:
                     setattr(self, k, data[k])
                     continue
                 default = getattr(cls, k, None)
-                if isinstance(default, _FieldInfo) and callable(default.default_factory):
+                if isinstance(default, _FieldInfo) and callable(
+                    default.default_factory
+                ):
                     setattr(self, k, default.default_factory())
                 elif isinstance(default, (list, dict, set)):
                     setattr(self, k, default.__class__(default))
@@ -74,7 +75,7 @@ if "pydantic" not in sys.modules:
                     setattr(self, k, v)
 
     pyd.BaseModel = BaseModel
-    pyd.Field = Field
+    pyd.Field = field
     sys.modules["pydantic"] = pyd
 
 
@@ -131,7 +132,10 @@ def _make_minimal_gguf(*, with_chat_template: bool, kv_count: int = 1) -> bytes:
 def test_analyze_model_v2_detects_mock_gguf(tmp_path: Path) -> None:
     _ensure_repo_root_on_path()
     from src.Domains.Models.Actions.AnalyzeModelV2Action import AnalyzeModelV2Action
-    from src.Domains.Models.Schemas.ModelAnalysisReport import ModelCategory, ModelFormat
+    from src.Domains.Models.Schemas.ModelAnalysisReport import (
+        ModelCategory,
+        ModelFormat,
+    )
 
     p = tmp_path / "mock.gguf"
     payload = _make_minimal_gguf(with_chat_template=True, kv_count=1)
@@ -173,7 +177,10 @@ def test_mock_gguf_rejects_excessive_kv_count(tmp_path: Path) -> None:
 def test_analyze_model_v2_inspects_mock_pytorch_zip_pt(tmp_path: Path) -> None:
     _ensure_repo_root_on_path()
     from src.Domains.Models.Actions.AnalyzeModelV2Action import AnalyzeModelV2Action
-    from src.Domains.Models.Schemas.ModelAnalysisReport import ModelCategory, ModelFormat
+    from src.Domains.Models.Schemas.ModelAnalysisReport import (
+        ModelCategory,
+        ModelFormat,
+    )
 
     p = tmp_path / "mock.pt"
     member_name = "data.pkl"
@@ -199,7 +206,10 @@ def test_analyze_model_v2_inspects_mock_pytorch_zip_pt(tmp_path: Path) -> None:
 def test_analyze_model_v2_pytorch_non_zip_falls_back(tmp_path: Path) -> None:
     _ensure_repo_root_on_path()
     from src.Domains.Models.Actions.AnalyzeModelV2Action import AnalyzeModelV2Action
-    from src.Domains.Models.Schemas.ModelAnalysisReport import ModelCategory, ModelFormat
+    from src.Domains.Models.Schemas.ModelAnalysisReport import (
+        ModelCategory,
+        ModelFormat,
+    )
 
     p = tmp_path / "notzip.pth"
     p.write_bytes(b"not a zip")
@@ -216,4 +226,3 @@ def test_analyze_model_v2_pytorch_non_zip_falls_back(tmp_path: Path) -> None:
     assert report.outputs == []
     assert any("not a ZIP container" in w for w in report.warnings)
     assert any("~0 bytes" in w for w in report.warnings)
-
