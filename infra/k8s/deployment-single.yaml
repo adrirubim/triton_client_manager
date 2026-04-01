@@ -16,6 +16,7 @@ spec:
     spec:
       containers:
         - name: triton-client-manager
+          # NOTE: Replace <version> with a concrete image tag.
           image: ghcr.io/triton-client-manager/triton-client-manager:<version>
           imagePullPolicy: IfNotPresent
           ports:
@@ -23,6 +24,8 @@ spec:
           env:
             - name: PYTHONUNBUFFERED
               value: "1"
+            - name: TCM_ENV
+              value: "production"
           readinessProbe:
             httpGet:
               path: /ready

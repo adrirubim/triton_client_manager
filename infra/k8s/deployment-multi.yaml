@@ -16,6 +16,7 @@ spec:
     spec:
       containers:
         - name: manager
+          # NOTE: Replace <version> with a concrete image tag.
           image: ghcr.io/triton-client-manager/triton-client-manager:<version>
           imagePullPolicy: IfNotPresent
           env:

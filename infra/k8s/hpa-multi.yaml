@@ -1,7 +1,7 @@
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: triton-client-manager-hpa
+  name: triton-client-manager
   labels:
     app: triton-client-manager
 spec:
