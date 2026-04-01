@@ -34,7 +34,8 @@ def test_gitlab_connection(config):
     token = config["token"]
     
     print(f"[INFO] GitLab URL: {gitlab_url}")
-    print(f"[INFO] Token: {token[:4]}...{token[-4:]}")
+    # Never print tokens (even partially) to avoid leaking secrets into logs.
+    print("[INFO] Token: [REDACTED]")
     
     # Setup session
     session = requests.Session()

@@ -80,4 +80,8 @@ Describe the main inputs and outputs as exposed via Triton.
 
 - Keep this card in sync with `config.pbtxt` and the actual model graph.
 - Document any important assumptions (normalisation, tokenisation, etc.).
+- If the model uses the Triton Python backend and interacts with S3/MinIO, document
+  required environment variables (for example `TCM_S3_ENDPOINT`, `TCM_S3_SECURE`,
+  and any timeouts) and the exact tensor types used for raw objects (`TYPE_UINT8`
+  vs `TYPE_BYTES`).
 

@@ -26,7 +26,20 @@ All messages must be JSON with:
 | `type` | string | Yes | `auth`, `info`, `management`, or `inference` |
 | `payload` | object | Yes | Action-specific data |
 
-Validation failures return `{"type": "error", "payload": {"message": "..."}}`.
+### Error contract (protocol-level)
+
+The server uses `{"type": "error", "payload": {"message": "..."}}` for **protocol-level** errors, including:
+
+- invalid JSON (especially on the first message),
+- missing required envelope fields (`uuid`, `type`, `payload`),
+- invalid `type` (not in the configured `valid_types` list),
+- first message is not `auth`,
+- UUID mismatch after auth,
+- rate limit violations.
+
+> Note: **business / handler errors** for `info`, `management`, and `inference` do **not** use `type: "error"`.
+> They use the response shapes defined in their sections below (for example `info_response.status="error"`,
+> `management.payload.status=false`, or `inference.payload.status="FAILED"`).
 
 WebSocket close codes:
 
@@ -75,6 +88,11 @@ Supported `action` / `request_type`: `queue`, `queue_stats`. Other types return 
 }
 ```
 
+Notes (as implemented):
+
+- The server accepts `payload.action` (canonical) and also `payload.request_type` (legacy/compat).
+- Unknown actions do **not** fail the request; they return `status: "success"` with an informational message in `payload.data.message`.
+
 ## Management
 
 **Request:**
@@ -93,6 +111,27 @@ Supported `action` / `request_type`: `queue`, `queue_stats`. Other types return 
 ```
 
 **Actions:** `creation`, `deletion`, `create_vm`, `create_container`, `create_server`, `delete_server`, `delete_container`, `delete_vm` (from `management_actions_available` in `config/jobs.yaml`).
+
+**Response (as implemented):**
+
+The server responds with:
+
+```json
+{
+  "uuid": "client-id",
+  "type": "management",
+  "payload": {
+    "status": true,
+    "data": { "...": "..." }
+  }
+}
+```
+
+On error, the response keeps the same shape but sets `payload.status=false` and `payload.data` to an error string.
+
+Notes (as implemented):
+
+- Some authorization failures are returned as `type: "error"` with a message such as `Forbidden: missing 'management' role` (role checks happen before the job is queued).
 
 ### Idempotency and retries (management)
 
@@ -152,7 +191,7 @@ Required: `vm_id` and `container_id`. Sub-handlers receive a normalized structur
 
 ### Single-model inference
 
-**Required fields:** `vm_id`, `container_id`, `model_name`, `inputs`
+**Required fields (high-level contract):** `container_id`, `model_name`, and `inputs` (in one of the supported locations/shapes below).
 
 Inference routes by `vm_id` and `container_id` (matches Triton server registration). Optional: `vm_ip` for handlers that use it; `request.protocol` to select HTTP/gRPC.
 
@@ -164,24 +203,44 @@ Inference routes by `vm_id` and `container_id` (matches Triton server registrati
   "uuid": "user-123",
   "payload": {
     "vm_id": "openstack-vm-uuid",
+    "vm_ip": "192.0.2.10",
     "container_id": "docker-container-id",
     "model_name": "my-model-name",
-    "inputs": [
-      {
-        "name": "input_0",
-        "type": "TYPE_FP32",
-        "dims": 4,
-        "value": [1.0, 2.0, 3.0, 4.0]
-      }
-    ],
     "request": {
-      "protocol": "http"
+      "protocol": "http",
+      "inputs": [
+        {
+          "name": "input_0",
+          "type": "TYPE_FP32",
+          "dims": 4,
+          "value": [1.0, 2.0, 3.0, 4.0]
+        }
+      ]
     }
   }
 }
 ```
 
 **Protocol:** `payload.request.protocol` (`grpc` or `http`); default `http`.
+
+#### Runtime validation and normalization (as implemented)
+
+The runtime inference handler normalizes and validates the payload as follows:
+
+- **Inputs location**
+  - Canonical runtime location is `payload.request.inputs`.
+  - For compatibility, if a client sends `payload.inputs`, it is mapped to `payload.request.inputs`.
+- **Inputs shape**
+  - Manager-internal shape: `{name, dims, type, value}`
+  - SDK-friendly shape: `{name, shape, datatype, data}` (normalized to the internal shape)
+- **VM addressing**
+  - The runtime requires `payload.vm_ip` to contact the Triton instance.
+  - If `vm_ip` is omitted, the server will attempt to derive it from the in-memory Docker cache using `container_id`.
+  - If it cannot derive `vm_ip`, the request fails with an `inference` response whose `payload.status` is `"FAILED"`.
+
+As a result:
+
+- A request that contains `vm_id` but omits `vm_ip` may still fail if the server cannot resolve `vm_ip` from its Docker cache.
 
 ### Pipeline (multi‑model, HTTP)
 
@@ -271,7 +330,9 @@ If any step fails, the pipeline is aborted and the following response is returne
 ### Reference Pydantic models
 
 The following Pydantic models capture the expected schema for WebSocket messages.  
-They are used as a reference for validation and tooling:
+They are used as a lightweight reference for validation and tooling (envelope + common fields).
+They are **not** a complete representation of every compatibility path described in this document
+(for example: inference input normalization, optional alternate shapes, and pipeline-specific payloads).
 
 ```python
 from classes.websocket.schemas import (
@@ -289,5 +350,6 @@ from classes.websocket.schemas import (
 - First message not `auth`
 - `uuid` mismatch after auth
 - Deletion missing `vm_id` or `container_id`
-- Inference missing `vm_id`, `container_id`, `model_name`, or `inputs`
+- Inference missing `container_id`, `model_name`, or `inputs` (compat: `inputs` may be provided as `payload.inputs` and is mapped to `payload.request.inputs`)
+- Inference missing `vm_ip` when it cannot be derived from the server's Docker cache using `container_id`
 - Message larger than the configured `max_message_bytes` limit (defaults to 64 KiB) — returns an `error` message and closes the WebSocket with code `1009`.

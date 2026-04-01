@@ -10,10 +10,10 @@ from apps.manager.schemas.triton_model_config import TritonModelConfig, TritonMo
 
 from src.Domains.Models.Actions.AnalyzeModelV2Action import AnalyzeModelV2Action
 from src.Domains.Models.Actions.FetchModelArtifactAction import FetchModelArtifactAction
-from src.Domains.Models.Schemas.ModelAnalysisReport import ModelCategory, ModelFormat
+from src.Domains.Models.Schemas.ModelAnalysisReport import ModelCategory
 
 
-ModelFormat = Literal["onnx", "safetensors"]
+ScaffoldModelFormat = Literal["onnx", "safetensors"]
 
 _TRITON_DTYPE_MAP = {
     "FP16": "TYPE_FP16",
@@ -36,7 +36,7 @@ class ScaffoldModelAction:
 
     repo_root: str
     name: str
-    fmt: ModelFormat
+    fmt: ScaffoldModelFormat
     source_path: Optional[str] = None
     miniopath: Optional[str] = None
     overwrite: bool = False
