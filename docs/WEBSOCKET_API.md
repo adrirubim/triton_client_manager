@@ -21,6 +21,7 @@ There you will find:
 - Error contract:
   - Structure `{"type": "error", "payload": {"message": "..."}}`.
   - WebSocket close codes (for example `1008`, `1009`) and typical causes.
+  - Note: `type: "error"` is used for **protocol-level** errors; handler/business errors are described in `docs/API_CONTRACTS.md`.
 
 When you see references to `docs/WEBSOCKET_API.md` in this repository (for example in
 comments in `apps/manager/tests/test_client_sdk_contract.py`), you should treat them
@@ -360,7 +361,8 @@ Inference requests use messages of type `inference`. The server orchestrates the
 
 Compatibility notes:
 
-- The manager may accept inputs either as `payload.inputs` (canonical) or `payload.request.inputs` (runtime handler compatibility).
+- The manager validates against `payload.request.inputs` (canonical).
+- For backwards compatibility, it may also accept legacy top-level `payload.inputs` and map it into `payload.request.inputs`.
 - The manager normalizes input dicts in either of these shapes:
   - manager internal: `{name, dims, type, value}`
   - SDK-friendly: `{name, shape, datatype, data}`
@@ -374,12 +376,15 @@ Compatibility notes:
   "type": "inference",
   "payload": {
     "vm_id": "openstack-vm-uuid",
+    "vm_ip": "192.0.2.10",
     "container_id": "docker-container-id",
     "model_name": "example-model",
-    "inputs": [
-      {"name": "input_0", "type": "TYPE_FP32", "dims": 4, "value": [1.0, 2.0, 3.0, 4.0]}
-    ],
-    "request": {"protocol": "http"}
+    "request": {
+      "protocol": "http",
+      "inputs": [
+        {"name": "input_0", "type": "TYPE_FP32", "dims": 4, "value": [1.0, 2.0, 3.0, 4.0]}
+      ]
+    }
   }
 }
 ```
@@ -400,6 +405,7 @@ inputs = [
 
 resp = await client.inference_http(
     vm_id="openstack-vm-uuid",
+    vm_ip="192.0.2.10",
     container_id="docker-container-id",
     model_name="example-model",
     inputs=inputs,
@@ -516,9 +522,9 @@ An external integrator (frontend, other service) should, at minimum, follow this
 
 For functional client examples, see:
 
-- `apps/manager/legacy_ws_examples/client.py` — minimal interactive client.
+- `apps/manager/devtools/ws_client.py` — minimal interactive client.
 - `apps/manager/ws_sdk/sdk.py` — lightweight SDK (`TcmWebSocketClient`) and quickstart helpers.
-- `apps/manager/legacy_ws_examples/README.md` — “copy/paste and run” quickstart using the SDK.
+- (Removed) `apps/manager/legacy_ws_examples/*` — older copy/paste examples; prefer the SDK and `devtools/ws_client.py`.
 
 ---
 

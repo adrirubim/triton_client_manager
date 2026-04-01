@@ -15,6 +15,12 @@ async def test_client(
     user_id: str = "test-client",
     uri: str = "ws://localhost:8000/ws",
     keep_alive_sec: float = 10,
+    *,
+    do_inference: bool = False,
+    vm_id: str = "openstack-vm-uuid",
+    vm_ip: str | None = None,
+    container_id: str = "docker-container-id",
+    model_name: str = "my-model-name",
 ):
     """Test client that connects and sends requests."""
     try:
@@ -49,6 +55,42 @@ async def test_client(
             info_response = json.loads(response)
             print(f"[{user_id}] Info response:")
             print(json.dumps(info_response, indent=2))
+
+            # Optional: send a minimal inference request using the canonical contract
+            # (payload.request.inputs). This is best-effort for manual testing; it
+            # requires a real vm/container/model in the manager backends.
+            if do_inference:
+                inference_payload: dict = {
+                    "vm_id": vm_id,
+                    "container_id": container_id,
+                    "model_name": model_name,
+                    "request": {
+                        "protocol": "http",
+                        "inputs": [
+                            {
+                                "name": "INPUT__0",
+                                "shape": [1],
+                                "datatype": "FP32",
+                                "data": [0.0],
+                            }
+                        ],
+                    },
+                }
+                if vm_ip:
+                    inference_payload["vm_ip"] = vm_ip
+
+                inference_request = {
+                    "type": "inference",
+                    "uuid": user_id,
+                    "payload": inference_payload,
+                }
+                await websocket.send(json.dumps(inference_request))
+                print(f"[{user_id}] Sent inference request")
+
+                response = await websocket.recv()
+                inference_response = json.loads(response)
+                print(f"[{user_id}] Inference response:")
+                print(json.dumps(inference_response, indent=2))
 
             # Keep connection alive for a bit
             if keep_alive_sec > 0:
