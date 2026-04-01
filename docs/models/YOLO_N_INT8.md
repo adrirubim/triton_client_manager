@@ -14,32 +14,22 @@ GPUs. Intended for low‑latency inference with moderate accuracy requirements.
 
 ## Inputs / Outputs
 
-> Note: The exact shapes and dtypes must match the Triton `config.pbtxt` for
-> this model; values below illustrate the expected structure.
+> Note: This card documents the interface **as defined by**
+> `infra/models/YOLO_N_INT8/config.pbtxt` in this repository.
 
 ### Inputs
 
-- **`images`**
+- **`INPUT__0`**
   - `data_type`: `TYPE_FP32`
-  - `shape`: `[1, 3, 640, 640]`
-  - **Description:** Batch of RGB images normalised to `[0, 1]`.
+  - `shape`: `[1, 3, 224, 224]`
+  - **Description:** Input tensor as exposed by the ONNX graph / Triton config.
 
 ### Outputs
 
-- **`boxes`**
+- **`OUTPUT__0`**
   - `data_type`: `TYPE_FP32`
-  - `shape`: `[1, N, 4]`
-  - **Description:** Bounding boxes in `(x1, y1, x2, y2)` format.
-
-- **`scores`**
-  - `data_type`: `TYPE_FP32`
-  - `shape`: `[1, N]`
-  - **Description:** Confidence score per detection.
-
-- **`labels`**
-  - `data_type`: `TYPE_INT64`
-  - `shape`: `[1, N]`
-  - **Description:** Class index for each detection.
+  - `shape`: `[1, 3, 224, 224]`
+  - **Description:** Output tensor as exposed by the ONNX graph / Triton config.
 
 ## Example WebSocket payload (`/ws`)
 
@@ -55,13 +45,10 @@ GPUs. Intended for low‑latency inference with moderate accuracy requirements.
     "model_name": "YOLO_N_INT8",
     "inputs": [
       {
-        "name": "images",
-        "shape": [1, 3, 640, 640],
-        "datatype": "FP32",
-        "data": [
-          0.0, 0.0, 0.0
-          // ...
-        ]
+          "name": "INPUT__0",
+          "shape": [1, 3, 224, 224],
+          "datatype": "FP32",
+          "data": [/* ... */]
       }
     ],
     "request": {
@@ -80,21 +67,9 @@ GPUs. Intended for low‑latency inference with moderate accuracy requirements.
     "model_name": "YOLO_N_INT8",
     "outputs": [
       {
-        "name": "boxes",
-        "shape": [1, 10, 4],
+        "name": "OUTPUT__0",
+        "shape": [1, 3, 224, 224],
         "datatype": "FP32",
-        "data": [/* ... */]
-      },
-      {
-        "name": "scores",
-        "shape": [1, 10],
-        "datatype": "FP32",
-        "data": [/* ... */]
-      },
-      {
-        "name": "labels",
-        "shape": [1, 10],
-        "datatype": "INT64",
         "data": [/* ... */]
       }
     ]
@@ -104,8 +79,9 @@ GPUs. Intended for low‑latency inference with moderate accuracy requirements.
 
 ## Notes
 
-- Ensure that `config.pbtxt` and the ONNX graph use consistent names and shapes
-  for all inputs and outputs defined above.
+- If you want a human-friendly input name like `images` in client payloads,
+  use an **ensemble** model (for example `YOLO_N_INT8_PIPELINE`) that maps
+  friendly names to the underlying model’s `INPUT__0`.
 - For production deployments, pair this model with the monitoring dashboards in
   `infra/monitoring/grafana/dashboard_omega.json` to track latency and error
   rates per model.

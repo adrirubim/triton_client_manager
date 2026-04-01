@@ -14,7 +14,8 @@ before promoting it to higher environments.
    cd /var/www/triton_client_manager
    touch /tmp/dummy.onnx  # replace with your real model
    export PYTHONPATH=$(pwd):$(pwd)/src
-   ./apps/manager/.venv/bin/python3 apps/manager/tcm_cli.py model scaffold \
+   source .venv/bin/activate
+   python3 apps/manager/tcm_cli.py model scaffold \
      --name YOLO_TEST \
      --format onnx \
      --path /tmp/dummy.onnx
@@ -30,7 +31,7 @@ before promoting it to higher environments.
    You should see:
 
    - `infra/models/YOLO_TEST/config.pbtxt`
-   - `infra/models/YOLO_TEST/1/weights/model.onnx`
+   - `infra/models/YOLO_TEST/1/weights/model.onnx` (generated locally by the scaffold step; not necessarily committed in this repository)
 
 ---
 
@@ -75,7 +76,8 @@ Example run:
 ```bash
 cd /var/www/triton_client_manager
 export PYTHONPATH=$(pwd):$(pwd)/src:$(pwd)/sdk/src
-./apps/manager/.venv/bin/python3 apps/manager/tcm_cli.py model validate --name YOLO_TEST
+source .venv/bin/activate
+python3 apps/manager/tcm_cli.py model validate --name YOLO_TEST
 ```
 
 Expected output (simplified):

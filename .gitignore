@@ -55,3 +55,9 @@ Thumbs.db
 # Coverage / local infra (do not commit)
 apps/manager/.coverage
 apps/manager/coverage.xml
+
+# Triton model artifacts (do not commit binaries/weights)
+infra/models/**/1/weights/
+infra/models/**/1/weights/*.onnx
+infra/models/**/1/weights/*.plan
+infra/models/**/1/weights/*.engine
