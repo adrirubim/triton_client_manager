@@ -6,6 +6,20 @@
 python -m pip install tcm-client
 ```
 
+### SDK CLI (`tcm-client-cli`)
+
+The SDK package also provides a minimal CLI (implemented in `sdk/src/tcm_client/cli.py`)
+to smoke-test the WebSocket API.
+
+Key defaults:
+
+- `--uri` defaults to `$TCM_WS_URI` or `ws://127.0.0.1:8000/ws`
+- `--uuid` defaults to `$TCM_CLIENT_UUID` or `tcm-client-cli`
+- `--token` defaults to `$TCM_CLIENT_TOKEN`
+- `--sub` defaults to `$TCM_CLIENT_SUB` (or falls back to `uuid` inside the SDK auth client block)
+- `--tenant-id` defaults to `$TCM_CLIENT_TENANT_ID` (or falls back to `dev-tenant` inside the SDK auth client block)
+- `--vm-ip` (inference only) defaults to `$TCM_VM_IP` when provided
+
 ### High-level helper `TcmClient.infer`
 
 ```python
@@ -32,6 +46,7 @@ inputs = [
 
 response = client.infer(
     vm_id="vm-1",
+    vm_ip="192.0.2.10",
     container_id="ctr-1",
     model_name="example-model",
     inputs=inputs,
@@ -47,7 +62,7 @@ print(response.payload)
 
 ```bash
 cd /var/www/triton_client_manager
-source apps/manager/.venv/bin/activate
+source .venv/bin/activate
 
 # Option A (recommended): installed CLI entrypoint
 tcm manager dev
@@ -62,7 +77,7 @@ In another terminal:
 
 ```bash
 cd /var/www/triton_client_manager
-source apps/manager/.venv/bin/activate
+source .venv/bin/activate
 export TCM_CLIENT_UUID="fastapi-proxy-1"
 export TCM_WS_URI="ws://127.0.0.1:8000/ws"
 uvicorn examples.fastapi_inference_proxy:app --reload --port 8001

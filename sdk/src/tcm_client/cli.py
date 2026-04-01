@@ -120,6 +120,7 @@ async def _run_inference_http(
     uri: str,
     ctx: AuthContext,
     vm_id: str,
+    vm_ip: Optional[str],
     container_id: str,
     model_name: str,
     payload_path: str,
@@ -127,16 +128,30 @@ async def _run_inference_http(
     """
     Run a single HTTP inference using a JSON payload describing inputs.
 
-    The payload file must contain a JSON object with an `inputs` field that is
-    directly passed to `TcmWebSocketClient.inference_http`.
+    The payload file may contain:
+    - a JSON list: treated as the `inputs` list, or
+    - a JSON object with `inputs` (legacy), or
+    - a JSON object with `request.inputs` (canonical).
     """
 
     with open(payload_path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
-    raw_inputs = data.get("inputs")
+    if isinstance(data, list):
+        raw_inputs = data
+    elif isinstance(data, dict):
+        request = data.get("request")
+        if isinstance(request, dict) and isinstance(request.get("inputs"), list):
+            raw_inputs = request.get("inputs")
+        else:
+            raw_inputs = data.get("inputs")
+    else:
+        raw_inputs = None
     if not isinstance(raw_inputs, list):
-        raise SystemExit("inference-http payload JSON must contain an `inputs` list")
+        raise SystemExit(
+            "inference-http payload must be either a JSON list of inputs, "
+            "or a JSON object with `inputs`, or a JSON object with `request.inputs`."
+        )
 
     try:
         inputs = [InferenceInput(**item) for item in raw_inputs]
@@ -147,6 +162,7 @@ async def _run_inference_http(
         await client.auth()
         resp = await client.inference_http(
             vm_id=vm_id,
+            vm_ip=vm_ip,
             container_id=container_id,
             model_name=model_name,
             inputs=inputs,
@@ -196,7 +212,10 @@ def main() -> None:
     parser.add_argument(
         "--tenant-id",
         default=os.getenv("TCM_CLIENT_TENANT_ID"),
-        help="Tenant / project identifier. Default: $TCM_CLIENT_TENANT_ID or 'dev-tenant'.",
+        help=(
+            "Tenant / project identifier. Default: $TCM_CLIENT_TENANT_ID. "
+            "If omitted, the SDK will fall back to 'dev-tenant' when building the auth client block."
+        ),
     )
     parser.add_argument(
         "--roles",
@@ -251,6 +270,15 @@ def main() -> None:
         help="Run a single HTTP inference using a JSON file with `inputs`.",
     )
     inf.add_argument("--vm-id", required=True, help="OpenStack VM identifier.")
+    inf.add_argument(
+        "--vm-ip",
+        required=False,
+        default=os.getenv("TCM_VM_IP"),
+        help=(
+            "Optional VM IP used for routing. Default: $TCM_VM_IP. "
+            "If omitted, the manager may try to derive it from its Docker cache."
+        ),
+    )
     inf.add_argument(
         "--container-id",
         required=True,
@@ -323,6 +351,7 @@ def main() -> None:
                 uri=args.uri,
                 ctx=ctx,
                 vm_id=args.vm_id,
+                vm_ip=args.vm_ip,
                 container_id=args.container_id,
                 model_name=args.model_name,
                 payload_path=args.payload,

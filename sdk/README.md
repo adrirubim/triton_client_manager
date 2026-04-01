@@ -82,15 +82,16 @@ tcm-client-cli queue-stats
 tcm-client-cli queue-stats --repeat 50 --concurrency 5
 
 # Management flows (creation/deletion) from JSON payloads
-tcm-client-cli management --action creation --payload examples/management_creation.json
-tcm-client-cli management --action deletion --payload examples/management_deletion.json
+tcm-client-cli management --action creation --payload apps/manager/payload_examples/management_creation.json
+tcm-client-cli management --action deletion --payload apps/manager/payload_examples/management_deletion.json
 
 # Single HTTP inference using a JSON file with `inputs`
 tcm-client-cli inference-http \
   --vm-id openstack-vm-uuid \
+  --vm-ip 192.0.2.10 \
   --container-id docker-container-id \
   --model-name example-model \
-  --payload examples/inference_inputs.json
+  --payload apps/manager/payload_examples/inference_inputs_sdk.json
 ```
 
 Environment variables understood by the CLI:
@@ -101,6 +102,7 @@ Environment variables understood by the CLI:
 - `TCM_CLIENT_SUB` – subject (`sub`) claim; falls back to UUID when not set.
 - `TCM_CLIENT_TENANT_ID` – tenant/project identifier; defaults to `dev-tenant`.
 - `TCM_CLIENT_ROLES` – comma-separated roles, e.g. `inference,management`.
+- `TCM_VM_IP` – optional VM IP for inference routing (used by `inference-http`).
 
 ## Versioning and compatibility policy
 
@@ -149,7 +151,7 @@ main WebSocket flows:
 | `auth()` | Sends the initial `auth` message (with `token` + `client` block when provided) and expects an `auth.ok` response. |
 | `info_queue_stats()` | Sends an `info` message with `action: "queue_stats"` and returns the full `info_response`. |
 | `management_creation(action=\"creation\", **kwargs)` | Sends a `management` message; you pass the `action` and any OpenStack/Docker/MinIO fields via `kwargs`. |
-| `inference_http(vm_id, container_id, model_name, inputs)` | Sends an HTTP inference request routed to a specific Triton server (`vm_id` + `container_id`) with typed `inputs` entries. |
+| `inference_http(vm_id, container_id, model_name, inputs, vm_ip=None)` | Sends an HTTP inference request routed to a specific Triton server (`vm_id` + `container_id`). Pass `vm_ip` when you want deterministic routing (recommended); otherwise the manager may try to derive it from its Docker cache. |
 | `inference_pipeline(vm_id, container_id, pipeline)` | Sends a simple HTTP pipeline (multi‑model, sequential) over the same Triton server. |
 
 The low-level JSON contracts for these flows are documented in
@@ -289,6 +291,7 @@ async def main() -> None:
         ]
         resp = await client.inference_http(
             vm_id="openstack-vm-uuid",
+            vm_ip="192.0.2.10",
             container_id="docker-container-id",
             model_name="example-model",
             inputs=inputs,
