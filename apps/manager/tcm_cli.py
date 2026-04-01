@@ -79,6 +79,7 @@ class _ConfigValidateArgs:
 class _ModelValidateArgs:
     name: str
     vm_id: str
+    vm_ip: str | None
     container_id: str
     ws_uri: str
 
@@ -212,6 +213,7 @@ def _cmd_model_validate(args: _ModelValidateArgs) -> int:
             repo_root=str(REPO_ROOT),
             model_name=args.name,
             vm_id=args.vm_id,
+            vm_ip=args.vm_ip,
             container_id=args.container_id,
             ws_uri=args.ws_uri,
         )
@@ -322,6 +324,14 @@ def build_parser() -> argparse.ArgumentParser:
         "--vm-id", required=True, help="VM identifier used for routing."
     )
     validate_model.add_argument(
+        "--vm-ip",
+        required=False,
+        help=(
+            "Optional VM IP for routing. If omitted, the manager may try to derive it "
+            "from its Docker cache; providing it makes validation more robust."
+        ),
+    )
+    validate_model.add_argument(
         "--container-id", required=True, help="Container identifier used for routing."
     )
     validate_model.add_argument(
@@ -384,6 +394,7 @@ def main(argv: list[str] | None = None) -> int:
             _ModelValidateArgs(
                 name=str(args.name),
                 vm_id=str(args.vm_id),
+                vm_ip=str(args.vm_ip) if getattr(args, "vm_ip", None) else None,
                 container_id=str(args.container_id),
                 ws_uri=str(args.ws_uri),
             )

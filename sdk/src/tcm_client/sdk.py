@@ -63,6 +63,7 @@ class InferenceInput(BaseModel):
 
 class InferenceRequestPayload(BaseModel):
     vm_id: str
+    vm_ip: Optional[str] = None
     container_id: str
     model_name: Optional[str] = None
     inputs: Optional[List[InferenceInput]] = None
@@ -91,15 +92,27 @@ class TcmWebSocketClient:
             stats = await client.info_queue_stats()
     """
 
-    def __init__(self, uri: str, auth_ctx: AuthContext):
+    def __init__(
+        self,
+        uri: str,
+        auth_ctx: AuthContext,
+        *,
+        connect_timeout_seconds: float = 10.0,
+        message_timeout_seconds: float = 30.0,
+    ):
         self._uri = uri
         self._auth_ctx = auth_ctx
+        self._connect_timeout_seconds = connect_timeout_seconds
+        self._message_timeout_seconds = message_timeout_seconds
         # Do not use strict typing here to avoid hard-coupling to a specific
         # websockets library version.
         self._sock: Optional[Any] = None
 
     async def __aenter__(self) -> "TcmWebSocketClient":
-        self._sock = await connect(self._uri)
+        self._sock = await asyncio.wait_for(
+            connect(self._uri),
+            timeout=self._connect_timeout_seconds,
+        )
         return self
 
     async def __aexit__(
@@ -117,8 +130,14 @@ class TcmWebSocketClient:
             raise RuntimeError(
                 "WebSocket not connected; use 'async with' or call connect() first"
             )
-        await self._sock.send(json.dumps(message))
-        raw = await self._sock.recv()
+        await asyncio.wait_for(
+            self._sock.send(json.dumps(message)),
+            timeout=self._message_timeout_seconds,
+        )
+        raw = await asyncio.wait_for(
+            self._sock.recv(),
+            timeout=self._message_timeout_seconds,
+        )
         return json.loads(raw)
 
     async def auth(self) -> JsonDict:
@@ -192,15 +211,18 @@ class TcmWebSocketClient:
         container_id: str,
         model_name: str,
         inputs: Sequence[InferenceInput],
+        *,
+        vm_ip: Optional[str] = None,
     ) -> JsonDict:
         """
         Send a minimal HTTP inference request.
         """
         payload = InferenceRequestPayload(
             vm_id=vm_id,
+            vm_ip=vm_ip,
             container_id=container_id,
             model_name=model_name,
-            inputs=list(inputs),
+            request={"protocol": "http", "inputs": [i.model_dump() for i in inputs]},
         )
         request = InferenceRequest(uuid=self._auth_ctx.uuid, payload=payload)
         resp = await self._send(request.model_dump())
@@ -253,6 +275,8 @@ class TcmClient:
         container_id: str,
         model_name: str,
         inputs: Sequence[InferenceInput],
+        *,
+        vm_ip: Optional[str] = None,
     ) -> InferenceResponse:
         """
         High-level synchronous helper for a single HTTP-style inference.
@@ -260,7 +284,7 @@ class TcmClient:
         Usage:
 
             client = TcmClient("ws://127.0.0.1:8000/ws", auth_ctx)
-            result = client.infer("vm-1", "ctr-1", "model", inputs)
+            result = client.infer("vm-1", "ctr-1", "model", inputs, vm_ip="192.0.2.10")
         """
 
         async def _run() -> InferenceResponse:
@@ -268,6 +292,7 @@ class TcmClient:
                 await client.auth()
                 raw = await client.inference_http(
                     vm_id=vm_id,
+                    vm_ip=vm_ip,
                     container_id=container_id,
                     model_name=model_name,
                     inputs=inputs,
@@ -283,6 +308,7 @@ class TcmClient:
         model_name: str,
         data: np.ndarray | List[float],
         *,
+        vm_ip: Optional[str] = None,
         input_name: str = "INPUT__0",
         datatype: str = "FP32",
     ) -> InferenceResponse:
@@ -318,6 +344,7 @@ class TcmClient:
 
         return self.infer(
             vm_id=vm_id,
+            vm_ip=vm_ip,
             container_id=container_id,
             model_name=model_name,
             inputs=[inference_input],

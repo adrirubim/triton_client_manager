@@ -13,7 +13,8 @@ import requests
 from sdk.src.tcm_client.sdk import AuthContext, InferenceInput, TcmClient
 
 
-TRITON_BASE_URL: Final[str] = "http://localhost:8000"
+# Triton is exposed on host port 8001 by infra/triton/docker-compose.yml.
+TRITON_BASE_URL: Final[str] = "http://localhost:8001"
 TRITON_READY_URL: Final[str] = f"{TRITON_BASE_URL}/v2/health/ready"
 TRITON_MODEL_METADATA_URL_TEMPLATE: Final[str] = (
     TRITON_BASE_URL + "/v2/models/{model_name}"
@@ -29,6 +30,7 @@ class ValidateModelAction:
     repo_root: str
     model_name: str
     vm_id: str
+    vm_ip: Optional[str] = None
     container_id: str
     ws_uri: str = "ws://127.0.0.1:8000/ws"
 
@@ -122,6 +124,7 @@ class ValidateModelAction:
         dummy_input = self._build_dummy_input(meta_shape, meta_dtype)
         response = client.infer(
             vm_id=self.vm_id,
+            vm_ip=self.vm_ip,
             container_id=self.container_id,
             model_name=self.model_name,
             inputs=[dummy_input],

@@ -3,8 +3,14 @@
 This document describes the unified CLI entrypoint for Triton Client Manager.
 The CLI is implemented in `apps/manager/tcm_cli.py`.
 
-> Note: This project uses a single virtual environment location:
-> `apps/manager/.venv`. Do not create a second venv at the repo root.
+> Note: This repository also ships a separate, minimal SDK CLI (`tcm-client-cli`)
+> under `sdk/src/tcm_client/cli.py`. That CLI is for integrators testing the
+> WebSocket API from the SDK package and is **not** the same as the manager CLI
+> documented here (`tcm ...` groups like `manager/config/model`).
+
+> Note: This project is a monorepo. The recommended venv location is the **repo root**
+> (`.venv/`). Avoid keeping a second active venv under `apps/manager/.venv` to prevent
+> dependency drift.
 
 ---
 
@@ -12,32 +18,32 @@ The CLI is implemented in `apps/manager/tcm_cli.py`.
 
 ```bash
 # From repository root
-cd apps/manager
+cd /var/www/triton_client_manager
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt -r requirements-test.txt
+pip install -r apps/manager/requirements.txt
 
 # Optional (recommended): install the CLI entrypoint `tcm`
 # This repo defines `tcm = apps.manager.tcm_cli:main` in apps/manager/pyproject.toml
-pip install -e .
+pip install -e ./apps/manager
 ```
 
 You can then invoke the CLI as:
 
 ```bash
 # From repository root:
-./apps/manager/.venv/bin/tcm --help
+./.venv/bin/tcm --help
 
 # Or, without installing the script:
-./apps/manager/.venv/bin/python3 apps/manager/tcm_cli.py --help
+./.venv/bin/python3 apps/manager/tcm_cli.py --help
 ```
 
 Or if you are already inside `apps/manager`:
 
 ```bash
 # From apps/manager:
-.venv/bin/tcm --help
-.venv/bin/python3 tcm_cli.py --help
+../.venv/bin/tcm --help
+../.venv/bin/python3 tcm_cli.py --help
 ```
 
 ---
@@ -54,10 +60,10 @@ In code, you currently execute them via:
 
 ```bash
 # From repository root:
-./apps/manager/.venv/bin/tcm <group> <command> [options...]
+./.venv/bin/tcm <group> <command> [options...]
 
 # Or:
-./apps/manager/.venv/bin/python3 apps/manager/tcm_cli.py <group> <command> [options...]
+./.venv/bin/python3 apps/manager/tcm_cli.py <group> <command> [options...]
 ```
 
 ---
@@ -136,6 +142,11 @@ The `config.pbtxt` file is generated using the Pydantic schemas in
 `apps/manager/schemas/triton_model_config.py`. You can later refine `inputs`,
 `outputs`, and `max_batch_size` manually or via future automation.
 
+> Note (safetensors): Triton has no native `safetensors` backend. When you run
+> `tcm model scaffold --format safetensors`, the scaffold uses the **Python
+> backend** (`platform: "python"`) and writes a placeholder `infra/models/{NAME}/1/model.py`
+> that must be implemented before it can serve inference.
+
 #### `tcm model analyze`
 
 Analyze a model artifact (local path or `s3://...`) and print a typed JSON report with
@@ -201,17 +212,25 @@ This creates `infra/models/YOLO_TEST_PIPELINE/config.pbtxt` wiring:
 - `YOLO_TEST`
 - `MINIO_UPLOAD_IMG_BYTES`
 
+> Note: In this repository, these helper models pass raw objects as `TYPE_UINT8`
+> tensors (byte arrays). They do not use Triton `TYPE_BYTES` for binary payloads.
+>
+> Additional pipeline tensors you may see in the ensemble graph:
+> - `IMG_ORIGINAL`: the original object bytes (as `TYPE_UINT8`) propagated through the pipeline.
+> - `MODEL_OUT`: the raw output tensor from the underlying model (shape/type depend on the model’s `config.pbtxt`).
+
 #### `tcm model validate`
 
 Run an end‑to‑end smoke test to ensure a model is deployed and responding
 correctly:
 
 ```bash
-tcm model validate --name YOLO_TEST --vm-id vm-1 --container-id cont-1 --ws-uri ws://127.0.0.1:8000/ws
+tcm model validate --name YOLO_TEST --vm-id vm-1 --vm-ip 192.0.2.10 --container-id cont-1 --ws-uri ws://127.0.0.1:8000/ws
 ```
 
 This wraps `ValidateModelAction` and reports whether:
 
-- The Triton healthcheck `/v2/health/ready` succeeds.
+- The Triton healthcheck `/v2/health/ready` succeeds (Triton is started via `infra/triton/docker-compose.yml` and is reachable at `http://localhost:8001` by default).
 - A minimal inference via the manager returns without errors and matches Triton metadata.
+  If routing fails with a missing `vm_ip`, pass `--vm-ip` explicitly.
 
