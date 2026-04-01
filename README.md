@@ -101,6 +101,8 @@ The system exposes inference endpoints (HTTP and gRPC) and manages per-user job 
 - **Testing:** Smoke runtime test, regression suite, and integration tests for WebSockets
 - **Documentation:** Full docs in [docs/](docs/), including architecture, configuration, and version stack
 
+> **Virtual environment:** this monorepo is validated with a repo-root venv (`.venv/`). Some older references mention `apps/manager/.venv`; prefer the repo-root venv to avoid dependency drift.
+
 ---
 
 <a id="features"></a>
@@ -169,7 +171,7 @@ The system exposes inference endpoints (HTTP and gRPC) and manages per-user job 
 ### Development & Testing
 
 - **Tests:** `unittest`, smoke runtime script, WebSocket integration tests (pytest)
-- **Environment:** venv inside `apps/manager/` (recommended, especially on WSL/Ubuntu)
+- **Environment:** repo-root venv (`.venv/`) is the recommended default on WSL/Ubuntu
 
 ---
 
@@ -179,7 +181,7 @@ The system exposes inference endpoints (HTTP and gRPC) and manages per-user job 
 - **Python** ≥ 3.10 (CI validates on 3.12)  
   Check: `python3 --version`
 - **Virtual environment** (mandatory on Ubuntu/WSL due to PEP 668)  
-  Canonical setup: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) (venv lives in `apps/manager/.venv`)
+  Canonical setup: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) (venv lives in repo root: `.venv/`)
 - **OpenStack access** (for full pipeline)  
   - Keystone URL (`OPENSTACK_AUTH_URL`)
   - Application credential ID and secret
@@ -200,17 +202,19 @@ git clone https://github.com/adrirubim/triton_client_manager.git
 cd triton_client_manager
 ```
 
-### 2. Navigate to `apps/manager`
+### 2. One-time local setup (venv + deps)
 
 ```bash
-cd apps/manager
+cd /var/www/triton_client_manager
+python3 -m venv .venv
+source .venv/bin/activate
+
+python -m pip install --upgrade pip
+pip install -r apps/manager/requirements.txt
+pip install -e ./sdk
 ```
 
-> **Important:** The virtual environment should live **inside** `apps/manager/`, not at the repository root.
-
-### 3. One-time local setup (venv + deps)
-
-Follow: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+Canonical setup and advanced options: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
 ### 4. Configure
 
@@ -237,13 +241,15 @@ Runs only `JobThread` + `WebSocketThread` with mocked OpenStack/Docker/Triton ba
 
 ```bash
 cd apps/manager
-.venv/bin/python dev_server.py
+source ../.venv/bin/activate
+python dev_server.py
 ```
 
 #### Full pipeline (requires real OpenStack/Docker/Triton)
 
 ```bash
 cd apps/manager
+source ../.venv/bin/activate
 python client_manager.py
 ```
 
@@ -299,19 +305,20 @@ GitHub Actions (or any other CI) should run tests and basic checks on every push
 **Recommended pipeline steps (validate stage):**
 
 ```bash
-cd apps/manager
+cd /var/www/triton_client_manager
 
-python3 -m venv .venv
 source .venv/bin/activate
 
 python -m pip install --upgrade pip
-pip install -r requirements.txt -r requirements-test.txt
-pip install -e ../../sdk
-python3 -m py_compile client_manager.py
-python3 -m compileall -q classes utils
-PYTHONPATH=. python3 tests/smoke_runtime.py --with-ws-client
-PYTHONPATH=. python3 -m unittest tests.test_regression -v
-PYTHONPATH=. pytest tests/ -v
+pip install -r apps/manager/requirements.txt
+pip install -e ./sdk
+
+cd apps/manager
+python -m py_compile client_manager.py
+python -m compileall -q classes utils
+PYTHONPATH=. python tests/smoke_runtime.py --with-ws-client
+PYTHONPATH=. python -m unittest tests.test_regression -v
+PYTHONPATH=. python -m pytest tests/ -v
 ```
 
 You can mirror this flow in workflows such as [tests.yml](.github/workflows/tests.yml), [lint.yml](.github/workflows/lint.yml), and [security.yml](.github/workflows/security.yml) to keep the main branch healthy (including dependency and SAST security checks).
@@ -333,7 +340,8 @@ You can mirror this flow in workflows such as [tests.yml](.github/workflows/test
 
 ```bash
 cd apps/manager
-.venv/bin/python tests/smoke_runtime.py
+source ../.venv/bin/activate
+python tests/smoke_runtime.py
 ```
 
 **Expected output:** JSON with `startup`, `auth`, and `info`; exit code 0 on success.
@@ -345,7 +353,8 @@ cd apps/manager
 
 ```bash
 cd apps/manager
-.venv/bin/python -m unittest tests.test_regression -v
+source ../.venv/bin/activate
+python -m unittest tests.test_regression -v
 ```
 
 ### WebSocket Integration Tests
@@ -355,8 +364,8 @@ cd apps/manager
 
 ```bash
 cd apps/manager
-.venv/bin/pip install -r requirements-test.txt
-.venv/bin/pytest tests/test_integration_ws.py -v
+source ../.venv/bin/activate
+python -m pytest tests/test_integration_ws.py -v
 ```
 
 Full details and known caveats are documented in [docs/TESTING.md](docs/TESTING.md).
@@ -367,8 +376,8 @@ For a full local run that matches CI:
 
 ```bash
 cd apps/manager
-source .venv/bin/activate
-.venv/bin/pytest tests/ -v
+source ../.venv/bin/activate
+python -m pytest tests/ -v
 ```
 
 Prerequisite: complete the one-time setup in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
@@ -414,10 +423,13 @@ Triton Client Manager and can be treated as pluggable examples:
   - periodic sync script that copies images from a **remote container registry**
     into a **local registry** (by default `localhost:5000`);
   - configured via `apps/docker_controller/config.yaml` (registry URL, project
-    identifier, local registry) and environment variables such as
+    identifier, local registry, registry scheme) and environment variables such as
     `REGISTRY_TOKEN` / `REGISTRY_TOKEN_NAME` (variables de entorno genéricas
     para autenticarse contra el registro remoto; puedes mapearlas a cualquier
     proveedor de registro);
+  - the local registry HTTP API scheme can be overridden via `LOCAL_REGISTRY_SCHEME`
+    (`http` or `https`), and the default `start_container.sh` binds the registry
+    to `127.0.0.1` for safety unless you intentionally override it.
   - safe to ignore if your deployments already use a different image promotion
     flow (for example, GitHub Container Registry, Docker Hub, or an internal
     registry managed elsewhere).
@@ -468,9 +480,11 @@ For local development and tests:
 cd apps/manager
 
 # Dev server (no external services, recommended for local work)
-.venv/bin/python dev_server.py
+source ../.venv/bin/activate
+python dev_server.py
 
 # Full manager (requires OpenStack/Docker/Triton)
+source ../.venv/bin/activate
 python client_manager.py
 ```
 
@@ -478,8 +492,9 @@ python client_manager.py
 
 ```bash
 cd apps/manager
-.venv/bin/python tests/smoke_runtime.py
-.venv/bin/python -m unittest tests.test_regression -v
+source ../.venv/bin/activate
+python tests/smoke_runtime.py
+python -m unittest tests.test_regression -v
 ```
 
 ### Official SDKs (Python)
@@ -533,8 +548,9 @@ details, see [API_CONTRACTS](docs/API_CONTRACTS.md) / [WEBSOCKET_API](docs/WEBSO
 
 ```bash
 cd apps/manager
-.venv/bin/python -m py_compile client_manager.py
-.venv/bin/python -m compileall -q classes utils
+source ../.venv/bin/activate
+python -m py_compile client_manager.py
+python -m compileall -q classes utils
 ```
 
 ### Monitoring stack (Prometheus + Grafana)
@@ -560,11 +576,12 @@ Before opening a pull request, run the full validation flow locally:
 
 ```bash
 cd apps/manager
-.venv/bin/python tests/smoke_runtime.py --with-ws-client
-.venv/bin/python -m unittest tests.test_regression -v
-.venv/bin/pytest tests/test_integration_ws.py -v  # optional but recommended
-.venv/bin/python -m py_compile client_manager.py
-.venv/bin/python -m compileall -q classes utils
+source ../.venv/bin/activate
+python tests/smoke_runtime.py --with-ws-client
+python -m unittest tests.test_regression -v
+python -m pytest tests/test_integration_ws.py -v  # optional but recommended
+python -m py_compile client_manager.py
+python -m compileall -q classes utils
 ```
 
 All steps should pass before you push to GitHub and open a PR.

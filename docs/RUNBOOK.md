@@ -27,7 +27,7 @@ Operations and deployment guidance for Triton Client Manager.
 Run all commands from `apps/manager` or ensure the current working directory is `apps/manager` when starting the application. `client_manager.py` loads `config/*.yaml` relative to the current directory.
 
 > **Prerequisite:** complete the one-time setup in [DEVELOPMENT.md](DEVELOPMENT.md) so
-> `apps/manager/.venv` exists and dependencies are installed.
+> the repo-root venv `.venv/` exists and dependencies are installed.
 
 ## Local Setup (Development)
 
@@ -41,17 +41,17 @@ Minimal flow for a new developer:
 
 ```bash
 cd apps/manager
-source .venv/bin/activate
+source ../.venv/bin/activate
 
 # Lint & format
 black .
 ruff check .
 
 # Run tests
-pytest
+python -m pytest
 
 # Start the DEV server (no OpenStack/Docker/Triton required)
-.venv/bin/python dev_server.py
+python dev_server.py
 ```
 
 This `dev_server.py` entrypoint:
@@ -81,7 +81,8 @@ Threads start in order: OpenStack → Triton → Docker → Job → WebSocket. E
 
 ```bash
 cd apps/manager
-.venv/bin/python dev_server.py
+source ../.venv/bin/activate
+python dev_server.py
 ```
 
 In this mode:
@@ -96,7 +97,8 @@ Uses mocks for OpenStack, Docker, Triton. Validates JobThread DI, WebSocket auth
 
 ```bash
 cd apps/manager
-.venv/bin/python tests/smoke_runtime.py
+source ../.venv/bin/activate
+python tests/smoke_runtime.py
 ```
 
 **Expected output:** `{"startup": true, "auth": true, "info": true}` (exit 0).
@@ -107,7 +109,8 @@ Unit tests for DI, deletion normalization, auth contract, inference example, con
 
 ```bash
 cd apps/manager
-.venv/bin/python -m unittest tests.test_regression -v
+source ../.venv/bin/activate
+python -m unittest tests.test_regression -v
 ```
 
 ## Startup Assumptions
@@ -136,6 +139,9 @@ Before deploying to a shared environment (staging/production), verify:
      `OPENSTACK_VERIFY_SSL`.
    - Docker/registry variables are set when using `apps/docker_controller`:
      `REGISTRY_TOKEN`, `REGISTRY_TOKEN_NAME`.
+   - Optional Docker controller override:
+     `LOCAL_REGISTRY_SCHEME` (`http` or `https`) if your local registry is fronted
+     by TLS (otherwise keep the default `http` for localhost/dev).
    - Optional MinIO/S3 variables are set if required:
      `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_REGION`.
 
@@ -148,9 +154,11 @@ Before deploying to a shared environment (staging/production), verify:
 
 3. **Images and manifests**
    - Kubernetes manifests under `infra/k8s/` and
-     `docker-compose.multi-node.yml` use **versioned** image tags (no
+     `docker-compose.multi-node.yml` should use **versioned** image tags (avoid
      `:latest` in production‑style manifests) consistent with
      `docs/VERSION_STACK.md`.
+   - The reference manifests in this repository use an `:<version>` placeholder
+     in image strings; replace it with a concrete tag before applying/running.
 
 ## Pre-Push Validation
 
@@ -158,11 +166,9 @@ Recommended full validation before pushing:
 
 ```bash
 cd apps/manager
-source .venv/bin/activate
+source ../.venv/bin/activate
 
-# One-time (only if deps are not installed yet):
-# pip install -r requirements.txt -r requirements-test.txt
-# pip install -e ../../sdk
+# One-time (if deps are not installed yet): from repo root install `apps/manager/requirements.txt` into `.venv/`
 
 # 1. Lint & format
 black .
@@ -171,20 +177,20 @@ ruff check .
 black --check .
 
 # 2. Smoke + tests
-.venv/bin/python tests/smoke_runtime.py --with-ws-client
-.venv/bin/pytest tests/ -v
+python tests/smoke_runtime.py --with-ws-client
+python -m pytest tests/ -v
 
 # 3. Optional regression
-.venv/bin/python -m unittest tests.test_regression -v
+python -m unittest tests.test_regression -v
 
 # 4. Optional coverage report
-.venv/bin/pytest --cov=classes --cov=utils --cov=client_manager --cov-report=term-missing
+python -m pytest --cov=classes --cov=utils --cov=client_manager --cov-report=term-missing
 # Or HTML report in apps/manager/htmlcov/
-.venv/bin/pytest --cov=classes --cov=utils --cov=client_manager --cov-report=html
+python -m pytest --cov=classes --cov=utils --cov=client_manager --cov-report=html
 
 # 5. Compilation
-.venv/bin/python -m py_compile client_manager.py
-.venv/bin/python -m compileall -q classes utils
+python -m py_compile client_manager.py
+python -m compileall -q classes utils
 ```
 
 CI pipelines (for example, GitHub Actions) should at minimum run the regression suite and a subset of pytest on pull requests.
@@ -426,10 +432,15 @@ docker compose up -d
 
 Requirements:
 
-- Triton Client Manager running on the host at `0.0.0.0:8000` (for example
-  with `apps/manager/dev_server.py`).
+- Triton Client Manager running on the host and listening on port `8000`
+  (for example via `apps/manager/dev_server.py`). If you bind to `0.0.0.0:8000`,
+  you still access it locally as `http://localhost:8000` (or `http://127.0.0.1:8000`).
 - Docker Desktop or Docker with support for `host.docker.internal` (on pure
   Linux you can replace the hostname in `prometheus.yml` with the host IP).
+
+> Note: `infra/monitoring/docker-compose.yml` uses `:<version>` placeholders for
+> the Prometheus/Grafana images. Replace them with concrete tags appropriate
+> for your environment before running `docker compose up -d`.
 
 Once the stack is up:
 
@@ -446,7 +457,7 @@ Once the stack is up:
 |------------------|----------------------------------------------------------|----------------------------------------------------------------|
 | Grafana creds    | `GF_SECURITY_ADMIN_USER=admin`, `GF_SECURITY_ADMIN_PASSWORD=admin` | Strong credentials managed via secrets                         |
 | Ports            | `9090`, `3000` exposed on localhost                     | Ports and access restricted (VPN, ingress, firewalls)         |
-| Metrics source   | `apps/manager/dev_server.py` on `0.0.0.0:8000`          | Real manager deployment behind ingress/gateway                 |
+| Metrics source   | Manager listening on `:8000` (local access via `localhost:8000`) | Real manager deployment behind ingress/gateway                 |
 | Recommended use  | Demo / individual exploration                           | Operational/SRE validation; never use admin/admin in these envs |
 
 ### Day 2 operations checklist
@@ -500,7 +511,8 @@ To validate horizontal scaling behaviour using Docker Compose:
 
    ```bash
    cd apps/manager
-   .venv/bin/python -c "from ws_sdk.sdk import run_quickstart; run_quickstart('ws://127.0.0.1:8000/ws')"
+   source ../.venv/bin/activate
+   python -c "from ws_sdk.sdk import run_quickstart; run_quickstart('ws://127.0.0.1:8000/ws')"
    ```
 
    - Verify that you receive a valid `info_response`.
@@ -587,7 +599,7 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=/opt/triton_client_manager/apps/manager
-ExecStart=/opt/triton_client_manager/apps/manager/.venv/bin/python client_manager.py
+ExecStart=/opt/triton_client_manager/.venv/bin/python client_manager.py
 Restart=on-failure
 Environment="PYTHONUNBUFFERED=1"
 

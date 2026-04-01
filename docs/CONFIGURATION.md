@@ -66,20 +66,24 @@ auth:
   leeway_seconds: 60    # allowed clock skew for `exp`
   jwks_url: null        # optional JWKS endpoint for RSA/ECDSA keys
   public_key_pem: null  # optional PEM-encoded public key (or HS* secret in dev)
-  algorithms: []        # e.g. ["RS256", "ES256"], defaults to ["RS256","ES256","HS256"]
+  algorithms: []        # e.g. ["RS256", "ES256"]; defaults to ["RS256","ES256"] (HS* must be explicit and dev-only)
 ```
 
 - **simple**: no local claim validation; the token is treated as opaque and is
   assumed to have been validated upstream (API gateway, IdP, backend).
-- **strict** without keys (`jwks_url` / `public_key_pem` empty): a token is
-  required and only the **claim semantics** are validated:
-  - All claims listed in `required_claims` must be present.
-  - `exp` (if present) must not be expired (with `leeway_seconds` of clock
-    skew).
-  - `iss` / `aud` must match `issuer` / `audience` if configured.
+- **strict** without keys (`jwks_url` / `public_key_pem` empty):
+  - Supported **only in development** (`TCM_ENV=development`).
+  - Token signatures are **not** verified; only **claim semantics** may be validated:
+    - All claims listed in `required_claims` must be present.
+    - `exp` (if present) must not be expired (with `leeway_seconds` of clock
+      skew).
+    - `iss` / `aud` must match `issuer` / `audience` if configured.
+  - In `staging`/`production`, the manager **refuses to start** if strict mode is configured without JWKS/PEM.
 - **strict with keys** (`jwks_url` or `public_key_pem` configured): in addition
   to the above, `utils.auth.validate_token` cryptographically verifies the JWT
-  signature using PyJWT, restricting algorithms to `algorithms`.
+  signature using PyJWT, restricting algorithms to `algorithms`. If `algorithms`
+  is omitted/empty, the server uses a safe default of `["RS256","ES256"]`.
+  HS* algorithms must be explicitly configured and are allowed only in development.
 - In all modes, the `client` block is validated structurally and is used for
   authorization (`roles`).
 
@@ -202,6 +206,8 @@ The template covers at least:
 - `OPENSTACK_...` — auth URL, application credentials, region and SSL verify flag.
 - `REGISTRY_TOKEN`, `REGISTRY_TOKEN_NAME` — used by `apps/docker_controller` when
   interacting with a remote container registry.
+- `LOCAL_REGISTRY_SCHEME` — optional override for the Docker controller local registry
+  HTTP API scheme (`http` or `https`). Default is `http` (intended for localhost/dev).
 - Optional `MINIO_...` variables for MinIO/S3-style storage, if you prefer to
   inject credentials via environment variables instead of payloads.
 - Optional testing variables (`TCM_RUN_REAL_BACKENDS`, `TCM_REAL_MANAGER_WS_URL`, `TCM_REAL_MODEL_NAME`) used only in controlled environments for integration tests against real backends.
@@ -232,7 +238,14 @@ The template covers at least:
 
 `openstack.yaml`, `docker.yaml`, `triton.yaml` are used by `OpenstackThread`, `DockerThread`, and `TritonThread`. Consult the implementing classes for required keys. **Do not commit real credentials**: see `config/openstack.yaml.example` for a template without secrets, and prefer environment variables (`OPENSTACK_...`) for sensitive values.
 
-`minio.yaml` is a reference template (not loaded at startup). MinIO/S3 credentials and endpoint are provided per-request in management payloads (`payload.minio`) or through environment variables such as `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, and `MINIO_REGION`; see `payload_examples/` for structure.
+`minio.yaml` is a reference template (not loaded at startup). MinIO/S3 endpoint, bucket and folder are provided per-request in management payloads (`payload.minio`).
+
+Credentials and region can be provided in two ways:
+
+- **Per-request**: `payload.minio.access_key`, `payload.minio.secret_key`, `payload.minio.region`
+- **Environment fallback** (fills missing fields only): `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_REGION`
+
+See `payload_examples/` for structure.
 
 ### Queue semantics and backpressure
 
@@ -248,4 +261,4 @@ The template covers at least:
 | **uvicorn** | Minimum `>=0.30.0` (see [VERSION_STACK.md](VERSION_STACK.md)); programmatic lifespan/startup usage in WebSocketThread |
 | **Python** | 3.12 supported; dataclass field order matters (e.g. Flavor) |
 | **PEP 668** | On Ubuntu 24.04/WSL, use virtual environments; system-wide `pip install` may fail |
-| **Dev tools** | `ruff`, `black`, `pytest` and friends live in `requirements-test.txt` and are used by CI workflows (`tests.yml`, `lint.yml`). Install inside the venv with `pip install -r requirements.txt -r requirements-test.txt` in dev. |
+| **Dev tools** | `ruff`, `black`, `pytest` and friends are installed via `apps/manager/requirements.txt` and are used by CI workflows (`tests.yml`, `lint.yml`). Install inside the repo-root venv with `pip install -r apps/manager/requirements.txt`. |

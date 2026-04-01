@@ -60,6 +60,10 @@ If you discover a security vulnerability in this project, please report it **res
 ### Registry access tokens (`apps/docker_controller`)
 
 - The helper under `apps/docker_controller/` uses `REGISTRY_TOKEN` / `REGISTRY_TOKEN_NAME` to pull images from a remote container registry and push them into a local registry. The same pattern applies to GitLab, GHCR, Docker Hub, or any other provider, as long as the token has equivalent pull scopes.
+- The local registry used by this helper is intended to be **local-only** by default:
+  - `apps/docker_controller/start_container.sh` binds to `127.0.0.1` unless overridden.
+  - The Docker controller queries the registry over HTTP by default (`LOCAL_REGISTRY_SCHEME=http`).
+  - If you bind the registry to non-local interfaces, you must apply network restrictions and (preferably) TLS in front of it.
 - In non-local environments:
   - restrict the registry token to the minimal scope required to **read** container images (for example, `read_registry` in GitLab or the equivalent in your provider);
   - avoid using tokens with admin or write scopes unrelated to image pulls;
@@ -92,8 +96,9 @@ If you discover a security vulnerability in this project, please report it **res
   - If `jwks_url` (JWKS) or `public_key_pem` (RSA/ECDSA public key or HS*
     secret for dev) is configured, `validate_token` uses PyJWT to:
     - Verify the token signature cryptographically.
-    - Restrict algorithms to `auth.algorithms` (for example
-      `["RS256","ES256"]`).
+    - Restrict algorithms to `auth.algorithms` (for example `["RS256","ES256"]`).
+      If `auth.algorithms` is omitted/empty, the server defaults to `["RS256","ES256"]`.
+      HS* algorithms are allowed only in development and must be explicitly configured.
     - Enforce `exp`, `aud`, `iss` and `required_claims`.
   - Invalid, expired, or incorrectly signed tokens produce an `error` message
     and close the WebSocket with code `1008`.
@@ -125,8 +130,7 @@ If you discover a security vulnerability in this project, please report it **res
 
 ## Dependency Hygiene
 
-- Keep dependencies in [`apps/manager/requirements.txt`](apps/manager/requirements.txt) and
-  [`apps/manager/requirements-test.txt`](apps/manager/requirements-test.txt) up to date.
+- Keep dependencies in [`apps/manager/requirements.txt`](apps/manager/requirements.txt) up to date.
 - Run `pip list --outdated` periodically and review upgrade notes before bumping versions.
 - Pin or range-lock versions where stability matters (for example `uvicorn` and other infra components, see
   [`docs/CONFIGURATION.md`](docs/CONFIGURATION.md)).
@@ -134,12 +138,17 @@ If you discover a security vulnerability in this project, please report it **res
 ### Automated security checks (CI)
 
 - A dedicated **Security** GitHub Actions workflow runs on every push and pull request:
-  - **`pip-audit`** against [`apps/manager/requirements.txt`](apps/manager/requirements.txt) and
-    [`apps/manager/requirements-test.txt`](apps/manager/requirements-test.txt):
+  - **`pip-audit`** against:
+    - [`apps/manager/requirements.txt`](apps/manager/requirements.txt)
+    - `apps/docker_controller/requirements.txt`
     - The build currently **fails if any vulnerability is detected**.
-    - If an exception is ever needed, it must be:
-      - Documented in the commit / pull request.
-      - Justified in this `SECURITY.md` file (reason, affected package and version, planned mitigation).
+    - **Active exception (tracked):**
+      - `CVE-2026-28500` is currently ignored in CI (`.github/workflows/security.yml`) because ONNX is used only for offline inspection.
+      - This exception must remain time-bounded and be re-evaluated regularly.
+      - Tracking: `docs/CHANGELOG_INTERNAL.md` (search for the CVE id when adding/updating the exception).
+    - If any additional exception is needed, it must be:
+      - Documented in the commit / pull request that introduces it.
+      - Justified in this `SECURITY.md` file (reason, affected package/version, mitigation, and removal plan).
   - **`bandit`** SAST scan over [`apps/manager/classes`](apps/manager/classes), [`apps/manager/utils`](apps/manager/utils), and
     [`apps/manager/client_manager.py`](apps/manager/client_manager.py) (tests excluded to reduce noise).
 - This policy reflects the current stance: **no known vulnerabilities are accepted** in the main branch without an explicit, documented exception.

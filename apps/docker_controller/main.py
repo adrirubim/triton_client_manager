@@ -4,6 +4,7 @@ import time
 import requests
 import docker
 import logging
+from urllib.parse import urlparse
 
 # Configure logging
 logging.basicConfig(
@@ -14,9 +15,39 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+def _normalize_local_registry(config: dict) -> tuple[str, str]:
+    """
+    Returns (local_registry_hostport, local_registry_scheme).
+
+    - Tagging images requires host:port (no scheme).
+    - HTTP calls to the registry require scheme + host:port.
+    """
+    cfg_value = (config.get("local_registry") or "localhost:5000").strip()
+    cfg_scheme = (config.get("local_registry_scheme") or "").strip()
+    env_scheme = (os.environ.get("LOCAL_REGISTRY_SCHEME") or "").strip()
+    scheme = (env_scheme or cfg_scheme or "http").lower()
+
+    # Allow config to provide a full URL like "http://localhost:5000".
+    if "://" in cfg_value:
+        parsed = urlparse(cfg_value)
+        if parsed.scheme:
+            scheme = parsed.scheme.lower()
+        hostport = parsed.netloc or parsed.path  # path fallback for odd inputs
+        return hostport.strip("/"), scheme
+
+    return cfg_value, scheme
+
+def _local_registry_base_url(local_registry_hostport: str, scheme: str) -> str:
+    scheme_norm = (scheme or "http").lower()
+    if scheme_norm not in {"http", "https"}:
+        raise ValueError(f"Invalid local_registry_scheme: {scheme!r} (expected 'http' or 'https')")
+    hostport = (local_registry_hostport or "localhost:5000").strip().rstrip("/")
+    return f"{scheme_norm}://{hostport}"
+
 def config_dict():
     config_path = os.path.join(os.getcwd(), "config.yaml")
-    config = yaml.load(open(config_path, "r"), Loader=yaml.SafeLoader)
+    with open(config_path, "r") as f:
+        config = yaml.load(f, Loader=yaml.SafeLoader)
 
     token = os.environ.get("REGISTRY_TOKEN")
     if not token:
@@ -108,10 +139,11 @@ def convert_to_local_tag(gitlab_image_path: str, local_registry: str = "localhos
     
     return f"{local_registry}/{gitlab_image_path}"
 
-def get_local_registry_images(local_registry: str = "localhost:5000") -> set[str]:
+def get_local_registry_images(*, local_registry_hostport: str, local_registry_scheme: str) -> set[str]:
     """Query the local registry to get list of existing images"""
+    base_url = _local_registry_base_url(local_registry_hostport, local_registry_scheme)
     try:
-        catalog_url = f"http://{local_registry}/v2/_catalog"
+        catalog_url = f"{base_url}/v2/_catalog"
         response = requests.get(catalog_url, timeout=10)
         response.raise_for_status()
         catalog = response.json()
@@ -121,14 +153,14 @@ def get_local_registry_images(local_registry: str = "localhost:5000") -> set[str
         
         # For each repository, get its tags
         for repo in repositories:
-            tags_url = f"http://{local_registry}/v2/{repo}/tags/list"
+            tags_url = f"{base_url}/v2/{repo}/tags/list"
             tags_response = requests.get(tags_url, timeout=10)
             tags_response.raise_for_status()
             tags_data = tags_response.json()
             
             tags = tags_data.get("tags", [])
             for tag in tags:
-                existing_images.add(f"{local_registry}/{repo}:{tag}")
+                existing_images.add(f"{local_registry_hostport}/{repo}:{tag}")
         
         return existing_images
     except Exception as e:
@@ -174,20 +206,21 @@ def main():
     client = docker_setup(config)
     session = session_setup(config)
 
-    local_registry = config.get("local_registry", "localhost:5000")
+    local_registry, local_registry_scheme = _normalize_local_registry(config)
 
     logger.info("Starting image sync service...")
     logger.info(f"GitLab: {config['gitlab_url']}")
-    logger.info(f"Local Registry: {local_registry}")
+    logger.info(f"Local Registry: {local_registry_scheme}://{local_registry}")
     logger.info("-" * 50)
 
     while True:
         try:
-            time.sleep(60)
-
             # --- Query local registry to see what already exists ---
             logger.info("Querying local registry for existing images...")
-            existing_images = get_local_registry_images(local_registry)
+            existing_images = get_local_registry_images(
+                local_registry_hostport=local_registry,
+                local_registry_scheme=local_registry_scheme,
+            )
             if existing_images:
                 logger.info(f"Found {len(existing_images)} images in local registry")
             else:
@@ -239,10 +272,13 @@ def main():
                 except Exception as e:
                     logger.error(f"Failed to process {image_path}: {e}")
 
+            time.sleep(60)
         except requests.exceptions.RequestException as e:
             logger.error(f"Network error connecting to GitLab: {e}")
+            time.sleep(60)
         except Exception as e:
             logger.error(f"Unexpected error: {e}")
+            time.sleep(60)
 
 if __name__ == "__main__":
     main()

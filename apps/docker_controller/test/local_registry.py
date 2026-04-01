@@ -6,18 +6,30 @@ Tests connection to local registry on port 5000 and lists all images
 
 import sys
 import requests
+import os
 
-def test_registry_connection(registry_url="localhost:5000"):
+def _registry_base_url(registry_url: str, scheme: str) -> str:
+    scheme_norm = (scheme or "http").lower()
+    if scheme_norm not in {"http", "https"}:
+        raise ValueError(f"Invalid scheme: {scheme!r} (expected 'http' or 'https')")
+    hostport = (registry_url or "localhost:5000").strip().rstrip("/")
+    if "://" in hostport:
+        # If user passes full URL, trust it.
+        return hostport
+    return f"{scheme_norm}://{hostport}"
+
+def test_registry_connection(registry_url="localhost:5000", *, scheme: str = "http"):
     """Test connection to local Docker registry"""
     print("\n" + "="*60)
     print("[TEST] Testing Local Registry Connection")
     print("="*60)
     
     print(f"[INFO] Registry URL: {registry_url}")
+    base_url = _registry_base_url(registry_url, scheme)
     
     try:
         # Test registry version endpoint
-        version_url = f"http://{registry_url}/v2/"
+        version_url = f"{base_url}/v2/"
         response = requests.get(version_url, timeout=5)
         response.raise_for_status()
         
@@ -29,20 +41,23 @@ def test_registry_connection(registry_url="localhost:5000"):
     except requests.exceptions.ConnectionError:
         print(f"[ERROR] ✗ Cannot connect to registry at {registry_url}")
         print(f"[INFO] Make sure the registry is running:")
-        print(f"       docker run -d -p 5000:5000 --name registry registry:2")
+        print(
+            "       docker run -d -p 127.0.0.1:5000:5000 --name registry registry:2"
+        )
         return False
     except requests.exceptions.RequestException as e:
         print(f"[ERROR] ✗ Failed to connect to registry: {e}")
         return False
 
-def test_registry_catalog(registry_url="localhost:5000"):
+def test_registry_catalog(registry_url="localhost:5000", *, scheme: str = "http"):
     """List all repositories in the registry"""
     print("\n" + "="*60)
     print("[TEST] Listing Registry Catalog")
     print("="*60)
     
     try:
-        catalog_url = f"http://{registry_url}/v2/_catalog"
+        base_url = _registry_base_url(registry_url, scheme)
+        catalog_url = f"{base_url}/v2/_catalog"
         response = requests.get(catalog_url, timeout=10)
         response.raise_for_status()
         catalog = response.json()
@@ -65,7 +80,7 @@ def test_registry_catalog(registry_url="localhost:5000"):
         print(f"[ERROR] ✗ Failed to get catalog: {e}")
         return []
 
-def test_repository_tags(registry_url, repositories):
+def test_repository_tags(registry_url, repositories, *, scheme: str = "http"):
     """List tags for each repository"""
     print("\n" + "="*60)
     print("[TEST] Listing Repository Tags")
@@ -76,10 +91,11 @@ def test_repository_tags(registry_url, repositories):
         return
     
     all_images = []
+    base_url = _registry_base_url(registry_url, scheme)
     
     for repo in repositories:
         try:
-            tags_url = f"http://{registry_url}/v2/{repo}/tags/list"
+            tags_url = f"{base_url}/v2/{repo}/tags/list"
             response = requests.get(tags_url, timeout=10)
             response.raise_for_status()
             tags_data = response.json()
@@ -102,7 +118,7 @@ def test_repository_tags(registry_url, repositories):
                 
                 # Try to get manifest for more details
                 try:
-                    manifest_url = f"http://{registry_url}/v2/{repo}/manifests/{tag}"
+                    manifest_url = f"{base_url}/v2/{repo}/manifests/{tag}"
                     manifest_response = requests.get(manifest_url, timeout=5)
                     if manifest_response.status_code == 200:
                         # Get content length as approximate size
@@ -125,7 +141,7 @@ def test_repository_tags(registry_url, repositories):
     else:
         print("[WARNING] No images with tags found in registry")
 
-def test_registry_health(registry_url="localhost:5000"):
+def test_registry_health(registry_url="localhost:5000", *, scheme: str = "http"):
     """Check registry health and configuration"""
     print("\n" + "="*60)
     print("[TEST] Registry Health Check")
@@ -133,7 +149,8 @@ def test_registry_health(registry_url="localhost:5000"):
     
     try:
         # Test basic connectivity
-        version_url = f"http://{registry_url}/v2/"
+        base_url = _registry_base_url(registry_url, scheme)
+        version_url = f"{base_url}/v2/"
         response = requests.get(version_url, timeout=5)
         
         print(f"[INFO] Status Code: {response.status_code}")
@@ -158,21 +175,22 @@ def main():
     print("="*60)
     
     registry_url = "localhost:5000"
+    scheme = (os.environ.get("LOCAL_REGISTRY_SCHEME") or "http").strip().lower()
     
     try:
         # Test registry connection
-        if not test_registry_connection(registry_url):
+        if not test_registry_connection(registry_url, scheme=scheme):
             print("\n[ERROR] Cannot proceed without registry connection")
             sys.exit(1)
         
         # Test registry health
-        test_registry_health(registry_url)
+        test_registry_health(registry_url, scheme=scheme)
         
         # List catalog
-        repositories = test_registry_catalog(registry_url)
+        repositories = test_registry_catalog(registry_url, scheme=scheme)
         
         # List tags for each repository
-        test_repository_tags(registry_url, repositories)
+        test_repository_tags(registry_url, repositories, scheme=scheme)
         
         print("\n" + "="*60)
         print("[SUCCESS] ✓ All registry tests completed")

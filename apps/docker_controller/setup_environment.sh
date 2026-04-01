@@ -44,6 +44,10 @@ RestartSec=10
 StandardOutput=journal
 StandardError=journal
 
+# Basic hardening (kept minimal to avoid breaking Docker access).
+NoNewPrivileges=true
+PrivateTmp=true
+
 [Install]
 WantedBy=multi-user.target
 EOF

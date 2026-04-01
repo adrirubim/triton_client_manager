@@ -3,4 +3,10 @@ project_id: 123
 
 project: example_project
 local_registry: localhost:5000
+# Scheme for HTTP calls to the local registry API.
+# - Default: "http"
+# - Set to "https" only if your local registry is fronted by TLS.
+# - You can also override at runtime with LOCAL_REGISTRY_SCHEME env var.
+# IMPORTANT: Using plain HTTP is intended for localhost/dev only.
+local_registry_scheme: http
 # token and token_name are injected from REGISTRY_TOKEN / REGISTRY_TOKEN_NAME env vars
