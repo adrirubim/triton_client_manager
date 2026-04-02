@@ -16,7 +16,11 @@ class JobCreateVM:
     def handle(self, msg_uuid: str, payload: dict) -> tuple:
         logger.info(
             "Creation step 1: creating OpenStack VM",
-            extra={"client_uuid": msg_uuid, "job_id": "-", "job_type": "management_create_vm"},
+            extra={
+                "client_uuid": msg_uuid,
+                "job_id": "-",
+                "job_type": "management_create_vm",
+            },
         )
 
         # --- Extrapolate Data ---

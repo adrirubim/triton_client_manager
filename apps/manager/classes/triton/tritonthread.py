@@ -1,10 +1,9 @@
 import logging
-
-logger = logging.getLogger(__name__)
-
 import threading
 import time
 from typing import Callable, Optional
+
+from utils.metrics import observe_backend_error
 
 from .creation.creation import TritonCreation
 from .deletion.deletion import TritonDeletion
@@ -15,7 +14,8 @@ from .tritonerrors import (
     TritonMissingInstance,
     TritonServerStateChanged,
 )
-from utils.metrics import observe_backend_error
+
+logger = logging.getLogger(__name__)
 
 ###################################
 #        Triton Thread            #

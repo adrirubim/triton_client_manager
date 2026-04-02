@@ -14,7 +14,11 @@ class JobDeleteContainer:
     def handle(self, msg_uuid: str, payload: dict) -> str:
         logger.info(
             "Deletion step: deleting Docker container",
-            extra={"client_uuid": msg_uuid, "job_id": "-", "job_type": "management_delete_container"},
+            extra={
+                "client_uuid": msg_uuid,
+                "job_id": "-",
+                "job_type": "management_delete_container",
+            },
         )
 
         # --- Execute ---

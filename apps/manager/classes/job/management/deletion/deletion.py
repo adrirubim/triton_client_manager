@@ -50,9 +50,10 @@ class JobDeletion:
                 candidates = []
                 if os_thread and hasattr(os_thread, "dict_vms"):
                     for vm_id, vm in (os_thread.dict_vms or {}).items():
-                        if getattr(vm, "address_public", None) == vm_ip or getattr(
-                            vm, "address_private", None
-                        ) == vm_ip:
+                        if (
+                            getattr(vm, "address_public", None) == vm_ip
+                            or getattr(vm, "address_private", None) == vm_ip
+                        ):
                             candidates.append(vm_id)
                 if len(candidates) == 1:
                     payload["vm_id"] = candidates[0]
@@ -79,7 +80,11 @@ class JobDeletion:
         except Exception as e:
             logger.warning(
                 "Deletion step triton delete_server failed (continuing)",
-                extra={"client_uuid": msg_uuid, "job_id": "-", "job_type": "management_deletion"},
+                extra={
+                    "client_uuid": msg_uuid,
+                    "job_id": "-",
+                    "job_type": "management_deletion",
+                },
             )
             errors.append(f"triton_delete_server: {e}")
 
@@ -89,7 +94,11 @@ class JobDeletion:
         except Exception as e:
             logger.warning(
                 "Deletion step docker delete_container failed (continuing)",
-                extra={"client_uuid": msg_uuid, "job_id": "-", "job_type": "management_deletion"},
+                extra={
+                    "client_uuid": msg_uuid,
+                    "job_id": "-",
+                    "job_type": "management_deletion",
+                },
             )
             errors.append(f"delete_container: {e}")
 
@@ -99,7 +108,11 @@ class JobDeletion:
         except Exception as e:
             logger.warning(
                 "Deletion step openstack delete_vm failed",
-                extra={"client_uuid": msg_uuid, "job_id": "-", "job_type": "management_deletion"},
+                extra={
+                    "client_uuid": msg_uuid,
+                    "job_id": "-",
+                    "job_type": "management_deletion",
+                },
             )
             errors.append(f"delete_vm: {e}")
 

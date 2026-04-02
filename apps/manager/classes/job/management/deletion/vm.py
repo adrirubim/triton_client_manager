@@ -14,7 +14,11 @@ class JobDeleteVM:
     def handle(self, msg_uuid: str, payload: dict) -> str:
         logger.info(
             "Deletion step: deleting OpenStack VM",
-            extra={"client_uuid": msg_uuid, "job_id": "-", "job_type": "management_delete_vm"},
+            extra={
+                "client_uuid": msg_uuid,
+                "job_id": "-",
+                "job_type": "management_delete_vm",
+            },
         )
 
         self.openstack.delete_vm(payload)

@@ -18,19 +18,32 @@ class JobCreateServer:
     ) -> dict:
         logger.info(
             "Creation step 3: creating Triton server",
-            extra={"client_uuid": msg_uuid, "job_id": "-", "job_type": "management_create_server"},
+            extra={
+                "client_uuid": msg_uuid,
+                "job_id": "-",
+                "job_type": "management_create_server",
+            },
         )
 
         # --- Create payload ---
         data = {
-            "vm_id": vm_id if vm_id else payload.get("vm_id") or payload.get("openstack", {}).get("vm_id"),
-            "vm_ip": vm_ip if vm_ip else payload.get("vm_ip") or payload.get("openstack", {}).get("vm_ip"),
+            "vm_id": (
+                vm_id
+                if vm_id
+                else payload.get("vm_id") or payload.get("openstack", {}).get("vm_id")
+            ),
+            "vm_ip": (
+                vm_ip
+                if vm_ip
+                else payload.get("vm_ip") or payload.get("openstack", {}).get("vm_ip")
+            ),
             "minio": overlay_minio_payload(payload.get("minio", {}) or {}),
             "triton": payload.get("triton", {}),
             "container_id": (
                 container_id
                 if container_id
-                else payload.get("container_id") or payload.get("docker", {}).get("container_id")
+                else payload.get("container_id")
+                or payload.get("docker", {}).get("container_id")
             ),
         }
 

@@ -19,7 +19,11 @@ class JobCreateContainer:
     def handle(self, msg_uuid: str, payload: dict, vm_ip: str = None) -> tuple:
         logger.info(
             "Creation step 2: creating Docker container",
-            extra={"client_uuid": msg_uuid, "job_id": "-", "job_type": "management_create_container"},
+            extra={
+                "client_uuid": msg_uuid,
+                "job_id": "-",
+                "job_type": "management_create_container",
+            },
         )
 
         # --- Extrapolate DOCKER Data ---

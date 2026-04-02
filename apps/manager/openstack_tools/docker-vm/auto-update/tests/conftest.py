@@ -26,4 +26,3 @@ def repositories(registry_url: str) -> list[str]:
         return [r for r in repos if isinstance(r, str)]
     except Exception:
         return []
-

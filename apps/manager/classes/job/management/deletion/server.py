@@ -14,7 +14,11 @@ class JobDeleteServer:
     def handle(self, msg_uuid: str, payload: dict) -> dict:
         logger.info(
             "Deletion step: deleting Triton server",
-            extra={"client_uuid": msg_uuid, "job_id": "-", "job_type": "management_delete_server"},
+            extra={
+                "client_uuid": msg_uuid,
+                "job_id": "-",
+                "job_type": "management_delete_server",
+            },
         )
 
         # --- Execute ---
