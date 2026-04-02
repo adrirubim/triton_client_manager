@@ -4,6 +4,7 @@ import time
 from typing import TYPE_CHECKING, Callable, Optional
 
 import docker
+from utils.metrics import observe_backend_error
 
 from .creation import DockerCreation
 from .deletion import DockerDeletion
@@ -16,7 +17,6 @@ from .dockererrors import (
     DockerMissingContainer,
 )
 from .info import DockerInfo
-from utils.metrics import observe_backend_error
 
 if TYPE_CHECKING:
     from ..openstack import OpenstackThread

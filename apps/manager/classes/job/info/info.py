@@ -88,6 +88,9 @@ class JobInfo:
                             "job_id": payload.get("job_id"),
                             "request_type": request_type,
                             "status": "error",
+                            # Keep both a top-level `error` field (for older tests/consumers)
+                            # and a structured `data.error` field for newer callers.
+                            "error": str(e),
                             "data": {"error": str(e)},
                         },
                     }

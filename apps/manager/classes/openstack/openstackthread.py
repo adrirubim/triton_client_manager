@@ -1,10 +1,9 @@
 import logging
-
-logger = logging.getLogger(__name__)
-
 import threading
 import time
 from typing import Callable, Optional
+
+from utils.metrics import observe_backend_error
 
 from .auth import OpenstackAuth
 from .creation import OpenstackCreation
@@ -18,7 +17,8 @@ from .openstackerrors import (
     OpenstackResourceNotFound,
     OpenstackVMStateChanged,
 )
-from utils.metrics import observe_backend_error
+
+logger = logging.getLogger(__name__)
 
 ###################################
 #      OpenStack Thread           #

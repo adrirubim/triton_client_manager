@@ -6,10 +6,10 @@ from classes.job.joberrors import JobInferenceMissingField
 from classes.triton import TritonInfer
 from classes.triton.inference_orchestrator import TritonInference
 from classes.triton.tritonerrors import TritonInferenceFailed
+from utils.metrics import observe_inference_latency
 
 from .handlers.grpc import JobInferenceGrpc
 from .handlers.http import JobInferenceHttp
-from utils.metrics import observe_inference_latency
 
 if TYPE_CHECKING:
     from classes.docker import DockerThread
