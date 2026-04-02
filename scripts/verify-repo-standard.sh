@@ -34,7 +34,7 @@ for f in "${required_github_files[@]}"; do
 done
 
 echo "==> verify-repo-standard: checking README entrypoint"
-if ! rg -q --fixed-strings "./scripts/dev-verify.sh" README.md; then
+if ! grep -Fq "./scripts/dev-verify.sh" README.md; then
   echo "MISSING: README.md must reference ./scripts/dev-verify.sh"
   missing=1
 fi
