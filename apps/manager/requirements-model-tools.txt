@@ -9,5 +9,5 @@
 # Security note:
 # - Do not use `onnx.hub` / `onnx.hub.load()` in this repository.
 # - Treat models as controlled artifacts (filesystem / MinIO / registry).
-onnx==1.20.1
+onnx==1.21.0
 
