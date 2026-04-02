@@ -1,36 +1,28 @@
 ## Summary
 
-Describe briefly what this pull request does and why.
+- 
 
 ## Changes
 
--
--
--
+- 
 
-## Testing
+## Test plan
 
-Describe how you verified the changes (commands, scenarios, configs).
+Select what you ran:
 
-```bash
-# Example
-cd apps/manager
-source ../.venv/bin/activate
-python tests/smoke_runtime.py
-python -m unittest tests.test_regression -v
-```
+- [ ] Smoke runtime (`python tests/smoke_runtime.py`)
+- [ ] Regression (`python -m unittest tests.test_regression -v`)
+- [ ] Pytest (`python -m pytest tests/ -v`)
+- [ ] Lint/format (`ruff check .` and `black --check .`)
 
-## Checklist
+## Notes / risks
 
-- [ ] I have run the smoke test (`tests/smoke_runtime.py`)
-- [ ] I have run the regression suite (`tests.test_regression`)
-- [ ] I have updated documentation where appropriate
-- [ ] I have checked that CI (GitHub Actions) passes or will pass with these changes
+- 
 
-## Breaking Changes
+## Breaking changes
 
-- [ ] Yes
 - [ ] No
+- [ ] Yes (describe impact and migration path below)
 
 If **Yes**, explain the impact and migration path:
 

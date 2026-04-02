@@ -6,7 +6,14 @@
 
 Python-based orchestration service for AI inference that coordinates OpenStack VMs, Docker containers, and NVIDIA Triton Inference Server via WebSockets. It provides per-user job queues, management pipelines (VM/container/server creation & deletion), and HTTP/gRPC inference endpoints.
 
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-3776AB?logo=python&logoColor=white)](https://www.python.org/) [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/) [![Uvicorn](https://img.shields.io/badge/Uvicorn-0.30+-499848)](https://www.uvicorn.org/) [![Docker](https://img.shields.io/badge/Docker-24+-2496ED?logo=docker&logoColor=white)](https://www.docker.com/) [![Triton Client](https://img.shields.io/badge/Triton_Client-2.48+-76B900)](https://github.com/triton-inference-server/client) [![Tests](https://github.com/adrirubim/triton_client_manager/actions/workflows/tests.yml/badge.svg)](https://github.com/adrirubim/triton_client_manager/actions/workflows/tests.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Uvicorn](https://img.shields.io/badge/Uvicorn-0.30+-499848)](https://www.uvicorn.org/)
+[![Docker](https://img.shields.io/badge/Docker-24+-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+[![Triton Client](https://img.shields.io/badge/Triton_Client-2.48+-76B900)](https://github.com/triton-inference-server/client)
+[![Tests](https://img.shields.io/github/actions/workflow/status/adrirubim/triton_client_manager/tests.yml?branch=main&label=Tests&style=flat&color=brightgreen)](https://github.com/adrirubim/triton_client_manager/actions/workflows/tests.yml)
+[![Lint](https://img.shields.io/github/actions/workflow/status/adrirubim/triton_client_manager/lint.yml?branch=main&label=Lint&style=flat&color=blue)](https://github.com/adrirubim/triton_client_manager/actions/workflows/lint.yml)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ## 📋 Table of Contents
 
@@ -22,7 +29,7 @@ Python-based orchestration service for AI inference that coordinates OpenStack V
 - [Testing](#testing)
 - [Architecture](#architecture)
 - [Optional Tooling](#optional-tooling)
-- [Project status](#project-status)
+- [Project Status](#project-status)
 - [Default Users](#default-users-development)
 - [Useful Commands](#useful-commands)
 - [Before Pushing to GitHub](#before-pushing-to-github)
@@ -447,7 +454,7 @@ it exists purely as an optional helper for image lifecycle management.
 ---
 
 <a id="project-status"></a>
-## 📊 Project status
+## 📊 Project Status
 
 - **Current release:** `v1.0.0` — **STABLE**
 - **Changelog:** see [CHANGELOG.md](CHANGELOG.md) for highlights and upgrade notes.
@@ -572,7 +579,15 @@ Then:
 <a id="before-pushing-to-github"></a>
 ## 📤 Before Pushing to GitHub
 
-Before opening a pull request, run the full validation flow locally:
+Before opening a pull request, run the full validation flow locally.
+
+Recommended single entrypoint (CI parity):
+
+```bash
+./scripts/dev-verify.sh
+```
+
+Equivalent manual commands:
 
 ```bash
 cd apps/manager

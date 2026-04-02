@@ -1,0 +1,9 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerabilities
+    url: https://github.com/adrirubim/triton_client_manager/security/policy
+    about: Please report security vulnerabilities privately.
+  - name: Support
+    url: https://github.com/adrirubim/triton_client_manager/blob/main/SUPPORT.md
+    about: Get help and usage guidance.
+
