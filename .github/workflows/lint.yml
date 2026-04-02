@@ -19,6 +19,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Verify repository standard
+        run: |
+          chmod +x scripts/verify-repo-standard.sh
+          ./scripts/verify-repo-standard.sh
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
