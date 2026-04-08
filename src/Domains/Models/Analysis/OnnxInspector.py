@@ -9,7 +9,6 @@ from onnx import TensorProto
 
 from src.Domains.Models.Schemas.ModelAnalysisReport import ModelIO
 
-
 _DTYPE_MAP = {
     TensorProto.FLOAT: "FP32",
     TensorProto.DOUBLE: "FP64",

@@ -18,7 +18,6 @@ from src.Domains.Models.Actions.AnalyzeModelV2Action import AnalyzeModelV2Action
 from src.Domains.Models.Actions.FetchModelArtifactAction import FetchModelArtifactAction
 from src.Domains.Models.Schemas.ModelAnalysisReport import ModelCategory
 
-
 ScaffoldModelFormat = Literal["onnx", "safetensors"]
 
 _TRITON_DTYPE_MAP = {

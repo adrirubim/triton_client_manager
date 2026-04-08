@@ -10,7 +10,6 @@ from src.Domains.Models.Schemas.ModelInspectionResult import (
     ModelInspectionResult,
 )
 
-
 _TRITON_DTYPE_MAP = {
     "FP16": "TYPE_FP16",
     "FLOAT16": "TYPE_FP16",

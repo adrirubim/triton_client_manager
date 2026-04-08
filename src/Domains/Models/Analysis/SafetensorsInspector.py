@@ -8,7 +8,6 @@ from safetensors import safe_open
 
 from src.Domains.Models.Schemas.ModelAnalysisReport import ModelIO
 
-
 _DTYPE_MAP = {
     "F16": "FP16",
     "F32": "FP32",

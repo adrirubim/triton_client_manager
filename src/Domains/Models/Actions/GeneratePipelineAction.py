@@ -4,7 +4,6 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-
 _MINIO_DOWNLOAD = "MINIO_DOWNLOAD_IMG_TO_BYTES"
 _BYTES_TO_UINT8 = "BYTES_TO_UINT8"
 _MINIO_UPLOAD = "MINIO_UPLOAD_IMG_BYTES"
