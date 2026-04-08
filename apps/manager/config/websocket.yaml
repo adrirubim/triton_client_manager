@@ -12,7 +12,7 @@ max_message_bytes: 65536
 # docs/CONFIGURATION.md and SECURITY.md and override these values via your own
 # config or environment-specific overlays.
 # - mode: "strict"  -> token required and validated according to claims below
-# - mode: "simple"  -> sin validación local de claims; usar solo en dev o detrás de gateway autenticado
+# - mode: "simple"  -> no local claim validation; use only in dev or behind an authenticated gateway
 auth:
   mode: "simple"
   require_token: false

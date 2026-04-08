@@ -36,7 +36,7 @@ _DTYPE_MAP = {
 @dataclass
 class AnalyzeModelAction:
     """
-    Inspecta un fichero ONNX y produce un informe tipado (Pydantic) de inputs/outputs.
+    Inspect an ONNX file and produce a typed (Pydantic) inputs/outputs report.
     """
 
     model_path: str
@@ -45,7 +45,7 @@ class AnalyzeModelAction:
     def _load_model(self) -> onnx.ModelProto:
         path = Path(self.model_path)
         if not path.is_file():
-            raise FileNotFoundError(f"Modelo ONNX no encontrado en {path}")
+            raise FileNotFoundError(f"ONNX model not found at {path}")
         return onnx.load(str(path))
 
     def _tensor_to_io(self, tensor) -> AnalyzedIO:
@@ -57,7 +57,7 @@ class AnalyzeModelAction:
             if dim.dim_value:
                 dims.append(int(dim.dim_value))
             else:
-                # Dimensión dinámica o simbólica: representar como -1.
+                # Dynamic/symbolic dimension: represent as -1.
                 dims.append(-1)
 
         return AnalyzedIO(name=tensor.name, dtype=dtype, shape=dims)
@@ -80,4 +80,3 @@ class AnalyzeModelAction:
         if print_json:
             print(report.model_dump_json(indent=2))
         return report
-

@@ -22,30 +22,30 @@ def _require_env(var_name: str) -> str:
 def test_real_backends_smoke_pipeline():
     """Smoke: validate basic creation → inference → teardown contract.
 
-    This test does **not** talk directamente a OpenStack/Docker/Triton; instead
-    asume que:
+    This test does **not** talk directly to OpenStack/Docker/Triton; instead it
+    assumes:
 
-    - hay una instancia del manager corriendo con backends reales conectados, y
-    - hay un modelo pequeño de referencia ya desplegado y accesible.
+    - there is a manager instance running with real backends connected, and
+    - there is a small reference model already deployed and reachable.
 
-    El entorno concreto (URLs, nombre de modelo, etc.) se pasa vía variables
-    de entorno para que cada equipo de plataforma pueda adaptarlo a su
-    infraestructura.
+    The concrete environment (URLs, model name, etc.) is provided via
+    environment variables so each platform team can adapt it to their
+    infrastructure.
     """
 
     manager_ws = _require_env("TCM_REAL_MANAGER_WS_URL")
     model_name = _require_env("TCM_REAL_MODEL_NAME")
 
-    # El flujo end‑to‑end real (hablar con `manager_ws` y ejercitar `model_name`)
-    # debe ser implementado por el equipo que tenga acceso a los backends
-    # reales. Aquí dejamos un assert placeholder para no romper CI cuando
-    # TCM_RUN_REAL_BACKENDS=1 pero todavía no se ha definido el flujo.
+    # The real end-to-end flow (connect to `manager_ws` and exercise `model_name`)
+    # should be implemented by the team that has access to the real backends.
+    # We keep a placeholder assert to avoid breaking CI when
+    # TCM_RUN_REAL_BACKENDS=1 but the workflow has not been defined yet.
     #
-    # Ejemplo esperado a futuro:
-    #  - abrir /ws contra manager_ws
-    #  - auth con token real
-    #  - (opcional) lanzar un management.creation para recursos efímeros
-    #  - ejecutar un inference_http contra `model_name`
-    #  - verificar status COMPLETED y datos mínimamente coherentes
+    # Expected future example:
+    #  - open /ws against manager_ws
+    #  - auth with a real token
+    #  - (optional) run a management.creation for ephemeral resources
+    #  - execute an inference_http against `model_name`
+    #  - verify COMPLETED status and minimally coherent data
 
     assert manager_ws and model_name

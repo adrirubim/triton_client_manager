@@ -138,29 +138,29 @@ High-level design:
 
 - **Protocol selection**: `payload.request.protocol` (`http` or `grpc`); defaults to `http` if absent.
 - **Orchestration layer**:
-  - `TritonThread` mantiene un registro de instancias `TritonServer` (`dict_servers[(vm_id, container_id)]`).
-  - `TritonInference` (en `classes.triton.inference_orchestrator`) recibe un `TritonServer` y una descripción de petición (`TritonRequest`) y:
-    - parsea inputs/outputs (delegando en `TritonInfer`);
-    - elige protocolo (`http`/`grpc`);
-    - delega en `TritonInfer` (cliente HTTP/gRPC);
-    - normaliza errores vía `TritonInferenceFailed`;
-    - soporta **pipelines multi‑modelo simples** (lista de `TritonRequest`) ejecutadas secuencialmente.
+  - `TritonThread` keeps a registry of `TritonServer` instances (`dict_servers[(vm_id, container_id)]`).
+  - `TritonInference` (in `classes.triton.inference_orchestrator`) receives a `TritonServer` and a request description (`TritonRequest`) and:
+    - parses inputs/outputs (delegating to `TritonInfer`);
+    - selects the protocol (`http`/`grpc`);
+    - delegates to `TritonInfer` (HTTP/gRPC client);
+    - normalizes errors via `TritonInferenceFailed`;
+    - supports **simple multi-model pipelines** (a list of `TritonRequest`) executed sequentially.
 - **HTTP**:
-  - un request → un response;
-  - en pipelines, se devuelven resultados agregados `{model_name: decoded_outputs}`.
+  - one request → one response;
+  - in pipelines, aggregated results are returned as `{model_name: decoded_outputs}`.
 - **gRPC**:
-  - streaming con múltiples respuestas `status="ONGOING"` seguido de `status="COMPLETED"`;
-  - los chunks se producen desde `TritonInference` vía callbacks `on_chunk(...)`.
+  - streaming with multiple `status="ONGOING"` responses followed by `status="COMPLETED"`;
+  - chunks are produced from `TritonInference` via `on_chunk(...)` callbacks.
 
 **Current state:**
 
-- `JobInference` (capa WebSocket) decide protocolo según `payload.request.protocol` y:
-  - construye un `TritonRequest` con `model_name`, `inputs`, `protocol` y, si aplica, `output_name`;
-  - lo pasa, junto con el `TritonServer` seleccionado, a `TritonInference.handle(...)`.
-- HTTP, gRPC y la capa de orquestación están cubiertos por:
+- `JobInference` (WebSocket layer) selects protocol based on `payload.request.protocol` and:
+  - builds a `TritonRequest` with `model_name`, `inputs`, `protocol` and, if applicable, `output_name`;
+  - passes it, along with the selected `TritonServer`, to `TritonInference.handle(...)`.
+- HTTP, gRPC, and the orchestration layer are covered by:
   - `tests/test_job_inference_handlers.py` (handlers HTTP/gRPC),
   - `tests/test_job_management_inference.py` (JobInference end‑to‑end),
-  - `tests/test_triton_infer.py` (TritonInfer + TritonInference, incluyendo pipelines y reintentos).
+  - `tests/test_triton_infer.py` (TritonInfer + TritonInference, including pipelines and retries).
 
 ## Integration Points
 

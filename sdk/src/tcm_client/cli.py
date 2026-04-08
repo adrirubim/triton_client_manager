@@ -17,7 +17,9 @@ def _parse_roles(raw: Optional[str]) -> List[str]:
     return [r.strip() for r in raw.split(",") if r.strip()]
 
 
-async def _run_queue_stats(uri: str, ctx: AuthContext, repeat: int, concurrency: int) -> None:
+async def _run_queue_stats(
+    uri: str, ctx: AuthContext, repeat: int, concurrency: int
+) -> None:
     """
     Run one or more `info.queue_stats` calls.
 
@@ -156,7 +158,9 @@ async def _run_inference_http(
     try:
         inputs = [InferenceInput(**item) for item in raw_inputs]
     except Exception as exc:
-        raise SystemExit(f"Invalid `inputs` payload for Triton inference: {exc}") from exc
+        raise SystemExit(
+            f"Invalid `inputs` payload for Triton inference: {exc}"
+        ) from exc
 
     async with TcmWebSocketClient(uri, ctx) as client:
         await client.auth()
@@ -365,4 +369,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

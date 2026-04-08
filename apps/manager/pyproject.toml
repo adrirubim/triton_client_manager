@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "tcm-manager-cli"
 version = "0.1.0"
-description = "CLI unificado `tcm` para Triton Client Manager."
+description = "Unified `tcm` CLI for Triton Client Manager."
 requires-python = ">=3.10"
 dependencies = [
   "pyyaml>=6.0.2",
@@ -32,3 +32,16 @@ quote-style = "double"
 "classes/**/info/info.py" = ["E402"]
 "classes/**/openstackthread.py" = ["E402"]
 "classes/**/tritonthread.py" = ["E402"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+
+[tool.black]
+line-length = 120
+target-version = ["py312"]
+
+[tool.flake8]
+max-line-length = 120
+extend-ignore = ["E203", "W503"]

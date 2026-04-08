@@ -16,4 +16,3 @@ from tcm_client.model_analyze import (  # noqa: E402
 )
 
 __all__ = ["AnalyzeModelAction", "AnalyzeModelReport", "AnalyzedIO"]
-

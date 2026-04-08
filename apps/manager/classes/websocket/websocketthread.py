@@ -1,14 +1,18 @@
 import asyncio
+import ipaddress
 import json
 import logging
+import os
 import threading
 import time
+import uuid
 from typing import Callable, Dict, List, Optional
 
 import uvicorn
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi.responses import JSONResponse
 
-from utils.auth import SecurityError, validate_token
+from utils.auth import SecurityError, validate_token_and_get_claims
 from utils.metrics import (
     AUTH_FAILURES_TOTAL,
     RATE_LIMIT_VIOLATIONS_TOTAL,
@@ -94,8 +98,18 @@ class WebSocketThread(threading.Thread):
             return {"status": "ready"}
 
         @self.app.get("/metrics")
-        async def metrics():
+        async def metrics(request: Request):
             """Prometheus metrics endpoint."""
+            # Restrict metrics to loopback/private addresses only.
+            try:
+                host = request.client.host if request.client else ""
+                ip = ipaddress.ip_address(host)
+                if not (ip.is_loopback or ip.is_private):
+                    return JSONResponse(
+                        status_code=403, content={"detail": "Forbidden"}
+                    )
+            except Exception:
+                return JSONResponse(status_code=403, content={"detail": "Forbidden"})
             return generate_metrics_response(self.get_queue_stats)
 
         @self.app.websocket("/ws")
@@ -155,6 +169,26 @@ class WebSocketThread(threading.Thread):
         """
         self.auth_config = auth_config or {}
         self.rate_limit_config = rate_limit_config or {}
+
+        # Fail-fast safety: refuse insecure auth config outside development.
+        env = (os.getenv("TCM_ENV", "development") or "development").lower()
+        mode = (self.auth_config.get("mode") or "simple").lower()
+        require_token = bool(self.auth_config.get("require_token", False))
+        if env != "development" and (mode == "simple" or require_token is False):
+            logger.critical(
+                "SECURITY_FAIL_FAST: refusing to start with insecure auth configuration",
+                extra={
+                    "client_uuid": "-",
+                    "job_id": "-",
+                    "job_type": "ws_server",
+                    "auth_mode": mode,
+                    "require_token": require_token,
+                    "tcm_env": env,
+                },
+            )
+            raise SecurityError(
+                "Insecure auth config outside development (mode=simple or require_token=false)"
+            )
 
     def _check_message_rate(self, client_id: str) -> bool:
         """Apply simple per-client message rate limiting if configured."""
@@ -250,33 +284,18 @@ class WebSocketThread(threading.Thread):
             client_id = message["uuid"]
             observe_ws_message(message.get("type", "unknown"))
 
+            # Correlation id for this incoming message (auth).
+            message["_correlation_id"] = str(uuid.uuid4())
+
             # Optional multi-tenant auth payload validation
             payload = message.get("payload", {}) or {}
-            client_block = payload.get("client")
-            roles = []
-            tenant_id = None
-            sub = None
-            if client_block is not None:
-                sub = client_block.get("sub")
-                tenant_id = client_block.get("tenant_id")
-                roles = client_block.get("roles", [])
-                if (
-                    not isinstance(sub, str)
-                    or not isinstance(tenant_id, str)
-                    or not isinstance(roles, list)
-                ):
-                    AUTH_FAILURES_TOTAL.labels(reason="invalid_payload").inc()
-                    await self._send_error(
-                        websocket,
-                        "Invalid auth payload: expected 'client.sub', 'client.tenant_id', and 'client.roles'",
-                    )
-                    await websocket.close(code=1008)
-                    return
 
-            # Optional token validation (claims + optional cryptographic verification when configured).
+            # Token validation (strict mode returns verified claims).
             token = payload.get("token")
             try:
-                ok, token_error = validate_token(token, self.auth_config)
+                ok, token_error, claims = validate_token_and_get_claims(
+                    token, self.auth_config
+                )
             except SecurityError as exc:
                 AUTH_FAILURES_TOTAL.labels(reason="auth_config").inc()
                 await self._send_error(
@@ -300,6 +319,53 @@ class WebSocketThread(threading.Thread):
                 )
                 await websocket.close(code=1008)
                 return
+
+            # IMPORTANT:
+            # - In strict mode, derive identity from verified token claims.
+            # - In development + simple mode, allow client-provided roles to support local testing.
+            # - Outside development, never grant implicit privileges from client payload.
+            env = (os.getenv("TCM_ENV", "development") or "development").lower()
+            mode = (self.auth_config.get("mode") or "simple").lower()
+            sub = None
+            tenant_id = None
+            roles: list[str] = []
+            if mode == "strict":
+                if isinstance(claims, dict):
+                    raw_sub = claims.get("sub")
+                    if isinstance(raw_sub, str):
+                        sub = raw_sub
+                    raw_tenant = claims.get("tenant_id") or claims.get("tenant")
+                    if isinstance(raw_tenant, str):
+                        tenant_id = raw_tenant
+                    raw_roles = (
+                        claims.get("roles")
+                        or claims.get("role")
+                        or claims.get("permissions")
+                        or []
+                    )
+                    if isinstance(raw_roles, str):
+                        roles = [raw_roles]
+                    elif isinstance(raw_roles, (list, tuple)):
+                        roles = [r for r in raw_roles if isinstance(r, str)]
+
+            if env == "development" and mode != "strict":
+                client_block = (
+                    payload.get("client") if isinstance(payload, dict) else None
+                )
+                if isinstance(client_block, dict):
+                    raw_roles = client_block.get("roles") or []
+                    if isinstance(raw_roles, str):
+                        roles = [raw_roles]
+                    elif isinstance(raw_roles, (list, tuple)):
+                        roles = [r for r in raw_roles if isinstance(r, str)]
+                # Dev convenience: if roles are still empty, grant minimal local roles
+                # so smoke tests can run without a JWT/claims pipeline.
+                if not roles:
+                    roles = ["inference", "management"]
+
+            # Fail-safe: in non-development, simple mode must not yield any implicit privileges.
+            if env != "development" and mode != "strict":
+                roles = []
 
             # Check if client already connected
             with self.clients_lock:
@@ -381,6 +447,9 @@ class WebSocketThread(threading.Thread):
                     await websocket.close(code=1008)
                     break
 
+                # Correlation id for this incoming message.
+                message["_correlation_id"] = str(uuid.uuid4())
+
                 # Attach auth context (if any) so downstream components can enforce roles/limits
                 if client_id:
                     auth_ctx = self.client_auth.get(client_id, {})
@@ -390,11 +459,21 @@ class WebSocketThread(threading.Thread):
                 if self.on_message:
                     try:
                         observe_ws_message(message.get("type", "unknown"))
+                        corr = message.get("_correlation_id", "-")
                         await asyncio.get_event_loop().run_in_executor(
                             None, self.on_message, client_id, message
                         )
                     except Exception as e:
-                        logger.exception("Error in on_message callback: %s", e)
+                        logger.exception(
+                            "Error in on_message callback: %s",
+                            e,
+                            extra={
+                                "client_uuid": client_id or "-",
+                                "job_id": "-",
+                                "job_type": "ws_on_message",
+                                "correlation_id": corr,
+                            },
+                        )
 
         except WebSocketDisconnect:
             WS_DISCONNECTIONS_TOTAL.inc()
@@ -427,6 +506,13 @@ class WebSocketThread(threading.Thread):
                 with self.clients_lock:
                     self.clients.pop(client_id, None)
                     self.client_auth.pop(client_id, None)
+
+                # Memory hygiene: clear rate-limit state for this client ID.
+                with self._rate_lock:
+                    self._msg_timestamps.pop(client_id, None)
+                    # IMPORTANT: do NOT clear auth-failure timestamps on disconnect.
+                    # We want auth failure rate limiting to apply across reconnect attempts
+                    # within the configured time window.
 
                 if self.on_disconnect:
                     try:
@@ -477,8 +563,24 @@ class WebSocketThread(threading.Thread):
             future = asyncio.run_coroutine_threadsafe(
                 websocket.send_text(json.dumps(message)), self.loop
             )
-            # Wait for completion with timeout
-            future.result(timeout=5.0)
+
+            # Fire-and-forget: never block worker threads on the async loop.
+            def _done(f):
+                try:
+                    f.result()
+                except Exception as e:  # noqa: BLE001
+                    logger.warning(
+                        "WebSocket send failed asynchronously for %s: %s",
+                        client_id,
+                        e,
+                        extra={
+                            "client_uuid": client_id,
+                            "job_id": "-",
+                            "job_type": "ws_send",
+                        },
+                    )
+
+            future.add_done_callback(_done)
             return True
         except Exception as e:
             logger.exception(
@@ -542,6 +644,25 @@ class WebSocketThread(threading.Thread):
 
     def run(self):
         """Run the server in this thread"""
+        # Fail-fast safety: if auth config was never set, treat as insecure outside development.
+        env = (os.getenv("TCM_ENV", "development") or "development").lower()
+        mode = (self.auth_config.get("mode") or "simple").lower()
+        require_token = bool(self.auth_config.get("require_token", False))
+        if env != "development" and (mode == "simple" or require_token is False):
+            logger.critical(
+                "SECURITY_FAIL_FAST: refusing to start with insecure auth configuration",
+                extra={
+                    "client_uuid": "-",
+                    "job_id": "-",
+                    "job_type": "ws_server",
+                    "auth_mode": mode,
+                    "require_token": require_token,
+                    "tcm_env": env,
+                },
+            )
+            raise RuntimeError(
+                "Refusing to start: insecure auth config outside development"
+            )
         logger.info(
             "Starting on %s:%s",
             self.host,
@@ -572,6 +693,16 @@ class WebSocketThread(threading.Thread):
                 server.config.load()
             server.lifespan = server.config.lifespan_class(server.config)
             await server.startup()
+            # If port=0 was requested, uvicorn binds an ephemeral port. Capture it.
+            try:
+                if self.port == 0 and getattr(server, "servers", None):
+                    srv = server.servers[0]
+                    if getattr(srv, "sockets", None):
+                        sock = srv.sockets[0]
+                        self.port = int(sock.getsockname()[1])
+            except Exception:
+                # Best-effort only; do not fail server startup on introspection.
+                pass
             self._ready_event.set()
             await server.main_loop()
             await server.shutdown()

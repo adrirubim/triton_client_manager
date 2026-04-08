@@ -129,7 +129,7 @@ def test_docker_info_load_containers_and_helpers(monkeypatch):
 
     ports = info.get_container_ports("10.0.0.5", "c1")
     assert ports[8000] == 18000
-    assert 9000 not in ports  # sin mapeo
+    assert 9000 not in ports  # no mapping
 
     single = info.load_single_container("10.0.0.5", "c1")
     assert isinstance(single, Container)

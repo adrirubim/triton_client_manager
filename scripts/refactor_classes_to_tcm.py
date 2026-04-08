@@ -13,11 +13,11 @@ def rewrite_file(path: Path) -> bool:
     text = path.read_text(encoding="utf-8")
     original = text
 
-    # 1) imports de módulo
+    # 1) module imports
     text = text.replace("from classes.", "from tcm.")
     text = text.replace("import classes.", "import tcm.")
 
-    # 2) cadenas en tests (patch, etc.)
+    # 2) strings in tests (patch, etc.)
     text = text.replace('"classes.', '"tcm.')
     text = text.replace("'classes.", "'tcm.")
 
@@ -35,15 +35,19 @@ def main() -> int:
     tcm_dir = MANAGER_ROOT / "tcm"
 
     if not classes_dir.exists():
-        raise SystemExit(f"manager/classes does not exist (already renamed?): {classes_dir}")
+        raise SystemExit(
+            f"manager/classes does not exist (already renamed?): {classes_dir}"
+        )
 
     if tcm_dir.exists():
-        raise SystemExit(f"manager/tcm already exists, aborting to avoid overwriting: {tcm_dir}")
+        raise SystemExit(
+            f"manager/tcm already exists, aborting to avoid overwriting: {tcm_dir}"
+        )
 
-    # 1) Renombrar carpeta física: classes -> tcm
+    # 1) Rename physical folder: classes -> tcm
     classes_dir.rename(tcm_dir)
 
-    # 2) Reescribir imports en todos los .py bajo manager/
+    # 2) Rewrite imports in all .py files under manager/
     changed = 0
     for root, _, files in os.walk(MANAGER_ROOT):
         for name in files:
@@ -61,4 +65,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

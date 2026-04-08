@@ -7,7 +7,7 @@ from typing import Dict, Type
 import yaml
 from pydantic import BaseModel, ValidationError
 
-from apps.manager.schemas.config_schema import (
+from src.Domains.Config.Schemas.ManagerConfigSchemas import (
     DockerConfig,
     JobsConfig,
     MinioConfig,
@@ -18,7 +18,7 @@ from apps.manager.schemas.config_schema import (
 
 @dataclass
 class ValidateConfigAction:
-    """Valida los YAML de `apps/manager/config/` contra los esquemas Pydantic."""
+    """Validate `apps/manager/config/` YAML files against Pydantic schemas."""
 
     base_dir: str
 
@@ -26,7 +26,9 @@ class ValidateConfigAction:
         with open(path, encoding="utf-8") as f:
             data = yaml.safe_load(f) or {}
         if not isinstance(data, dict):
-            raise ValueError(f"El fichero YAML `{path}` debe contener un objeto mapeable.")
+            raise ValueError(
+                f"YAML file `{path}` must contain a mapping (object) at the root."
+            )
         return data
 
     def _validate_one(self, filename: str, schema: Type[BaseModel]) -> None:
@@ -35,7 +37,7 @@ class ValidateConfigAction:
         schema.model_validate(data)
 
     def run(self) -> None:
-        """Lanza todas las validaciones. Lanza excepción si algo no es válido."""
+        """Run all validations. Raises if any file is invalid."""
 
         errors: Dict[str, str] = {}
 
@@ -55,5 +57,4 @@ class ValidateConfigAction:
 
         if errors:
             joined = "\n".join(f"- {name}: {msg}" for name, msg in errors.items())
-            raise RuntimeError(f"Configuración inválida:\n{joined}")
-
+            raise RuntimeError(f"Invalid configuration:\n{joined}")

@@ -77,9 +77,9 @@ def test_no_secrets_logged_when_info_queue_is_full(caplog) -> None:
 
 def test_no_secrets_logged_when_management_queue_is_full(caplog) -> None:
     """
-    Igual que el caso de info, pero ejercitando el flujo de `management`:
-    cuando la cola per-user está llena y se registra el aviso de backpressure,
-    el payload (que contiene un "secreto" sintético) no debe aparecer en logs.
+    Same as the info case, but exercising the `management` flow:
+    when the per-user queue is full and the backpressure warning is logged,
+    the payload (which contains a synthetic "secret") must not appear in logs.
     """
 
     caplog.set_level(logging.WARNING)
@@ -109,7 +109,7 @@ def test_no_secrets_logged_when_management_queue_is_full(caplog) -> None:
             "action": "creation",
             "secret_field": SECRET_TOKEN,
         },
-        # Autorizar el flujo de management.
+        # Authorize the management flow.
         "_auth": {"roles": ["management"]},
     }
 
@@ -122,8 +122,8 @@ def test_no_secrets_logged_when_management_queue_is_full(caplog) -> None:
 
 def test_no_secrets_logged_when_inference_queue_is_full(caplog) -> None:
     """
-    Mismo patrón para el flujo de `inference`: la cola llena provoca un aviso
-    de backpressure pero nunca debe volcar el payload con el "secreto".
+    Same pattern for the `inference` flow: a full queue triggers a backpressure
+    warning but must never dump the payload with the "secret".
     """
 
     caplog.set_level(logging.WARNING)

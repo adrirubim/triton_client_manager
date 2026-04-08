@@ -19,7 +19,7 @@ class JobCreation:
     ):
 
         self._vm = JobCreateVM(openstack)
-        self._container = JobCreateContainer(docker)
+        self._container = JobCreateContainer(docker, openstack=openstack)
         self._triton = JobCreateServer(triton) if triton else None
 
     def handle(self, msg_uuid: str, payload: dict) -> dict:

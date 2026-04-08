@@ -1,12 +1,36 @@
 from __future__ import annotations
 
+import logging
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Tuple
 from urllib.parse import urlparse
 
 import boto3
+
+logger = logging.getLogger(__name__)
+
+_MODEL_NAME_RE = re.compile(r"^[a-zA-Z0-9._-]+$")
+
+
+def _validate_model_name(name: str) -> str:
+    if not isinstance(name, str) or not name or not _MODEL_NAME_RE.fullmatch(name):
+        raise ValueError(
+            "Invalid model name. Expected ^[a-zA-Z0-9._-]+$ (no slashes, no traversal)."
+        )
+    return name
+
+
+def _ensure_within_root(path: Path, root: Path) -> Path:
+    root_r = root.resolve()
+    path_r = path.resolve()
+    try:
+        path_r.relative_to(root_r)
+    except Exception as exc:
+        raise ValueError(f"Refusing path outside sandbox root: {path_r}") from exc
+    return path_r
 
 
 @dataclass(frozen=True)
@@ -53,8 +77,24 @@ class FetchModelArtifactAction:
     miniopath: str
     name: str
     cache_root: str = ".cache/models"
+    cache_size_warning_bytes: int = 10 * 1024 * 1024 * 1024  # 10 GB
+
+    def _cache_total_size_bytes(self, root: Path) -> int:
+        total = 0
+        if not root.exists():
+            return 0
+        for dirpath, _dirnames, filenames in os.walk(root):
+            for name in filenames:
+                p = Path(dirpath) / name
+                try:
+                    total += p.stat().st_size
+                except Exception:
+                    continue
+        return total
 
     def run(self) -> FetchedArtifact:
+        _validate_model_name(self.name)
+
         # Local path passthrough
         if not self.miniopath.startswith("s3://"):
             p = Path(self.miniopath)
@@ -79,9 +119,27 @@ class FetchModelArtifactAction:
             use_ssl=secure,
         )
 
-        dst_dir = Path(self.cache_root) / self.name
+        cache_root = Path(self.cache_root)
+        dst_dir = cache_root / self.name
+        # Ensure target stays within cache_root even if name is malicious.
+        _ensure_within_root(dst_dir, cache_root)
         dst_dir.mkdir(parents=True, exist_ok=True)
         dst_path = dst_dir / Path(key).name
+        tmp_path = dst_path.with_name(dst_path.name + ".tmp")
+
+        # Best-effort cache hygiene warning (manual cleanup prompt).
+        try:
+            cache_root = Path(self.cache_root)
+            total = self._cache_total_size_bytes(cache_root)
+            if total > int(self.cache_size_warning_bytes):
+                logger.warning(
+                    "STALE_CACHE_WARNING: model cache size is %d bytes (> %d). Consider cleanup/GC of %s",
+                    total,
+                    int(self.cache_size_warning_bytes),
+                    str(cache_root),
+                )
+        except Exception:
+            pass
 
         # Prefer HEAD to get size before download
         size: Optional[int] = None
@@ -91,8 +149,20 @@ class FetchModelArtifactAction:
                 size = int(head["ContentLength"])
         except Exception:
             size = None
+        # Atomic download: write to a temp path, then replace.
+        try:
+            if tmp_path.exists():
+                tmp_path.unlink()
+            client.download_file(bucket, key, str(tmp_path))
+            os.replace(str(tmp_path), str(dst_path))
+        finally:
+            # Best-effort cleanup if something failed mid-download.
+            if tmp_path.exists():
+                try:
+                    tmp_path.unlink()
+                except Exception:
+                    pass
 
-        client.download_file(bucket, key, str(dst_path))
         stat_size = dst_path.stat().st_size
         if size is None:
             size = stat_size
@@ -102,4 +172,3 @@ class FetchModelArtifactAction:
             local_path=str(dst_path),
             size_bytes=size,
         )
-

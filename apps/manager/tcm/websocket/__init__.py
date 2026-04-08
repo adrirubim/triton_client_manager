@@ -1,7 +1,7 @@
 """
-Submódulo de dominio `tcm.websocket`.
+Domain submodule `tcm.websocket`.
 
-Reexporta la API pública desde `classes.websocket`.
+Re-exports the public API from `classes.websocket`.
 """
 
 from classes.websocket import *  # noqa: F401,F403

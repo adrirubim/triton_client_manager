@@ -63,4 +63,3 @@ def infer(
         "type": response.type,
         "payload": response.payload,
     }
-

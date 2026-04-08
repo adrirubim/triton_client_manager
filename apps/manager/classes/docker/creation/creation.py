@@ -33,7 +33,7 @@ class DockerCreation:
             auto_remove = kwargs.get("auto_remove", False)
             restart_policy = kwargs.get("restart_policy")
 
-            logger.info("Creating container on %s", worker_ip)
+            logger.debug("Creating container on %s", worker_ip)
             if name:
                 logger.debug("Name: %s", name)
 
@@ -50,7 +50,7 @@ class DockerCreation:
             )
 
             container_id = container.id
-            logger.info("Container created: %s", container_id[:12])
+            logger.debug("Container created: %s", container_id[:12])
 
             return container_id
 

@@ -48,4 +48,3 @@ class SafetensorsInspector:
                 ios.append(ModelIO(name=name, dtype=dtype, shape=shape))
 
         return SafetensorsInspection(tensors=ios)
-

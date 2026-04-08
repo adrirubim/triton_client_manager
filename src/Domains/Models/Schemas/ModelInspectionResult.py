@@ -43,4 +43,3 @@ class ModelInspectionResult(BaseModel):
 class AnalyzeModelV2Payload(BaseModel):
     inspection: ModelInspectionResult
     triton_config_pbtxt: str
-

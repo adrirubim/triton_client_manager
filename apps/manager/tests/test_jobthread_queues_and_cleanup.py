@@ -92,6 +92,35 @@ def test_jobthread_on_message_logs_and_counts_when_queue_is_full(caplog, monkeyp
     assert after == before + 1
 
 
+def test_jobthread_on_message_sends_backpressure_nack(monkeypatch):
+    jt = _make_jobthread()
+    q = QueueJob(maxsize=1)
+    q.put_nowait({"uuid": "u1", "type": "info", "payload": {}})
+    jt.info_queues = {"u1": q}
+
+    sent = []
+
+    def fake_ws(client_id: str, msg: dict) -> bool:
+        sent.append((client_id, msg))
+        return True
+
+    jt.websocket = fake_ws
+
+    def boom(*args, **kwargs):
+        raise Full()
+
+    monkeypatch.setattr(q, "put_nowait", boom)
+
+    jt.on_message("u1", {"uuid": "u1", "type": "info", "payload": {}})
+
+    assert any(
+        cid == "u1"
+        and m.get("type") == "error"
+        and m.get("payload", {}).get("code") == "BACKPRESSURE_QUEUE_FULL"
+        for cid, m in sent
+    )
+
+
 def test_jobthread_cleanup_empty_queues_removes_idle_entries(caplog):
     jt = _make_jobthread()
 

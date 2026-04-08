@@ -17,7 +17,9 @@ def _write_file(path: Path, content: str, overwrite: bool) -> None:
     path.write_text(content, encoding="utf-8")
 
 
-def _ensure_python_model(repo_root: Path, name: str, config_pbtxt: str, model_py: str, overwrite: bool) -> None:
+def _ensure_python_model(
+    repo_root: Path, name: str, config_pbtxt: str, model_py: str, overwrite: bool
+) -> None:
     model_root = repo_root / "infra" / "models" / name
     weights_dir = model_root / "1" / "weights"
     utils_dir = model_root / "1" / "utils"
@@ -261,54 +263,72 @@ class GeneratePipelineAction:
         pipeline_root.mkdir(parents=True, exist_ok=True)
 
         # Ensure step models exist (Python backend scaffolds)
-        _ensure_python_model(repo, _MINIO_DOWNLOAD, _minio_download_config(), _minio_download_model_py(), self.overwrite)
-        _ensure_python_model(repo, _BYTES_TO_UINT8, _bytes_to_uint8_config(), _bytes_to_uint8_model_py(), self.overwrite)
-        _ensure_python_model(repo, _MINIO_UPLOAD, _minio_upload_config(), _minio_upload_model_py(), self.overwrite)
+        _ensure_python_model(
+            repo,
+            _MINIO_DOWNLOAD,
+            _minio_download_config(),
+            _minio_download_model_py(),
+            self.overwrite,
+        )
+        _ensure_python_model(
+            repo,
+            _BYTES_TO_UINT8,
+            _bytes_to_uint8_config(),
+            _bytes_to_uint8_model_py(),
+            self.overwrite,
+        )
+        _ensure_python_model(
+            repo,
+            _MINIO_UPLOAD,
+            _minio_upload_config(),
+            _minio_upload_model_py(),
+            self.overwrite,
+        )
 
         # Ensemble config (minimal): MINIO download -> bytes_to_uint8 -> model -> MINIO upload
         config = "\n".join(
             [
-                f'name: \"{pipeline_name}\"',
-                'platform: \"ensemble\"',
+                f'name: "{pipeline_name}"',
+                'platform: "ensemble"',
                 "max_batch_size: 0",
                 "",
                 "input [",
-                '  { name: \"MINIO_URL\" data_type: TYPE_STRING dims: [ 1 ] },',
-                '  { name: \"IMG_SIZE\" data_type: TYPE_INT32 dims: [ 2 ] }',
+                '  { name: "MINIO_URL" data_type: TYPE_STRING dims: [ 1 ] },',
+                '  { name: "IMG_SIZE" data_type: TYPE_INT32 dims: [ 2 ] }',
                 "]",
                 "",
                 "output [",
-                '  { name: \"OUT_URL\" data_type: TYPE_STRING dims: [ 1 ] }',
+                '  { name: "OUT_URL" data_type: TYPE_STRING dims: [ 1 ] }',
                 "]",
                 "",
                 "ensemble_scheduling {",
                 "  step [",
                 "    {",
-                f"      model_name: \"{_MINIO_DOWNLOAD}\"",
+                f'      model_name: "{_MINIO_DOWNLOAD}"',
                 "      model_version: -1",
-                "      input_map { key: \"MINIO_URL\" value: \"MINIO_URL\" }",
-                "      output_map { key: \"BYTES\" value: \"BYTES\" }",
+                '      input_map { key: "MINIO_URL" value: "MINIO_URL" }',
+                '      output_map { key: "BYTES" value: "BYTES" }',
                 "    },",
                 "    {",
-                f"      model_name: \"{_BYTES_TO_UINT8}\"",
+                f'      model_name: "{_BYTES_TO_UINT8}"',
                 "      model_version: -1",
-                "      input_map { key: \"BYTES\" value: \"BYTES\" }",
-                "      input_map { key: \"IMG_SIZE\" value: \"IMG_SIZE\" }",
-                "      output_map { key: \"IMG_UINT8\" value: \"images\" }",
-                "      output_map { key: \"IMG_ORIGINAL\" value: \"IMG_ORIGINAL\" }",
+                '      input_map { key: "BYTES" value: "BYTES" }',
+                '      input_map { key: "IMG_SIZE" value: "IMG_SIZE" }',
+                '      output_map { key: "IMG_UINT8" value: "images" }',
+                '      output_map { key: "IMG_ORIGINAL" value: "IMG_ORIGINAL" }',
                 "    },",
                 "    {",
-                f"      model_name: \"{self.name}\"",
+                f'      model_name: "{self.name}"',
                 "      model_version: -1",
-                "      input_map { key: \"INPUT__0\" value: \"images\" }",
-                "      output_map { key: \"OUTPUT__0\" value: \"MODEL_OUT\" }",
+                '      input_map { key: "INPUT__0" value: "images" }',
+                '      output_map { key: "OUTPUT__0" value: "MODEL_OUT" }',
                 "    },",
                 "    {",
-                f"      model_name: \"{_MINIO_UPLOAD}\"",
+                f'      model_name: "{_MINIO_UPLOAD}"',
                 "      model_version: -1",
-                "      input_map { key: \"MINIO_URL\" value: \"MINIO_URL\" }",
-                "      input_map { key: \"BYTES\" value: \"IMG_ORIGINAL\" }",
-                "      output_map { key: \"OUT_URL\" value: \"OUT_URL\" }",
+                '      input_map { key: "MINIO_URL" value: "MINIO_URL" }',
+                '      input_map { key: "BYTES" value: "IMG_ORIGINAL" }',
+                '      output_map { key: "OUT_URL" value: "OUT_URL" }',
                 "    }",
                 "  ]",
                 "}",
@@ -318,4 +338,3 @@ class GeneratePipelineAction:
 
         _write_file(pipeline_root / "config.pbtxt", config, overwrite=self.overwrite)
         return pipeline_root
-

@@ -4,9 +4,11 @@ Test Local Docker Registry
 Tests connection to local registry on port 5000 and lists all images
 """
 
-import sys
-import requests
 import os
+import sys
+
+import requests
+
 
 def _registry_base_url(registry_url: str, scheme: str) -> str:
     scheme_norm = (scheme or "http").lower()
@@ -18,104 +20,105 @@ def _registry_base_url(registry_url: str, scheme: str) -> str:
         return hostport
     return f"{scheme_norm}://{hostport}"
 
+
 def test_registry_connection(registry_url="localhost:5000", *, scheme: str = "http"):
     """Test connection to local Docker registry"""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("[TEST] Testing Local Registry Connection")
-    print("="*60)
-    
+    print("=" * 60)
+
     print(f"[INFO] Registry URL: {registry_url}")
     base_url = _registry_base_url(registry_url, scheme)
-    
+
     try:
         # Test registry version endpoint
         version_url = f"{base_url}/v2/"
         response = requests.get(version_url, timeout=5)
         response.raise_for_status()
-        
-        print(f"[SUCCESS] ✓ Connected to local registry successfully")
-        print(f"[INFO] Registry is responding on port 5000")
-        print(f"[INFO] API Version: v2")
-        
+
+        print("[SUCCESS] ✓ Connected to local registry successfully")
+        print("[INFO] Registry is responding on port 5000")
+        print("[INFO] API Version: v2")
+
         return True
     except requests.exceptions.ConnectionError:
         print(f"[ERROR] ✗ Cannot connect to registry at {registry_url}")
-        print(f"[INFO] Make sure the registry is running:")
-        print(
-            "       docker run -d -p 127.0.0.1:5000:5000 --name registry registry:2"
-        )
+        print("[INFO] Make sure the registry is running:")
+        print("       docker run -d -p 127.0.0.1:5000:5000 --name registry registry:2")
         return False
     except requests.exceptions.RequestException as e:
         print(f"[ERROR] ✗ Failed to connect to registry: {e}")
         return False
 
+
 def test_registry_catalog(registry_url="localhost:5000", *, scheme: str = "http"):
     """List all repositories in the registry"""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("[TEST] Listing Registry Catalog")
-    print("="*60)
-    
+    print("=" * 60)
+
     try:
         base_url = _registry_base_url(registry_url, scheme)
         catalog_url = f"{base_url}/v2/_catalog"
         response = requests.get(catalog_url, timeout=10)
         response.raise_for_status()
         catalog = response.json()
-        
+
         repositories = catalog.get("repositories", [])
-        
+
         if not repositories:
             print("[WARNING] Registry is empty - no repositories found")
             return []
-        
+
         print(f"[SUCCESS] ✓ Found {len(repositories)} repositories")
         print("\n[DATA] Repositories:")
         print("-" * 60)
-        
+
         for idx, repo in enumerate(repositories, 1):
             print(f"{idx}. {repo}")
-        
+
         return repositories
     except requests.exceptions.RequestException as e:
         print(f"[ERROR] ✗ Failed to get catalog: {e}")
         return []
 
+
 def test_repository_tags(registry_url, repositories, *, scheme: str = "http"):
     """List tags for each repository"""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("[TEST] Listing Repository Tags")
-    print("="*60)
-    
+    print("=" * 60)
+
     if not repositories:
         print("[INFO] No repositories to check for tags")
         return
-    
+
     all_images = []
     base_url = _registry_base_url(registry_url, scheme)
-    
+
     for repo in repositories:
         try:
             tags_url = f"{base_url}/v2/{repo}/tags/list"
             response = requests.get(tags_url, timeout=10)
             response.raise_for_status()
             tags_data = response.json()
-            
+
             tags = tags_data.get("tags", [])
-            
+
             print(f"\n[INFO] Repository: {repo}")
-            
+
             if not tags:
-                print(f"  [WARNING] No tags found")
+                print("  [WARNING] No tags found")
                 continue
-            
+
             print(f"  [SUCCESS] ✓ Found {len(tags)} tags:")
-            
+
             for tag in tags:
                 full_image = f"{registry_url}/{repo}:{tag}"
                 all_images.append(full_image)
                 print(f"    - {tag}")
                 print(f"      Full path: {full_image}")
-                
+
                 # Try to get manifest for more details
                 try:
                     manifest_url = f"{base_url}/v2/{repo}/manifests/{tag}"
@@ -124,16 +127,16 @@ def test_repository_tags(registry_url, repositories, *, scheme: str = "http"):
                         # Get content length as approximate size
                         size = len(manifest_response.content)
                         print(f"      Manifest size: {size} bytes")
-                except:
+                except Exception:
                     pass  # Skip if manifest fetch fails
-                    
+
         except requests.exceptions.RequestException as e:
             print(f"  [ERROR] ✗ Failed to get tags for {repo}: {e}")
-    
-    print("\n" + "="*60)
+
+    print("\n" + "=" * 60)
     print("[SUMMARY] All Available Images in Registry")
-    print("="*60)
-    
+    print("=" * 60)
+
     if all_images:
         for img in all_images:
             print(f"  • {img}")
@@ -141,64 +144,67 @@ def test_repository_tags(registry_url, repositories, *, scheme: str = "http"):
     else:
         print("[WARNING] No images with tags found in registry")
 
+
 def test_registry_health(registry_url="localhost:5000", *, scheme: str = "http"):
     """Check registry health and configuration"""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("[TEST] Registry Health Check")
-    print("="*60)
-    
+    print("=" * 60)
+
     try:
         # Test basic connectivity
         base_url = _registry_base_url(registry_url, scheme)
         version_url = f"{base_url}/v2/"
         response = requests.get(version_url, timeout=5)
-        
+
         print(f"[INFO] Status Code: {response.status_code}")
-        print(f"[INFO] Response Headers:")
-        
-        important_headers = ['Docker-Distribution-Api-Version', 'Content-Type', 'Date']
+        print("[INFO] Response Headers:")
+
+        important_headers = ["Docker-Distribution-Api-Version", "Content-Type", "Date"]
         for header in important_headers:
             if header in response.headers:
                 print(f"  - {header}: {response.headers[header]}")
-        
+
         if response.status_code == 200:
-            print(f"[SUCCESS] ✓ Registry is healthy and responding")
+            print("[SUCCESS] ✓ Registry is healthy and responding")
         else:
             print(f"[WARNING] Registry responded with status {response.status_code}")
-            
+
     except requests.exceptions.RequestException as e:
         print(f"[ERROR] ✗ Health check failed: {e}")
 
+
 def main():
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Local Docker Registry Test Suite")
-    print("="*60)
-    
+    print("=" * 60)
+
     registry_url = "localhost:5000"
     scheme = (os.environ.get("LOCAL_REGISTRY_SCHEME") or "http").strip().lower()
-    
+
     try:
         # Test registry connection
         if not test_registry_connection(registry_url, scheme=scheme):
             print("\n[ERROR] Cannot proceed without registry connection")
             sys.exit(1)
-        
+
         # Test registry health
         test_registry_health(registry_url, scheme=scheme)
-        
+
         # List catalog
         repositories = test_registry_catalog(registry_url, scheme=scheme)
-        
+
         # List tags for each repository
         test_repository_tags(registry_url, repositories, scheme=scheme)
-        
-        print("\n" + "="*60)
+
+        print("\n" + "=" * 60)
         print("[SUCCESS] ✓ All registry tests completed")
-        print("="*60 + "\n")
-        
+        print("=" * 60 + "\n")
+
     except Exception as e:
         print(f"\n[ERROR] ✗ Test suite failed: {e}")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

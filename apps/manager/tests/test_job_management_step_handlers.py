@@ -15,12 +15,15 @@ from classes.triton.info.data.server import TritonServer
 class _FakeOpenstackThread:
     created_payloads: list[dict] = None
     deleted_payloads: list[dict] = None
+    dict_vms: dict = None
 
     def __post_init__(self):
         if self.created_payloads is None:
             self.created_payloads = []
         if self.deleted_payloads is None:
             self.deleted_payloads = []
+        if self.dict_vms is None:
+            self.dict_vms = {}
 
     def create_vm(self, payload: dict) -> tuple[str, str]:
         self.created_payloads.append(payload)
@@ -89,10 +92,14 @@ def test_job_create_vm_delegates_to_openstack_and_returns_ids():
 
 def test_job_create_container_builds_docker_config_and_sets_defaults():
     docker = _FakeDockerThread()
-    step = JobCreateContainer(docker)
+    openstack = _FakeOpenstackThread()
+    # Provide a managed VM in OpenStack cache so worker_ip is resolved from trusted state.
+    vm = type("VM", (), {"address_private": "10.0.0.10"})()
+    openstack.dict_vms["vm-abc"] = vm
+    step = JobCreateContainer(docker, openstack=openstack)
 
     payload = {
-        "openstack": {"vm_ip": "10.0.0.10"},
+        "openstack": {"vm_id": "vm-abc"},
         "docker": {
             "command": ["tritonserver"],
             "ports": {8000: 9000},
@@ -109,7 +116,7 @@ def test_job_create_container_builds_docker_config_and_sets_defaults():
     container_id, docker_config = step.handle("uuid-cont", payload)
 
     assert container_id == "cont-xyz"
-    # worker_ip comes from openstack.vm_ip when vm_ip argument is None
+    # worker_ip must be resolved from trusted OpenStack cache by vm_id (not client-supplied IP)
     assert docker_config["worker_ip"] == "10.0.0.10"
     assert docker_config["environment"]["AWS_ACCESS_KEY_ID"] == "AK"
     assert docker_config["environment"]["AWS_SECRET_ACCESS_KEY"] == "SK"

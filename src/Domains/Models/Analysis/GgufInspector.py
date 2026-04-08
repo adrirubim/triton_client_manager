@@ -46,7 +46,9 @@ class GgufInspector:
         tmpl = kv.get("tokenizer.chat_template")
         chat_template = tmpl if isinstance(tmpl, str) and tmpl.strip() else None
         if chat_template is None:
-            warnings.append("GGUF KV metadata has no tokenizer.chat_template (chat template unknown).")
+            warnings.append(
+                "GGUF KV metadata has no tokenizer.chat_template (chat template unknown)."
+            )
 
         # Phase 1 requirement: static KV-only parsing. We do not load weights and we do not
         # attempt to infer real IO tensors. Provide unknown placeholders when needed.
@@ -75,4 +77,3 @@ class GgufInspector:
             tensor_count=parsed.tensor_count,
             kv_count=parsed.kv_count,
         )
-

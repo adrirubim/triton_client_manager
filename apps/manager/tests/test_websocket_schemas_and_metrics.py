@@ -165,6 +165,8 @@ def test_metrics_endpoint_and_logging_config_in_fastapi_app():
     assert res.status_code == 200
     assert "tcm_queue_total_users" in res.text
     assert "tcm_executor_info_available" in res.text
+    assert "tcm_model_analysis_issues_total" in res.text
+    assert "tcm_grpc_stream_failures_total" in res.text
 
     # If we reached this point without exceptions, logging configuration is compatible
     # with FastAPI/TestClient and the metrics endpoint contract is satisfied.

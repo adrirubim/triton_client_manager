@@ -6,8 +6,7 @@ from pathlib import Path
 
 
 def test_vendored_sdk_is_in_sync() -> None:
-    # tests/ vive en apps/manager/tests, por lo que el root del repo
-    # está tres niveles por encima de este archivo.
+    # tests/ lives in apps/manager/tests, so the repo root is three levels above this file.
     repo_root = Path(__file__).resolve().parents[3]
     script = repo_root / "scripts" / "sync_sdk.py"
     assert script.exists(), f"Missing sync script: {script}"

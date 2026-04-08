@@ -1,8 +1,8 @@
 """
-Paquete de dominio `tcm` para el Triton Client Manager.
+Domain package `tcm` for Triton Client Manager.
 
-En esta iteración actúa como un fino wrapper sobre `classes.*` para
-mantener compatibilidad mientras se termina de migrar la estructura.
+In this iteration it acts as a thin wrapper over `classes.*` to preserve
+compatibility while the structure migration is completed.
 """
 
 from .docker import *  # noqa: F401,F403

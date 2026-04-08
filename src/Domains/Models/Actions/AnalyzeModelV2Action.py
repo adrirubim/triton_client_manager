@@ -9,6 +9,7 @@ from src.Domains.Models.Analysis.OnnxInspector import OnnxInspector
 from src.Domains.Models.Analysis.PyTorchInspector import PyTorchInspector
 from src.Domains.Models.Analysis.SafetensorsInspector import SafetensorsInspector
 from src.Domains.Models.Analysis.TritonConfigBridge import TritonConfigBridge
+from src.Domains.Observability.metrics import emit_model_analysis_issue
 from src.Domains.Models.Schemas.ModelAnalysisReport import (
     ModelCategory,
     ModelFormat,
@@ -46,10 +47,13 @@ class AnalyzeModelV2Action:
     format: str | None = None
 
     def run(self) -> AnalyzeModelV2Payload:
-        fetched = FetchModelArtifactAction(miniopath=self.miniopath, name=self.name).run()
+        fetched = FetchModelArtifactAction(
+            miniopath=self.miniopath, name=self.name
+        ).run()
         fmt = _detect_format(fetched.local_path, self.format)
 
         warnings: list[str] = []
+        inspector_issues: list[InspectionIssue] = []
         inputs = []
         outputs = []
 
@@ -58,7 +62,9 @@ class AnalyzeModelV2Action:
             inputs = ins.inputs
             outputs = ins.outputs
             if not inputs or not outputs:
-                warnings.append("ONNX graph has empty inputs/outputs (possible invalid export).")
+                warnings.append(
+                    "ONNX graph has empty inputs/outputs (possible invalid export)."
+                )
         elif fmt == ModelFormat.gguf:
             ins = GgufInspector(model_path=fetched.local_path).run()
             inputs = ins.inputs
@@ -69,6 +75,7 @@ class AnalyzeModelV2Action:
             inputs = ins.inputs
             outputs = ins.outputs
             warnings.extend(ins.warnings)
+            inspector_issues.extend(ins.issues or [])
             warnings.append(
                 f"PyTorch ZIP weights size (uncompressed, recorded) ~{ins.total_uncompressed_size_recorded} bytes (members_recorded={ins.members_recorded}, member_count={ins.member_count})."
             )
@@ -77,13 +84,17 @@ class AnalyzeModelV2Action:
             # safetensors does not define an IO contract; report tensors as a flat list in `inputs`
             inputs = ins.tensors
             outputs = []
-            warnings.append("safetensors does not define an inference IO contract; reporting tensors only.")
+            warnings.append(
+                "safetensors does not define an inference IO contract; reporting tensors only."
+            )
         else:
             raise ValueError(f"Unsupported format: {fmt}")
 
         # Basic safety heuristics
         if fmt == ModelFormat.onnx:
-            warnings.append("ONNX is data-only, but always treat untrusted models as untrusted artifacts.")
+            warnings.append(
+                "ONNX is data-only, but always treat untrusted models as untrusted artifacts."
+            )
         if fmt == ModelFormat.gguf:
             warnings.append(
                 "GGUF inspection is KV-metadata only; weights are not loaded and deep tensor IO cannot be safely inferred."
@@ -93,11 +104,23 @@ class AnalyzeModelV2Action:
                 "PyTorch inspection is inspection-only for safety: no pickle, no extraction, no execution."
             )
         if fmt == ModelFormat.safetensors:
-            warnings.append("safetensors is data-only; loading is generally safe, but inference wrapper may execute code.")
+            warnings.append(
+                "safetensors is data-only; loading is generally safe, but inference wrapper may execute code."
+            )
 
-        issues: list[InspectionIssue] = [
-            InspectionIssue(level=IssueLevel.warning, message=w, source="AnalyzeModelV2Action") for w in warnings
-        ]
+        issues: list[InspectionIssue] = list(inspector_issues)
+        issues.extend(
+            [
+                InspectionIssue(
+                    level=IssueLevel.warning, message=w, source="AnalyzeModelV2Action"
+                )
+                for w in warnings
+            ]
+        )
+
+        # Observability hook (no-op outside the manager runtime)
+        for i in issues:
+            emit_model_analysis_issue(i.code or "NO_CODE")
 
         supported_modalities: list[SupportedModality] = []
         if fmt == ModelFormat.gguf:
@@ -113,8 +136,10 @@ class AnalyzeModelV2Action:
             issues=issues,
         )
 
-        pbtxt, gen_issues = TritonConfigBridge(model_name=self.name).generate(inspection)
-        inspection.issues = gen_issues
+        pbtxt, gen_issues = TritonConfigBridge(model_name=self.name).generate(
+            inspection
+        )
+        if gen_issues:
+            inspection.issues = list(inspection.issues or []) + list(gen_issues)
 
         return AnalyzeModelV2Payload(inspection=inspection, triton_config_pbtxt=pbtxt)
-

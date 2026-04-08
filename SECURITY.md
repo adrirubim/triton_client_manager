@@ -68,7 +68,7 @@ If you discover a security vulnerability in this project, please report it **res
   - restrict the registry token to the minimal scope required to **read** container images (for example, `read_registry` in GitLab or the equivalent in your provider);
   - avoid using tokens with admin or write scopes unrelated to image pulls;
   - treat the token as sensitive even when only partially printed in local test scripts.
-- Rotate the registry token periodically y en cualquier sospecha de compromiso, y actualiza el entorno / gestor de secretos donde esté configurado.
+- Rotate the registry token periodically and on any suspicion of compromise, and update the environment / secrets manager where it is configured.
 
 ### Example vs production stacks
 

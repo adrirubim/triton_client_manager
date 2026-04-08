@@ -79,19 +79,34 @@ def validate_token(
         (is_valid, error_message). When ``is_valid`` is True, ``error_message``
         is the empty string.
     """
+    ok, err, _claims = validate_token_and_get_claims(token, config)
+    return ok, err
+
+
+def validate_token_and_get_claims(
+    token: Optional[str],
+    config: Optional[Dict[str, Any]] = None,
+) -> Tuple[bool, str, Dict[str, Any]]:
+    """
+    Validate an auth token and (when available) return verified JWT claims.
+
+    Returns:
+        (is_valid, error_message, claims)
+    """
     cfg = config or {}
     mode = cfg.get("mode", "simple")
     require_token = bool(cfg.get("require_token", False))
+    claims: Dict[str, Any] = {}
 
     # In simple mode we only enforce "require_token" if explicitly requested.
     if mode != "strict":
         if require_token and not token:
             return False, "Missing token in auth payload"
-        return True, ""
+        return True, "", {}
 
     # Strict mode – enforce presence of a token.
     if not token:
-        return False, "Missing token in auth payload"
+        return False, "Missing token in auth payload", {}
 
     jwks_url = cfg.get("jwks_url")
     public_key_pem = cfg.get("public_key_pem")
@@ -148,25 +163,25 @@ def validate_token(
                 options={"require": required_claims},
             )
         except ExpiredSignatureError:
-            return False, "Token has expired"
+            return False, "Token has expired", {}
         except InvalidIssuerError:
-            return False, "Invalid token issuer"
+            return False, "Invalid token issuer", {}
         except InvalidAudienceError:
-            return False, "Invalid token audience"
+            return False, "Invalid token audience", {}
         except Exception as exc:
-            return False, f"Invalid token: {exc}"
+            return False, f"Invalid token: {exc}", {}
 
         ok, err = _validate_required_claims(claims)
         if not ok:
-            return ok, err
-        return True, ""
+            return ok, err, {}
+        return True, "", dict(claims or {})
 
     # Strict mode without key material.
     # In non-development environments this is considered insecure and must fail-fast.
     if env != "development":
         raise SecurityError(
-            "auth.mode='strict' requiere verificación criptográfica (JWKS/PEM). "
-            f"TCM_ENV='{env}' no permite validación 'claims-only'."
+            "auth.mode='strict' requires cryptographic verification (JWKS/PEM). "
+            f"TCM_ENV='{env}' does not allow 'claims-only' validation."
         )
 
     # Development fallback: allow claims-only validation to keep local workflows simple.
@@ -174,28 +189,28 @@ def validate_token(
     try:
         claims = _decode_jwt_payload(token)
     except Exception:
-        return False, "Invalid token format"
+        return False, "Invalid token format", {}
 
     # Enforce required claims.
     ok, err = _validate_required_claims(claims)
     if not ok:
-        return ok, err
+        return ok, err, {}
 
     # exp: unix timestamp; allow small clock skew.
     if "exp" in claims:
         try:
             exp = float(claims["exp"])
         except (TypeError, ValueError):
-            return False, "Invalid 'exp' claim"
+            return False, "Invalid 'exp' claim", {}
         now = time.time()
         if now > exp + leeway:
-            return False, "Token has expired"
+            return False, "Token has expired", {}
 
     # iss: expected issuer if configured.
     if expected_iss is not None:
         iss = claims.get("iss")
         if iss != expected_iss:
-            return False, "Invalid token issuer"
+            return False, "Invalid token issuer", {}
 
     # aud: may be a string or list; compare if configured.
     expected_aud = cfg.get("audience")
@@ -206,11 +221,11 @@ def validate_token(
         elif isinstance(aud, (list, tuple)):
             audiences = list(aud)
         else:
-            return False, "Invalid 'aud' claim"
+            return False, "Invalid 'aud' claim", {}
         if expected_aud not in audiences:
-            return False, "Invalid token audience"
+            return False, "Invalid token audience", {}
 
-    return True, ""
+    return True, "", dict(claims or {})
 
 
-__all__ = ["SecurityError", "validate_token"]
+__all__ = ["SecurityError", "validate_token", "validate_token_and_get_claims"]

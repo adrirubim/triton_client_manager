@@ -52,4 +52,3 @@ class OnnxInspector:
         inputs = [self._tensor_to_io(v) for v in graph.input]
         outputs = [self._tensor_to_io(v) for v in graph.output]
         return OnnxInspection(inputs=inputs, outputs=outputs)
-

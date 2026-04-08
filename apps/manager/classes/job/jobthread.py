@@ -203,6 +203,7 @@ class JobThread(threading.Thread):
         """
         msg_uuid = msg.get("uuid")
         msg_type = msg.get("type")
+        correlation_id = msg.get("_correlation_id", "-")
 
         # Authorization context (populated by WebSocketThread if available)
         auth_ctx = msg.get("_auth", {})
@@ -229,6 +230,15 @@ class JobThread(threading.Thread):
                                 },
                             },
                         )
+                    logger.warning(
+                        "Rejected management request due to missing role",
+                        extra={
+                            "client_uuid": msg_uuid or "-",
+                            "job_id": "-",
+                            "job_type": "authz_reject",
+                            "correlation_id": correlation_id,
+                        },
+                    )
                     return
                 queue = self.get_or_create_queue(
                     user_id=msg_uuid,
@@ -248,6 +258,15 @@ class JobThread(threading.Thread):
                                 },
                             },
                         )
+                    logger.warning(
+                        "Rejected inference request due to missing role",
+                        extra={
+                            "client_uuid": msg_uuid or "-",
+                            "job_id": "-",
+                            "job_type": "authz_reject",
+                            "correlation_id": correlation_id,
+                        },
+                    )
                     return
                 queue = self.get_or_create_queue(
                     user_id=msg_uuid,
@@ -272,6 +291,28 @@ class JobThread(threading.Thread):
             # Avoid logging user identifiers or raw exception messages; the
             # corresponding Prometheus metric already captures the rejection.
             logger.warning("Queue full for incoming message (backpressure activated)")
+
+            # Explicit backpressure NACK to client (no payload echo).
+            if (
+                self.websocket
+                and msg_uuid
+                and msg_type in {"info", "management", "inference"}
+            ):
+                try:
+                    self.websocket(
+                        msg_uuid,
+                        {
+                            "type": "error",
+                            "payload": {
+                                "code": "BACKPRESSURE_QUEUE_FULL",
+                                "message": "Request dropped due to backpressure (per-user queue full).",
+                                "dropped_type": msg_type,
+                            },
+                        },
+                    )
+                except Exception:
+                    # Best-effort only; never recurse into logging sensitive context.
+                    pass
 
     # --------------- Queue Related ---------------
     def fair_process_queues(
@@ -298,6 +339,8 @@ class JobThread(threading.Thread):
 
                 # --- Get ---
                 queue = queue_dict.get(user_id)
+                if queue is None:
+                    continue
                 msg = queue.get_nowait()
 
                 # --- Execute ---
@@ -305,6 +348,16 @@ class JobThread(threading.Thread):
                     start = time.time()
                     try:
                         _handler(m)
+                    except Exception:
+                        logger.exception(
+                            "Job handler error",
+                            extra={
+                                "client_uuid": (m.get("uuid") or user_id or "-"),
+                                "job_id": "-",
+                                "job_type": _job_type,
+                                "correlation_id": m.get("_correlation_id", "-"),
+                            },
+                        )
                     finally:
                         duration = time.time() - start
                         observe_job_processing(_job_type, duration)

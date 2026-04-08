@@ -10,7 +10,9 @@ import pytest
 # Add apps/manager to path when running pytest from project root or apps/manager
 _here = os.path.dirname(os.path.abspath(__file__))
 _manager = os.path.join(_here, "..")
-for p in (_manager, _here):
+# Repository root: .../apps/manager -> .../ (two levels up)
+_repo_root = os.path.abspath(os.path.join(_manager, "..", ".."))
+for p in (_repo_root, _manager, _here):
     if p not in sys.path:
         sys.path.insert(0, p)
 
@@ -55,6 +57,8 @@ def ws_server():
     ws_cfg = dict(config_ws)
     auth_cfg = ws_cfg.pop("auth", None)
     rate_cfg = ws_cfg.pop("rate_limits", None)
+    # Use a dynamic port to avoid collisions in CI / parallel runs.
+    ws_cfg["port"] = 0
 
     ws = WebSocketThread(**ws_cfg, on_message=job.on_message)
     if auth_cfg or rate_cfg:
@@ -69,8 +73,8 @@ def ws_server():
     if not ws.wait_until_ready(10):
         pytest.fail("WebSocket failed to initialize")
 
-    port = config_ws["port"]
-    uri = f"ws://127.0.0.1:{port}/ws"
+    # WebSocketThread captures the bound ephemeral port after startup.
+    uri = f"ws://127.0.0.1:{ws.port}/ws"
 
     yield uri
 

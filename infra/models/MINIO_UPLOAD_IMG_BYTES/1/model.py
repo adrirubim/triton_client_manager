@@ -20,7 +20,12 @@ class TritonPythonModel:
         if not endpoint:
             raise ValueError("TCM_S3_ENDPOINT must be set (MinIO/S3 endpoint URL)")
         region = os.getenv("AWS_REGION") or os.getenv("MINIO_REGION") or "us-east-1"
-        secure = (os.getenv("TCM_S3_SECURE", "true").strip().lower() in {"1","true","yes","on"})
+        secure = os.getenv("TCM_S3_SECURE", "true").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
         connect_timeout_s = float(os.getenv("TCM_S3_CONNECT_TIMEOUT_SECONDS", "5.0"))
         read_timeout_s = float(os.getenv("TCM_S3_READ_TIMEOUT_SECONDS", "30.0"))
         boto_cfg = Config(
@@ -42,15 +47,23 @@ class TritonPythonModel:
             url_t = pb_utils.get_input_tensor_by_name(req, "MINIO_URL")
             bytes_t = pb_utils.get_input_tensor_by_name(req, "BYTES")
             if url_t is None or bytes_t is None:
-                responses.append(pb_utils.InferenceResponse(error=pb_utils.TritonError("Missing MINIO_URL or BYTES")))
+                responses.append(
+                    pb_utils.InferenceResponse(
+                        error=pb_utils.TritonError("Missing MINIO_URL or BYTES")
+                    )
+                )
                 continue
             uri = url_t.as_numpy().item().decode("utf-8")
             try:
                 bucket, key = _parse_s3(uri)
                 raw = bytes(bytes_t.as_numpy().astype(np.uint8).tobytes())
                 self.s3.put_object(Bucket=bucket, Key=key, Body=raw)
-                out = pb_utils.Tensor("OUT_URL", np.array([uri.encode("utf-8")], dtype=object))
+                out = pb_utils.Tensor(
+                    "OUT_URL", np.array([uri.encode("utf-8")], dtype=object)
+                )
                 responses.append(pb_utils.InferenceResponse(output_tensors=[out]))
             except Exception as e:
-                responses.append(pb_utils.InferenceResponse(error=pb_utils.TritonError(str(e))))
+                responses.append(
+                    pb_utils.InferenceResponse(error=pb_utils.TritonError(str(e)))
+                )
         return responses

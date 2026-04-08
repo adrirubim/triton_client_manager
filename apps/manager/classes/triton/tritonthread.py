@@ -1,4 +1,5 @@
 import logging
+import random
 import threading
 import time
 from typing import Callable, Optional
@@ -62,7 +63,9 @@ class TritonThread(threading.Thread):
         while not self._stop_event.is_set():
             try:
                 self.load()
-                time.sleep(self.refresh_time)
+                # Small jitter to avoid synchronized health-check bursts across servers.
+                jitter = random.uniform(0.0, max(0.01, float(self.refresh_time) * 0.10))
+                time.sleep(float(self.refresh_time) + jitter)
             except Exception as e:
                 observe_backend_error("triton")
                 logger.info(" TritonThread main loop: %s", e)
@@ -96,22 +99,23 @@ class TritonThread(threading.Thread):
                 new_status = "ready" if healthy else "unhealthy"
 
                 # --- Change Healthy -> Unhealthy ---
-                if new_status != server.status:
-                    old_status = server.status
-                    server.status = new_status
+                with self._data_lock:
+                    if new_status != server.status:
+                        old_status = server.status
+                        server.status = new_status
 
-                    # --- Send Alert --
-                    self._send_alert(
-                        TritonServerStateChanged(
-                            server.vm_ip,
-                            container_id,
-                            [f"status: {old_status} -> {new_status}"],
+                        # --- Send Alert --
+                        self._send_alert(
+                            TritonServerStateChanged(
+                                server.vm_ip,
+                                container_id,
+                                [f"status: {old_status} -> {new_status}"],
+                            )
                         )
-                    )
-            except Exception:
+            except Exception as e:
                 observe_backend_error("triton")
                 logger.info(
-                    " Health check failed for ({vm_id}, {container_id[:12]}): {e}"
+                    f" Health check failed for ({vm_id}, {container_id[:12]}): {e}"
                 )
 
     # -------------------------------------------- #
@@ -173,5 +177,5 @@ class TritonThread(threading.Thread):
         with self._data_lock:
             self.dict_servers.pop((vm_id, container_id), None)
 
-        logger.info(" Deregistered ({vm_id}, {container_id[:12]})")
+        logger.info(f" Deregistered ({vm_id}, {container_id[:12]})")
         return data

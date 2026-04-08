@@ -35,7 +35,7 @@ def build_client() -> TcmClient:
 
 
 def example_inputs(model_name: str) -> List[JsonDict]:
-    # Este payload debe adaptarse al modelo real.
+    # This payload must be adapted to the real model.
     return [
         {
             "name": "INPUT__0",
@@ -95,7 +95,7 @@ def main() -> None:
                     latencies.append(latency)
 
     if not latencies:
-        print("No se han registrado latencias (todas las peticiones han fallado).")
+        print("No latencies recorded (all requests failed).")
         return
 
     total = sum(latencies)
@@ -107,4 +107,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

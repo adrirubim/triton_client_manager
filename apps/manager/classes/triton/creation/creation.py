@@ -6,6 +6,8 @@ import boto3
 import tritonclient.grpc as grpcclient
 import tritonclient.http as httpclient
 from google.protobuf import json_format, text_format
+from pydantic import ValidationError
+from src.Domains.Config.Schemas.RuntimeMinioPayload import RuntimeMinioPayload
 
 from ..constants import GRPC_PORT, HTTP_PORT
 from ..info.data.server import TritonServer
@@ -98,7 +100,7 @@ class TritonCreation:
         )
 
         logger.info(
-            " Server ({vm_ip}, {container_id[:12]}) ready — model='{model_name}'"
+            f" Server ({vm_ip}, {container_id[:12]}) ready — model='{model_name}'"
         )
 
         return server
@@ -162,11 +164,18 @@ class TritonCreation:
         Downloads config.pbtxt from MinIO S3, extracts the input schema, and optionally
         builds the JSON config string for the Triton load request.
         """
-        folder = minio_config["folder"]
+        try:
+            minio_runtime = RuntimeMinioPayload.model_validate(minio_config or {})
+        except ValidationError as exc:
+            raise TritonConfigDownloadFailed(
+                f"Invalid MinIO payload (runtime): {exc}"
+            ) from exc
+
+        folder = minio_runtime.folder
         key = f"{folder}/{folder.rstrip('/').split('/')[-1]}/config.pbtxt"
 
         logger.info(
-            " Downloading config from {minio_config['endpoint']}/{minio_config['bucket']}/{key}"
+            f" Downloading config from {minio_runtime.endpoint}/{minio_runtime.bucket}/{key}"
         )
         pbtxt = self._download_pbtxt(key, minio_config)
 

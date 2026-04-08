@@ -18,6 +18,12 @@ class TritonModelConfig(BaseModel):
 
     name: str
     platform: str
+    # When weights live under a subdirectory (e.g. 1/weights/model.onnx), Triton
+    # needs this to find the actual model file.
+    default_model_filename: str | None = None
     max_batch_size: int = 0
     inputs: List[TritonModelIO] = Field(default_factory=list)
     outputs: List[TritonModelIO] = Field(default_factory=list)
+
+
+__all__ = ["TritonModelConfig", "TritonModelIO"]

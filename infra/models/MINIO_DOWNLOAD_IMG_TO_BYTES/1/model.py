@@ -20,7 +20,12 @@ class TritonPythonModel:
         if not endpoint:
             raise ValueError("TCM_S3_ENDPOINT must be set (MinIO/S3 endpoint URL)")
         region = os.getenv("AWS_REGION") or os.getenv("MINIO_REGION") or "us-east-1"
-        secure = (os.getenv("TCM_S3_SECURE", "true").strip().lower() in {"1","true","yes","on"})
+        secure = os.getenv("TCM_S3_SECURE", "true").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
         connect_timeout_s = float(os.getenv("TCM_S3_CONNECT_TIMEOUT_SECONDS", "5.0"))
         read_timeout_s = float(os.getenv("TCM_S3_READ_TIMEOUT_SECONDS", "30.0"))
         boto_cfg = Config(
@@ -41,7 +46,11 @@ class TritonPythonModel:
         for req in requests:
             url_t = pb_utils.get_input_tensor_by_name(req, "MINIO_URL")
             if url_t is None:
-                responses.append(pb_utils.InferenceResponse(error=pb_utils.TritonError("Missing MINIO_URL")))
+                responses.append(
+                    pb_utils.InferenceResponse(
+                        error=pb_utils.TritonError("Missing MINIO_URL")
+                    )
+                )
                 continue
             uri = url_t.as_numpy().item().decode("utf-8")
             try:
@@ -51,5 +60,7 @@ class TritonPythonModel:
                 out = pb_utils.Tensor("BYTES", np.frombuffer(data, dtype=np.uint8))
                 responses.append(pb_utils.InferenceResponse(output_tensors=[out]))
             except Exception as e:
-                responses.append(pb_utils.InferenceResponse(error=pb_utils.TritonError(str(e))))
+                responses.append(
+                    pb_utils.InferenceResponse(error=pb_utils.TritonError(str(e)))
+                )
         return responses

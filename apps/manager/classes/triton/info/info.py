@@ -19,11 +19,33 @@ class TritonInfo:
     def __init__(self, timeout: int = 5, http_port: int = HTTP_PORT):
         self.timeout = timeout
         self.http_port = http_port
+        self._clients: dict[str, httpclient.InferenceServerClient] = {}
+        self._clients_lock = (
+            None  # lazy init to avoid importing threading at module import time
+        )
 
     def _client(
         self, vm_ip: str, timeout: int = None
     ) -> httpclient.InferenceServerClient:
-        t = timeout if timeout is not None else self.timeout
+        # Cache only for default timeout to avoid unbounded cache cardinality on varying timeouts.
+        if timeout is None:
+            if self._clients_lock is None:
+                import threading
+
+                self._clients_lock = threading.Lock()
+            with self._clients_lock:
+                c = self._clients.get(vm_ip)
+                if c is not None:
+                    return c
+                c = httpclient.InferenceServerClient(
+                    url=f"{vm_ip}:{self.http_port}",
+                    connection_timeout=self.timeout,
+                    network_timeout=self.timeout,
+                )
+                self._clients[vm_ip] = c
+                return c
+
+        t = timeout
         return httpclient.InferenceServerClient(
             url=f"{vm_ip}:{self.http_port}",
             connection_timeout=t,
@@ -60,7 +82,7 @@ class TritonInfo:
         start = time.time()
         while (time.time() - start) < timeout:
             if self.is_model_ready(vm_ip, model_name):
-                logger.info(" Model '{model_name}' is ready")
+                logger.info(f" Model '{model_name}' is ready")
                 return True
             time.sleep(3)
         return False
@@ -75,7 +97,7 @@ class TritonInfo:
             self._client(vm_ip, timeout=timeout).load_model(
                 model_name, config=config_json
             )
-            logger.info(" Load request sent for model '{model_name}'")
+            logger.info(f" Load request sent for model '{model_name}'")
             return True
         except Exception as e:
             logger.info(" Failed to load model '%s': %s", model_name, e)
@@ -84,7 +106,7 @@ class TritonInfo:
     def unload_model(self, vm_ip: str, model_name: str, timeout: int = 30) -> bool:
         try:
             self._client(vm_ip, timeout=timeout).unload_model(model_name)
-            logger.info(" Unload request sent for model '{model_name}'")
+            logger.info(f" Unload request sent for model '{model_name}'")
             return True
         except Exception as e:
             logger.info(" Failed to unload model '%s': %s", model_name, e)

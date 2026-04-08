@@ -28,8 +28,62 @@ _TRITON_DTYPE_MAP = {
     "STRING": "TYPE_STRING",
 }
 
+_PBtxt_FORBIDDEN = {'"', "\n", "\r", "\t"}
 
-def _dims_to_triton(dims: List[int], *, issues: List[InspectionIssue], tensor_name: str) -> List[int]:
+
+def _sanitize_pbtxt_string(
+    value: str,
+    *,
+    issues: List[InspectionIssue],
+    field: str,
+    replacement: str = "_",
+) -> str:
+    """
+    Sanitize strings embedded in config.pbtxt.
+    Triton pbtxt is sensitive to quotes/newlines; untrusted names must be made safe.
+    """
+    if not isinstance(value, str):
+        issues.append(
+            InspectionIssue(
+                level=IssueLevel.warning,
+                code="TRITON_PBTXT_SANITIZE",
+                source="TritonConfigBridge",
+                message=f"{field}: non-string value coerced to string for pbtxt.",
+            )
+        )
+        value = str(value)
+
+    if any(c in value for c in _PBtxt_FORBIDDEN):
+        issues.append(
+            InspectionIssue(
+                level=IssueLevel.warning,
+                code="TRITON_PBTXT_SANITIZE",
+                source="TritonConfigBridge",
+                message=f"{field}: sanitized forbidden characters for pbtxt safety.",
+            )
+        )
+        out = []
+        for c in value:
+            out.append(replacement if c in _PBtxt_FORBIDDEN else c)
+        value = "".join(out)
+
+    # Avoid empty names after sanitization
+    if not value:
+        issues.append(
+            InspectionIssue(
+                level=IssueLevel.warning,
+                code="TRITON_PBTXT_SANITIZE_EMPTY",
+                source="TritonConfigBridge",
+                message=f"{field}: empty value after sanitization; using fallback.",
+            )
+        )
+        value = "UNNAMED"
+    return value
+
+
+def _dims_to_triton(
+    dims: List[int], *, issues: List[InspectionIssue], tensor_name: str
+) -> List[int]:
     out: List[int] = []
     for d in dims:
         try:
@@ -59,7 +113,9 @@ def _dims_to_triton(dims: List[int], *, issues: List[InspectionIssue], tensor_na
     return out
 
 
-def _to_triton_dtype(dtype: str, *, issues: List[InspectionIssue], tensor_name: str) -> str:
+def _to_triton_dtype(
+    dtype: str, *, issues: List[InspectionIssue], tensor_name: str
+) -> str:
     key = (dtype or "").strip().upper()
     mapped = _TRITON_DTYPE_MAP.get(key)
     if mapped:
@@ -75,12 +131,98 @@ def _to_triton_dtype(dtype: str, *, issues: List[InspectionIssue], tensor_name: 
     return "TYPE_FP32"
 
 
+def _should_enable_batching(
+    inputs: List[ModelIO],
+    outputs: List[ModelIO],
+    *,
+    issues: List[InspectionIssue],
+) -> bool:
+    """
+    Conservative batching heuristic:
+    - Enable batching only when every tensor has rank >= 1 and the first dim is either -1 or 1.
+    - Disable otherwise and emit a warning so callers understand why batching is off.
+    """
+
+    tensors = list(inputs or []) + list(outputs or [])
+    if not tensors:
+        issues.append(
+            InspectionIssue(
+                level=IssueLevel.warning,
+                code="TRITON_BATCHING_DISABLED",
+                source="TritonConfigBridge",
+                message="Batching disabled: no IO tensors available to infer a safe batch dimension.",
+            )
+        )
+        return False
+
+    for t in tensors:
+        shape = list(t.shape or [])
+        if len(shape) < 1:
+            issues.append(
+                InspectionIssue(
+                    level=IssueLevel.warning,
+                    code="TRITON_BATCHING_DISABLED",
+                    source="TritonConfigBridge",
+                    message=f"Batching disabled: tensor {t.name!r} has rank {len(shape)} (needs >= 1).",
+                )
+            )
+            return False
+        try:
+            d0 = int(shape[0])
+        except Exception:
+            issues.append(
+                InspectionIssue(
+                    level=IssueLevel.warning,
+                    code="TRITON_BATCHING_DISABLED",
+                    source="TritonConfigBridge",
+                    message=f"Batching disabled: tensor {t.name!r} has non-integer first dim {shape[0]!r}.",
+                )
+            )
+            return False
+
+        if d0 not in (-1, 1):
+            issues.append(
+                InspectionIssue(
+                    level=IssueLevel.warning,
+                    code="TRITON_BATCHING_DISABLED",
+                    source="TritonConfigBridge",
+                    message=(
+                        f"Batching disabled: tensor {t.name!r} has first dim {d0}, "
+                        "which is not recognized as a safe batch dimension (-1 or 1)."
+                    ),
+                )
+            )
+            return False
+
+    return True
+
+
+def _pbtxt_dims_for_tensor(
+    shape: List[int],
+    *,
+    tensor_name: str,
+    issues: List[InspectionIssue],
+    batching_enabled: bool,
+) -> List[int]:
+    dims = list(shape or [])
+    if batching_enabled and len(dims) >= 1:
+        # With max_batch_size > 0, Triton expects dims excluding the batch dimension.
+        dims = dims[1:]
+    return _dims_to_triton(dims, issues=issues, tensor_name=tensor_name)
+
+
 @dataclass
 class TritonConfigBridge:
     model_name: str
 
-    def generate(self, inspection: ModelInspectionResult) -> Tuple[str, List[InspectionIssue]]:
+    def generate(
+        self, inspection: ModelInspectionResult
+    ) -> Tuple[str, List[InspectionIssue]]:
         issues: List[InspectionIssue] = list(inspection.issues or [])
+        safe_model_name = _sanitize_pbtxt_string(
+            self.model_name, issues=issues, field="model_name"
+        )
+        self.model_name = safe_model_name
 
         if inspection.format == ModelFormat.onnx:
             pbtxt = self._generate_onnx_config(inspection, issues=issues)
@@ -104,7 +246,9 @@ class TritonConfigBridge:
         )
         return "", issues
 
-    def _generate_onnx_config(self, inspection: ModelInspectionResult, *, issues: List[InspectionIssue]) -> str:
+    def _generate_onnx_config(
+        self, inspection: ModelInspectionResult, *, issues: List[InspectionIssue]
+    ) -> str:
         inputs = list(inspection.io_info.inputs or [])
         outputs = list(inspection.io_info.outputs or [])
         if not inputs:
@@ -128,23 +272,46 @@ class TritonConfigBridge:
                 )
             )
 
+        batching_enabled = _should_enable_batching(inputs, outputs, issues=issues)
+        max_batch_size = 8 if batching_enabled else 0
+
         lines = [
             f'name: "{self.model_name}"',
             'platform: "onnxruntime_onnx"',
-            "max_batch_size: 0",
+            f"max_batch_size: {max_batch_size}",
         ]
         for inp in inputs:
+            safe_in_name = _sanitize_pbtxt_string(
+                inp.name, issues=issues, field="input.name"
+            )
             lines.append("input {")
-            lines.append(f'  name: "{inp.name}"')
-            lines.append(f"  data_type: {_to_triton_dtype(inp.dtype, issues=issues, tensor_name=inp.name)}")
-            for d in _dims_to_triton(list(inp.shape or []), issues=issues, tensor_name=inp.name):
+            lines.append(f'  name: "{safe_in_name}"')
+            lines.append(
+                f"  data_type: {_to_triton_dtype(inp.dtype, issues=issues, tensor_name=safe_in_name)}"
+            )
+            for d in _pbtxt_dims_for_tensor(
+                list(inp.shape or []),
+                tensor_name=safe_in_name,
+                issues=issues,
+                batching_enabled=batching_enabled,
+            ):
                 lines.append(f"  dims: {d}")
             lines.append("}")
         for out in outputs:
+            safe_out_name = _sanitize_pbtxt_string(
+                out.name, issues=issues, field="output.name"
+            )
             lines.append("output {")
-            lines.append(f'  name: "{out.name}"')
-            lines.append(f"  data_type: {_to_triton_dtype(out.dtype, issues=issues, tensor_name=out.name)}")
-            for d in _dims_to_triton(list(out.shape or []), issues=issues, tensor_name=out.name):
+            lines.append(f'  name: "{safe_out_name}"')
+            lines.append(
+                f"  data_type: {_to_triton_dtype(out.dtype, issues=issues, tensor_name=safe_out_name)}"
+            )
+            for d in _pbtxt_dims_for_tensor(
+                list(out.shape or []),
+                tensor_name=safe_out_name,
+                issues=issues,
+                batching_enabled=batching_enabled,
+            ):
                 lines.append(f"  dims: {d}")
             lines.append("}")
         return "\n".join(lines) + "\n"
@@ -174,7 +341,9 @@ class TritonConfigBridge:
             ]
         )
 
-    def _generate_python_config_fallback(self, inspection: ModelInspectionResult, *, issues: List[InspectionIssue]) -> str:
+    def _generate_python_config_fallback(
+        self, inspection: ModelInspectionResult, *, issues: List[InspectionIssue]
+    ) -> str:
         inputs = list(inspection.io_info.inputs or [])
         outputs = list(inspection.io_info.outputs or [])
         if not inputs:
@@ -198,18 +367,31 @@ class TritonConfigBridge:
                 )
             )
 
+        batching_enabled = _should_enable_batching(inputs, outputs, issues=issues)
+        max_batch_size = 8 if batching_enabled else 0
+
         lines = [
             f'name: "{self.model_name}"',
             'backend: "python"',
-            "max_batch_size: 0",
+            f"max_batch_size: {max_batch_size}",
             "input [",
         ]
         for i, inp in enumerate(inputs):
+            safe_in_name = _sanitize_pbtxt_string(
+                inp.name, issues=issues, field="input.name"
+            )
             dtype = _to_triton_dtype(inp.dtype, issues=issues, tensor_name=inp.name)
-            dims = _dims_to_triton(list(inp.shape or []), issues=issues, tensor_name=inp.name)
+            dims = _pbtxt_dims_for_tensor(
+                list(inp.shape or []),
+                tensor_name=safe_in_name,
+                issues=issues,
+                batching_enabled=batching_enabled,
+            )
             comma = "," if i < len(inputs) - 1 else ""
             lines.append(
-                f'  {{ name: "{inp.name}" data_type: {dtype} dims: [ ' + ", ".join(str(d) for d in dims) + f" ] }}{comma}"
+                f'  {{ name: "{safe_in_name}" data_type: {dtype} dims: [ '
+                + ", ".join(str(d) for d in dims)
+                + f" ] }}{comma}"
             )
         lines.extend(
             [
@@ -218,13 +400,22 @@ class TritonConfigBridge:
             ]
         )
         for i, out in enumerate(outputs):
+            safe_out_name = _sanitize_pbtxt_string(
+                out.name, issues=issues, field="output.name"
+            )
             dtype = _to_triton_dtype(out.dtype, issues=issues, tensor_name=out.name)
-            dims = _dims_to_triton(list(out.shape or []), issues=issues, tensor_name=out.name)
+            dims = _pbtxt_dims_for_tensor(
+                list(out.shape or []),
+                tensor_name=safe_out_name,
+                issues=issues,
+                batching_enabled=batching_enabled,
+            )
             comma = "," if i < len(outputs) - 1 else ""
             lines.append(
-                f'  {{ name: "{out.name}" data_type: {dtype} dims: [ ' + ", ".join(str(d) for d in dims) + f" ] }}{comma}"
+                f'  {{ name: "{safe_out_name}" data_type: {dtype} dims: [ '
+                + ", ".join(str(d) for d in dims)
+                + f" ] }}{comma}"
             )
         lines.append("]")
         lines.append("")
         return "\n".join(lines)
-

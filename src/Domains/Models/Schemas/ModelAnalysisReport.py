@@ -36,4 +36,3 @@ class ModelAnalysisReport(BaseModel):
     outputs: List[ModelIO] = Field(default_factory=list)
     warnings: List[str] = Field(default_factory=list)
     notes: Optional[str] = None
-

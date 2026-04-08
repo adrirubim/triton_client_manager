@@ -78,7 +78,7 @@ def test_openstack_creation_loop_status_error_and_timeout(monkeypatch):
     def fake_get_err(url, verify, timeout, headers):
         return DummyResp({"status": "ERROR", "ip": ""})
 
-    # Para este caso dejamos time.time normal para que pase por el except y devuelva None
+    # For this case we keep the real time.time so it hits the except and returns None
     import time as real_time
 
     monkeypatch.setattr("classes.openstack.creation.creation.time.time", real_time.time)
@@ -92,7 +92,7 @@ def test_openstack_creation_loop_status_error_and_timeout(monkeypatch):
     def fake_get_build(url, verify, timeout, headers):
         return DummyResp({"status": "BUILD", "ip": ""})
 
-    # Simula timeout haciendo que el bucle se repita varias veces sin ACTIVE
+    # Simulate a timeout by repeating the loop several times without ACTIVE
     monkeypatch.setattr(
         "classes.openstack.creation.creation.requests.get", fake_get_build
     )

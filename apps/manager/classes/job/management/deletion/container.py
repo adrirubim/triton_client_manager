@@ -24,7 +24,7 @@ class JobDeleteContainer:
         # --- Execute ---
         self.docker.delete_container(payload)
 
-        logger.info(
+        logger.debug(
             "Deletion step complete: container deleted",
             extra={
                 "client_uuid": msg_uuid,

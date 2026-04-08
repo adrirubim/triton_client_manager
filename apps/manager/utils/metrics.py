@@ -9,6 +9,7 @@ from prometheus_client import (
     Histogram,
     generate_latest,
 )
+from src.Domains.Observability.metrics import set_model_analysis_issue_emitter
 
 registry = CollectorRegistry()
 
@@ -71,7 +72,7 @@ JOB_PROCESSING_SECONDS = Histogram(
     registry=registry,
 )
 
-# Latencia de inferencia por modelo
+# Inference latency by model
 INFERENCE_LATENCY_SECONDS = Histogram(
     "tcm_inference_latency_seconds",
     "Latency of inference requests by model",
@@ -79,11 +80,27 @@ INFERENCE_LATENCY_SECONDS = Histogram(
     registry=registry,
 )
 
-# Errores por backend
+# Backend errors
 BACKEND_ERRORS_TOTAL = Counter(
     "tcm_backend_errors_total",
     "Total errors grouped by backend",
     ["backend"],
+    registry=registry,
+)
+
+# Model analysis issues (domain action instrumentation)
+MODEL_ANALYSIS_ISSUES_TOTAL = Counter(
+    "tcm_model_analysis_issues_total",
+    "Total model analysis issues observed, labeled by issue code",
+    ["code"],
+    registry=registry,
+)
+
+# gRPC streaming failures (timeouts, decode errors, callback errors)
+GRPC_STREAM_FAILURES_TOTAL = Counter(
+    "tcm_grpc_stream_failures_total",
+    "Total gRPC streaming failures observed in TritonInfer.stream",
+    ["reason"],
     registry=registry,
 )
 
@@ -190,6 +207,18 @@ def observe_inference_latency(model_name: str, duration_seconds: float) -> None:
 def observe_backend_error(backend: str) -> None:
     """Increment error counter for a given backend (e.g. triton, docker, minio)."""
     BACKEND_ERRORS_TOTAL.labels(backend=backend).inc()
+
+
+def observe_model_analysis_issue(code: str) -> None:
+    MODEL_ANALYSIS_ISSUES_TOTAL.labels(code=code).inc()
+
+
+def observe_grpc_stream_failure(reason: str) -> None:
+    GRPC_STREAM_FAILURES_TOTAL.labels(reason=reason).inc()
+
+
+# Register domain-side emitter callback (keeps domain layer decoupled from Prometheus).
+set_model_analysis_issue_emitter(observe_model_analysis_issue)
 
 
 def generate_metrics_response(

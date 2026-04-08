@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Literal, Optional, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class BaseMessage(BaseModel):
@@ -67,6 +67,8 @@ class InferenceRequestConfig(BaseModel):
 
 
 class InferencePayload(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+
     vm_id: str
     container_id: str
     model_name: str

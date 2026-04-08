@@ -103,7 +103,7 @@ class ClientManager:
             ).inc()
             logger.critical(
                 "Insecure auth configuration: HS* algorithm configured via public_key_pem "
-                "en entorno '%s'. Esta configuración solo se admite en dev.",
+                "in environment '%s'. This configuration is only supported in dev.",
                 env,
             )
             raise RuntimeError(

@@ -3,7 +3,7 @@ from __future__ import annotations
 import struct
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Final, Tuple
+from typing import Any, Dict, Final
 
 
 class GgufKVParseError(ValueError):
@@ -84,7 +84,9 @@ def _string(f) -> str:
     if n < 0:
         raise GgufKVParseError("Invalid GGUF string length")
     if n > _MAX_STRING_BYTES:
-        raise GgufKVParseError(f"GGUF string too large ({n} bytes) — cap={_MAX_STRING_BYTES}")
+        raise GgufKVParseError(
+            f"GGUF string too large ({n} bytes) — cap={_MAX_STRING_BYTES}"
+        )
     raw = _read_exact(f, int(n))
     try:
         return raw.decode("utf-8", errors="strict")
@@ -165,4 +167,3 @@ def parse_gguf_kv(path: str) -> GgufKVParseResult:
             kv_count=int(kv_count),
             kv=kv,
         )
-

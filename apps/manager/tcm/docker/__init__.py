@@ -1,8 +1,8 @@
 """
-Submódulo de dominio `tcm.docker`.
+Domain submodule `tcm.docker`.
 
-Reexporta la API pública desde `classes.docker` para mantener un único
-punto de entrada semántico (`tcm.*`) sin romper compatibilidad.
+Re-exports the public API from `classes.docker` to keep a single semantic
+entry point (`tcm.*`) without breaking compatibility.
 """
 
 from classes.docker import *  # noqa: F401,F403

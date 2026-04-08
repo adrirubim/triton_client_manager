@@ -431,9 +431,9 @@ Triton Client Manager and can be treated as pluggable examples:
     into a **local registry** (by default `localhost:5000`);
   - configured via `apps/docker_controller/config.yaml` (registry URL, project
     identifier, local registry, registry scheme) and environment variables such as
-    `REGISTRY_TOKEN` / `REGISTRY_TOKEN_NAME` (variables de entorno genéricas
-    para autenticarse contra el registro remoto; puedes mapearlas a cualquier
-    proveedor de registro);
+    `REGISTRY_TOKEN` / `REGISTRY_TOKEN_NAME` (generic environment variables
+    used to authenticate against the remote registry; you can map them to any
+    registry provider);
   - the local registry HTTP API scheme can be overridden via `LOCAL_REGISTRY_SCHEME`
     (`http` or `https`), and the default `start_container.sh` binds the registry
     to `127.0.0.1` for safety unless you intentionally override it.

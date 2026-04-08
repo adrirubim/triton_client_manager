@@ -39,7 +39,7 @@ def test_job_info_unknown_action_and_missing_websocket():
 
     ji = JobInfo(docker, openstack, None, lambda: {})
 
-    # Sin websocket, solo debe hacer print (no explota)
+    # Without a websocket, it should just print (does not crash)
     msg = {
         "uuid": "u2",
         "type": "info",

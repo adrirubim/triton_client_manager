@@ -93,11 +93,7 @@ class TritonConfig(BaseModel):
 
 
 class MinioConfig(BaseModel):
-    """Typed schema for `minio.yaml`.
-
-    Fields `endpoint` and `bucket` may be omitted in environments where MinIO is
-    not configured yet; in that case MinIO is treated as disabled.
-    """
+    """Typed schema for `minio.yaml`."""
 
     endpoint: Optional[str] = None
     access_key: Optional[str] = None

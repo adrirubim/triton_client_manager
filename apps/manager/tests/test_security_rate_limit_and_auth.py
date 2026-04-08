@@ -9,6 +9,12 @@ from utils.auth import validate_token
 from utils.metrics import AUTH_FAILURES_TOTAL, RATE_LIMIT_VIOLATIONS_TOTAL
 
 
+@pytest.fixture(autouse=True)
+def _force_development_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    # These tests rely on development-mode auth behavior (e.g. HS* algorithms and claims-only fallback).
+    monkeypatch.setenv("TCM_ENV", "development")
+
+
 def _counter_value(counter, **labels) -> float:
     """Helper to read the current value of a labeled Counter."""
     return counter.labels(**labels)._value.get()  # type: ignore[attr-defined]
@@ -16,9 +22,9 @@ def _counter_value(counter, **labels) -> float:
 
 def test_rate_limit_messages_increments_metric() -> None:
     """
-    Exercita explícitamente el rate limiting por mensaje y verifica que
-    `tcm_rate_limit_violations_total{scope="messages"}` se incrementa cuando
-    se supera el límite configurado.
+    Explicitly exercise message rate limiting and verify that
+    `tcm_rate_limit_violations_total{scope="messages"}` increments when the
+    configured limit is exceeded.
     """
     ws = WebSocketThread(
         host="127.0.0.1",
@@ -33,12 +39,12 @@ def test_rate_limit_messages_increments_metric() -> None:
 
     client_id = "rate-limit-client"
 
-    # Primera llamada dentro de la ventana -> permitida, sin métrica.
+    # First call within the window -> allowed, no metric.
     assert ws._check_message_rate(client_id) is True
 
     before = _counter_value(RATE_LIMIT_VIOLATIONS_TOTAL, scope="messages")
 
-    # Segunda llamada dentro del mismo segundo -> rechazada y métrica +1.
+    # Second call within the same second -> rejected and metric +1.
     assert ws._check_message_rate(client_id) is False
     after = _counter_value(RATE_LIMIT_VIOLATIONS_TOTAL, scope="messages")
 
@@ -47,10 +53,10 @@ def test_rate_limit_messages_increments_metric() -> None:
 
 def test_validate_token_strict_with_invalid_signature_auth_fail_reason() -> None:
     """
-    validate_token en modo strict con `public_key_pem`/HS256 rechaza tokens
-    firmados con un secreto distinto y devuelve un mensaje coherente.
+    In strict mode, validate_token with `public_key_pem`/HS256 rejects tokens
+    signed with a different secret and returns a coherent error message.
     """
-    # Token firmado con un secreto "incorrecto" (>= 32 bytes para evitar InsecureKeyLengthWarning).
+    # Token signed with an "incorrect" secret (>= 32 bytes to avoid InsecureKeyLengthWarning).
     wrong_secret = "wrong-secret-for-hs256-test-32-bytes"
     payload = {
         "sub": "user-1",
@@ -66,14 +72,14 @@ def test_validate_token_strict_with_invalid_signature_auth_fail_reason() -> None
         "required_claims": ["exp", "aud", "iss"],
         "issuer": "https://idp.example.com/",
         "audience": "tcm",
-        # Se espera este secreto; al usar otro para firmar, la firma será inválida.
+        # This secret is expected; using another to sign makes the signature invalid.
         "public_key_pem": "expected-secret-for-hs256-32-bytes!!",
         "algorithms": ["HS256"],
     }
 
     ok, error = validate_token(token, auth_cfg)
     assert ok is False
-    assert error  # Mensaje no vacío
+    assert error  # Non-empty message
 
 
 class _DummyWebSocket:
@@ -91,10 +97,10 @@ class _DummyWebSocket:
 @pytest.mark.asyncio
 async def test_auth_failures_in_strict_mode_increment_counters() -> None:
     """
-    Flujos de `auth` inválida en modo strict:
+    Invalid `auth` flows in strict mode:
     - Incrementan `tcm_auth_failures_total{reason="token"}`.
-    - Respetan el límite `auth_failures_per_minute_per_client` y, al superarlo,
-      incrementan `tcm_rate_limit_violations_total{scope="auth"}` y cierran la conexión.
+    - Respect the `auth_failures_per_minute_per_client` limit and, when exceeded,
+      increment `tcm_rate_limit_violations_total{scope="auth"}` and close the connection.
     """
     ws = WebSocketThread(
         host="127.0.0.1",
@@ -103,8 +109,8 @@ async def test_auth_failures_in_strict_mode_increment_counters() -> None:
         on_message=lambda *_args, **_kwargs: None,
     )
 
-    # Configuración strict con validación criptográfica HS256 (secreto esperado),
-    # pero el token se firma con otro secreto para provocar fallo de firma.
+    # Strict configuration with HS256 cryptographic validation (expected secret),
+    # but the token is signed with a different secret to force a signature failure.
     auth_cfg = {
         "mode": "strict",
         "require_token": True,
@@ -154,7 +160,7 @@ async def test_auth_failures_in_strict_mode_increment_counters() -> None:
         dummy.receive_text = recv_text  # type: ignore[attr-defined]
         return dummy
 
-    # Primer intento: fallo de token, pero sin exceder el límite de fallos por minuto.
+    # First attempt: token failure, without exceeding the per-minute failure limit.
     before_auth = _counter_value(AUTH_FAILURES_TOTAL, reason="token")
     before_rl = _counter_value(RATE_LIMIT_VIOLATIONS_TOTAL, scope="auth")
 
@@ -172,7 +178,7 @@ async def test_auth_failures_in_strict_mode_increment_counters() -> None:
     assert last_error_1["type"] == "error"
     assert "Invalid token" in last_error_1["payload"]["message"]
 
-    # Segundo intento en la misma ventana: otro fallo + disparo del rate limit de auth.
+    # Second attempt in the same window: another failure + auth rate limit trip.
     ws2 = await _make_dummy_ws()
     await ws._handle_client(ws2)
 

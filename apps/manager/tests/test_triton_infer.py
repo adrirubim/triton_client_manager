@@ -187,6 +187,9 @@ def test_stream_errors_and_timeout():
 
     # Case 2: timeout waiting on done event
     class HangClient:
+        def __init__(self):
+            self.stopped = False
+
         def start_stream(self, callback):
             # Never call callback
             self._cb = callback
@@ -195,13 +198,13 @@ def test_stream_errors_and_timeout():
             pass
 
         def stop_stream(self):
-            pass
+            self.stopped = True
 
+    client = HangClient()
     with pytest.raises(TritonInferenceFailed) as exc2:
-        ti.stream(
-            HangClient(), "model-z", inputs=[], on_chunk=lambda _: None, timeout=0
-        )
+        ti.stream(client, "model-z", inputs=[], on_chunk=lambda _: None, timeout=0)
     assert "timed out" in str(exc2.value)
+    assert client.stopped is True
 
 
 def test_triton_inference_http_and_invalid_protocol():
