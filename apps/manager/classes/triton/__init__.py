@@ -1,4 +1,17 @@
-from .infer import TritonInfer
-from .info.data.server import TritonServer
-from .info.info import TritonInfo
-from .tritonthread import TritonThread
+from __future__ import annotations
+
+import os
+import sys
+
+# Ensure repo root is importable so `import src.*` works when `apps/manager` is
+# executed as a standalone entrypoint (e.g. CI running `python -m unittest` with
+# `working-directory: apps/manager`).
+_here = os.path.dirname(os.path.abspath(__file__))
+_repo_root = os.path.abspath(os.path.join(_here, "..", "..", ".."))
+if _repo_root not in sys.path:
+    sys.path.insert(0, _repo_root)
+
+from .infer import TritonInfer  # noqa: E402
+from .info.data.server import TritonServer  # noqa: E402
+from .info.info import TritonInfo  # noqa: E402
+from .tritonthread import TritonThread  # noqa: E402

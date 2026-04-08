@@ -64,6 +64,7 @@ class TritonThread(threading.Thread):
             try:
                 self.load()
                 # Small jitter to avoid synchronized health-check bursts across servers.
+                # nosec B311 - jitter is for scheduling, not cryptography.
                 jitter = random.uniform(0.0, max(0.01, float(self.refresh_time) * 0.10))
                 time.sleep(float(self.refresh_time) + jitter)
             except Exception as e:

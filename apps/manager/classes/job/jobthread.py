@@ -312,7 +312,14 @@ class JobThread(threading.Thread):
                     )
                 except Exception:
                     # Best-effort only; never recurse into logging sensitive context.
-                    pass
+                    logger.debug(
+                        "Failed to send backpressure NACK to client",
+                        extra={
+                            "client_uuid": msg_uuid or "-",
+                            "job_id": "-",
+                            "job_type": "backpressure_nack_failed",
+                        },
+                    )
 
     # --------------- Queue Related ---------------
     def fair_process_queues(

@@ -702,7 +702,10 @@ class WebSocketThread(threading.Thread):
                         self.port = int(sock.getsockname()[1])
             except Exception:
                 # Best-effort only; do not fail server startup on introspection.
-                pass
+                logger.debug(
+                    "Failed to introspect uvicorn bound port",
+                    extra={"client_uuid": "-", "job_id": "-", "job_type": "ws_server"},
+                )
             self._ready_event.set()
             await server.main_loop()
             await server.shutdown()
