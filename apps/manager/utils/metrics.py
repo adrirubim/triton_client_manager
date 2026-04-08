@@ -9,7 +9,17 @@ from prometheus_client import (
     Histogram,
     generate_latest,
 )
-from src.Domains.Observability.metrics import set_model_analysis_issue_emitter
+
+# Optional domain-layer integration.
+# In some execution contexts (e.g. CI smoke tests that run `apps/manager` without
+# repo-root on PYTHONPATH), the `src.*` package is not importable. Metrics should
+# still work; only the domain→prometheus emitter bridge is skipped.
+try:
+    from src.Domains.Observability.metrics import (  # type: ignore
+        set_model_analysis_issue_emitter,
+    )
+except ModuleNotFoundError:  # pragma: no cover
+    set_model_analysis_issue_emitter = None  # type: ignore[assignment]
 
 registry = CollectorRegistry()
 
@@ -218,7 +228,8 @@ def observe_grpc_stream_failure(reason: str) -> None:
 
 
 # Register domain-side emitter callback (keeps domain layer decoupled from Prometheus).
-set_model_analysis_issue_emitter(observe_model_analysis_issue)
+if set_model_analysis_issue_emitter is not None:  # pragma: no cover
+    set_model_analysis_issue_emitter(observe_model_analysis_issue)
 
 
 def generate_metrics_response(

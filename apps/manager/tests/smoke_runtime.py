@@ -8,6 +8,10 @@ import os
 import sys
 
 _here = os.path.dirname(os.path.abspath(__file__))
+# Ensure repo root is importable so `import src.*` works in CI.
+_repo_root = os.path.abspath(os.path.join(_here, "..", "..", ".."))
+if _repo_root not in sys.path:
+    sys.path.insert(0, _repo_root)
 sys.path.insert(0, os.path.join(_here, ".."))
 sys.path.insert(0, _here)  # keep tests/ importable for smoke flows
 

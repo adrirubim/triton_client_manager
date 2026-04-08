@@ -11,7 +11,6 @@ import requests
 
 from sdk.src.tcm_client.sdk import AuthContext, InferenceInput, TcmClient
 
-
 # Triton is exposed on host port 8001 by infra/triton/docker-compose.yml.
 TRITON_BASE_URL: Final[str] = "http://localhost:8001"
 TRITON_READY_URL: Final[str] = f"{TRITON_BASE_URL}/v2/health/ready"
