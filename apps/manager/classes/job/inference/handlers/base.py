@@ -5,7 +5,15 @@ if TYPE_CHECKING:
 
 
 def check_instance(docker: "DockerThread", vm_ip: str, container_id: str) -> None:
-    container = docker.dict_containers.get(container_id)
+    # In development mode we may run with a Docker stub that doesn't maintain
+    # container state. In that case, instance validation is a no-op and routing
+    # relies on the explicit vm_ip/container_id provided by the caller.
+    try:
+        dict_containers = docker.dict_containers
+    except Exception:
+        return
+
+    container = dict_containers.get(container_id)
     if container is None:
         raise ValueError(
             f"Container '{container_id[:12]}' not found in known containers"
@@ -88,13 +96,20 @@ def normalize_inference_payload(payload: dict, docker: "DockerThread") -> dict:
     if "inputs" in request:
         request["inputs"] = _normalize_triton_inputs(request.get("inputs"))
 
-    # If vm_ip is missing but container_id is present, derive vm_ip from Docker cache.
+    # If vm_ip is missing but container_id is present, derive vm_ip from Docker cache
+    # when DockerThread is available.
     if not payload.get("vm_ip"):
         container_id = payload.get("container_id")
         if isinstance(container_id, str) and container_id:
-            container = docker.dict_containers.get(container_id)
-            if container is not None and getattr(container, "worker_ip", None):
-                payload["vm_ip"] = container.worker_ip
+            try:
+                dict_containers = docker.dict_containers
+            except Exception:
+                dict_containers = None
+
+            if dict_containers is not None:
+                container = dict_containers.get(container_id)
+                if container is not None and getattr(container, "worker_ip", None):
+                    payload["vm_ip"] = container.worker_ip
 
     return payload
 

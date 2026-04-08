@@ -16,7 +16,7 @@ from types import TracebackType
 from typing import Any, Dict, List, Optional, Sequence, Type
 
 import numpy as np
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 try:
     # Prefer the modern asyncio client API when available (websockets >= 12).
@@ -62,6 +62,8 @@ class InferenceInput(BaseModel):
 
 
 class InferenceRequestPayload(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+
     vm_id: str
     vm_ip: Optional[str] = None
     container_id: str
@@ -162,16 +164,22 @@ class TcmWebSocketClient:
 
         auth_payload = AuthPayload(
             token=self._auth_ctx.token,
-            client=AuthClientInfo(
-                sub=self._auth_ctx.sub or self._auth_ctx.uuid,
-                tenant_id=self._auth_ctx.tenant_id or "dev-tenant",
-                roles=self._auth_ctx.roles or [],
-            )
-            if payload
-            else None,
+            client=(
+                AuthClientInfo(
+                    sub=self._auth_ctx.sub or self._auth_ctx.uuid,
+                    tenant_id=self._auth_ctx.tenant_id or "dev-tenant",
+                    roles=self._auth_ctx.roles or [],
+                )
+                if payload
+                else None
+            ),
         )
 
-        msg = BaseRequest(uuid=self._auth_ctx.uuid, type="auth", payload=auth_payload.model_dump(exclude_none=True))
+        msg = BaseRequest(
+            uuid=self._auth_ctx.uuid,
+            type="auth",
+            payload=auth_payload.model_dump(exclude_none=True),
+        )
         resp = await self._send(msg.model_dump())
         if resp.get("type") != "auth.ok":
             raise RuntimeError(f"Auth failed: {resp}")
@@ -189,7 +197,9 @@ class TcmWebSocketClient:
             raise RuntimeError(f"Unexpected info response: {resp}")
         return resp
 
-    async def management_creation(self, action: str = "creation", **kwargs: Any) -> JsonDict:
+    async def management_creation(
+        self, action: str = "creation", **kwargs: Any
+    ) -> JsonDict:
         """
         Send a generic `management` message.
 
@@ -213,6 +223,7 @@ class TcmWebSocketClient:
         inputs: Sequence[InferenceInput],
         *,
         vm_ip: Optional[str] = None,
+        allow_transient: bool = False,
     ) -> JsonDict:
         """
         Send a minimal HTTP inference request.
@@ -222,7 +233,11 @@ class TcmWebSocketClient:
             vm_ip=vm_ip,
             container_id=container_id,
             model_name=model_name,
-            request={"protocol": "http", "inputs": [i.model_dump() for i in inputs]},
+            request={
+                "protocol": "http",
+                "inputs": [i.model_dump() for i in inputs],
+                "allow_transient": bool(allow_transient),
+            },
         )
         request = InferenceRequest(uuid=self._auth_ctx.uuid, payload=payload)
         resp = await self._send(request.model_dump())
@@ -277,6 +292,7 @@ class TcmClient:
         inputs: Sequence[InferenceInput],
         *,
         vm_ip: Optional[str] = None,
+        allow_transient: bool = False,
     ) -> InferenceResponse:
         """
         High-level synchronous helper for a single HTTP-style inference.
@@ -296,8 +312,11 @@ class TcmClient:
                     container_id=container_id,
                     model_name=model_name,
                     inputs=inputs,
+                    allow_transient=allow_transient,
                 )
-                return InferenceResponse(type=raw.get("type", ""), payload=raw.get("payload", {}))
+                return InferenceResponse(
+                    type=raw.get("type", ""), payload=raw.get("payload", {})
+                )
 
         return asyncio.run(_run())
 
@@ -376,4 +395,3 @@ def run_quickstart(uri: str) -> None:
     """
     result = asyncio.run(quickstart_queue_stats(uri))
     print(json.dumps(result, indent=2))
-

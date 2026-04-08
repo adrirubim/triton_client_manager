@@ -21,14 +21,23 @@ from __future__ import annotations
 
 import logging
 import os
+import sys
 import time
 from dataclasses import dataclass
 
-from yaml import safe_load
+# Bootstrapping: ensure repo root is importable before importing project modules.
+# This makes `python apps/manager/dev_server.py` work from any CWD.
+_here = os.path.dirname(os.path.abspath(__file__))
+_repo_root = os.path.abspath(os.path.join(_here, "..", ".."))
+if _repo_root not in sys.path:
+    sys.path.insert(0, _repo_root)
 
-from classes.job import JobThread
-from classes.websocket import WebSocketThread
-from utils.logging_config import configure_logging
+from yaml import safe_load  # noqa: E402
+
+from classes.job import JobThread  # noqa: E402
+from classes.triton import TritonInfer  # noqa: E402
+from classes.websocket import WebSocketThread  # noqa: E402
+from utils.logging_config import configure_logging  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +60,22 @@ class DevBackend:
             f"'{self.name}' does not implement '{item}' in dev mode. "
             "Use real services or extend DevBackend for this use case."
         )
+
+
+@dataclass
+class TritonDevBackend(DevBackend):
+    """
+    Dev-mode Triton backend.
+
+    Provides the minimum surface area needed by inference handlers:
+    - `triton_infer`: used to build the orchestration layer.
+    - `get_server()`: returns None so handlers can opt into transient clients.
+    """
+
+    triton_infer: TritonInfer = TritonInfer()
+
+    def get_server(self, vm_ip: str, container_id: str):
+        return None
 
 
 def _load_yaml(path: str) -> dict:
@@ -77,7 +102,7 @@ def main() -> None:
     # Dummy backends (no real OpenStack/Docker/Triton)
     docker_backend = DevBackend(name="DockerDevBackend")
     openstack_backend = DevBackend(name="OpenstackDevBackend")
-    triton_backend = DevBackend(name="TritonDevBackend")
+    triton_backend = TritonDevBackend(name="TritonDevBackend")
 
     # Wire JobThread and WebSocketThread
     job = JobThread(**config_job)

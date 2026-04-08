@@ -1,11 +1,16 @@
+import logging
 import threading
 
 import numpy as np
 import tritonclient.grpc as grpcclient
 import tritonclient.http as httpclient
 
+from utils.metrics import observe_grpc_stream_failure
+
 from .constants import TYPE_MAP
 from .tritonerrors import TritonInferenceFailed
+
+logger = logging.getLogger(__name__)
 
 ###################################
 #      Triton Inference Runner    #
@@ -37,9 +42,33 @@ class TritonInfer:
                 dtype=object,
             )
 
+        dtype_map = {
+            "BOOL": np.bool_,
+            "INT8": np.int8,
+            "INT16": np.int16,
+            "INT32": np.int32,
+            "INT64": np.int64,
+            "UINT8": np.uint8,
+            "UINT16": np.uint16,
+            "UINT32": np.uint32,
+            "UINT64": np.uint64,
+            "FP16": np.float16,
+            "FP32": np.float32,
+            "FP64": np.float64,
+        }
+        np_dtype = dtype_map.get(datatype)
+
         if isinstance(value, (list, tuple, np.ndarray)):
-            return np.asarray(value)
-        return np.asarray([value])
+            return (
+                np.asarray(value, dtype=np_dtype)
+                if np_dtype is not None
+                else np.asarray(value)
+            )
+        return (
+            np.asarray([value], dtype=np_dtype)
+            if np_dtype is not None
+            else np.asarray([value])
+        )
 
     # -------------------------------------------- #
     #               INPUT BUILDERS                  #
@@ -136,35 +165,53 @@ class TritonInfer:
         """
         done = threading.Event()
         errors = []
+        started = False
+        received_any = False
 
         def _callback(result, error):
             if error:
+                observe_grpc_stream_failure("callback_error")
                 errors.append(str(error))
                 done.set()
                 return
             try:
                 piece = result.as_numpy(output_name)[0].decode("utf-8")
                 on_chunk(piece)
-            except Exception:
-                done.set()  # stream finished (final undecodable response)
+                nonlocal received_any
+                received_any = True
+            except Exception as e:
+                # Some clients signal "end of stream" by raising when outputs disappear.
+                # If we've already received at least one chunk, treat this as a clean end.
+                if received_any:
+                    done.set()
+                    return
+                observe_grpc_stream_failure("decode_error")
+                msg = f"STREAM_DECODE_ERROR: output_name={output_name!r} error={e}"
+                logger.warning(msg)
+                errors.append(msg)
+                done.set()
 
         try:
             grpc_inputs = self._build_grpc_inputs(inputs)
-
             grpc_client.start_stream(callback=_callback)
+            started = True
             grpc_client.async_stream_infer(model_name=model_name, inputs=grpc_inputs)
 
             if not done.wait(timeout=timeout):
+                observe_grpc_stream_failure("timeout")
                 raise TritonInferenceFailed(
                     model_name, f"Stream timed out after {timeout}s"
                 )
-
-            grpc_client.stop_stream()
-
         except TritonInferenceFailed:
             raise
         except Exception as e:
             raise TritonInferenceFailed(model_name, str(e))
+        finally:
+            if started:
+                try:
+                    grpc_client.stop_stream()
+                except Exception as e:
+                    logger.warning("Failed to stop gRPC stream cleanly: %s", e)
 
         if errors:
             raise TritonInferenceFailed(model_name, errors[0])
@@ -182,7 +229,7 @@ class TritonInfer:
         try:
             http_inputs = self._build_http_inputs(inputs)
             return http_client.infer(
-                model_name=model_name, inputs=http_inputs, client_timeout=timeout
+                model_name=model_name, inputs=http_inputs, timeout=timeout
             )
         except Exception as e:
             raise TritonInferenceFailed(model_name, str(e))

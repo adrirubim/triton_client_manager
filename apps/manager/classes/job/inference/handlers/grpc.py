@@ -1,7 +1,11 @@
 import logging
 from typing import TYPE_CHECKING, Callable
 
+import tritonclient.grpc as grpcclient
+
+from classes.triton.constants import GRPC_PORT
 from classes.triton.inference_orchestrator import TritonInference, TritonRequest
+from classes.triton.info.data.server import TritonServer
 from classes.triton.tritonerrors import TritonInferenceFailed
 
 from .base import check_instance, normalize_inference_payload, validate_fields
@@ -35,16 +39,37 @@ class JobInferenceGrpc:
 
         payload = normalize_inference_payload(payload, self.docker)
         vm_ip, container_id, model_name, inputs = validate_fields(payload)
-        check_instance(self.docker, vm_ip, container_id)
+        allow_transient = bool(payload.get("request", {}).get("allow_transient"))
+        if not allow_transient:
+            check_instance(self.docker, vm_ip, container_id)
 
         if not self.triton:
             raise TritonInferenceFailed(model_name, "No TritonThread available")
 
         server = self.triton.get_server(vm_ip, container_id)
         if not server:
-            raise TritonInferenceFailed(
-                model_name, "No active Triton session for this instance"
-            )
+            if not allow_transient:
+                raise TritonInferenceFailed(
+                    model_name, "No active Triton session for this instance"
+                )
+
+            # Local-dev friendliness (explicit opt-in): allow streaming without a
+            # pre-registered server by creating a transient TritonServer client.
+            try:
+                client = grpcclient.InferenceServerClient(url=f"{vm_ip}:{GRPC_PORT}")
+                server = TritonServer(
+                    vm_id="",
+                    vm_ip=vm_ip,
+                    container_id=container_id,
+                    client=client,
+                    model_name=model_name,
+                    status="ready",
+                )
+            except Exception as exc:
+                raise TritonInferenceFailed(
+                    model_name,
+                    f"Failed to create transient Triton gRPC client: {exc}",
+                )
 
         output_name = payload.get("request", {}).get("output_name", "output")
 

@@ -1,7 +1,11 @@
 import logging
 from typing import TYPE_CHECKING, Callable
 
+import tritonclient.http as httpclient
+
+from classes.triton.constants import HTTP_PORT
 from classes.triton.inference_orchestrator import TritonInference, TritonRequest
+from classes.triton.info.data.server import TritonServer
 from classes.triton.tritonerrors import TritonInferenceFailed
 
 from .base import check_instance, normalize_inference_payload, validate_fields
@@ -36,7 +40,8 @@ class JobInferenceHttp:
         payload = normalize_inference_payload(payload, self.docker)
 
         # Pipeline path (multi-model, sequential, HTTP only)
-        if "pipeline" in payload:
+        steps_cfg = payload.get("pipeline")
+        if isinstance(steps_cfg, list) and len(steps_cfg) > 0:
             vm_ip = payload.get("vm_ip")
             container_id = payload.get("container_id")
             if not vm_ip or not container_id:
@@ -55,7 +60,6 @@ class JobInferenceHttp:
                     "pipeline", "No active Triton session for this instance"
                 )
 
-            steps_cfg = payload.get("pipeline") or []
             steps: list[TritonRequest] = []
             for step in steps_cfg:
                 if isinstance(step, dict) and "inputs" in step:
@@ -88,16 +92,37 @@ class JobInferenceHttp:
 
         # Single-model path
         vm_ip, container_id, model_name, inputs = validate_fields(payload)
-        check_instance(self.docker, vm_ip, container_id)
+        allow_transient = bool(payload.get("request", {}).get("allow_transient"))
+        if not allow_transient:
+            check_instance(self.docker, vm_ip, container_id)
 
         if not self.triton:
             raise TritonInferenceFailed(model_name, "No TritonThread available")
 
         server = self.triton.get_server(vm_ip, container_id)
         if not server:
-            raise TritonInferenceFailed(
-                model_name, "No active Triton session for this instance"
-            )
+            if not allow_transient:
+                raise TritonInferenceFailed(
+                    model_name, "No active Triton session for this instance"
+                )
+
+            # Local-dev friendliness (explicit opt-in): allow inference without a prior
+            # management "creation" flow by creating a transient TritonServer client.
+            try:
+                client = httpclient.InferenceServerClient(url=f"{vm_ip}:{HTTP_PORT}")
+                server = TritonServer(
+                    vm_id="",
+                    vm_ip=vm_ip,
+                    container_id=container_id,
+                    client=client,
+                    model_name=model_name,
+                    status="ready",
+                )
+            except Exception as exc:
+                raise TritonInferenceFailed(
+                    model_name,
+                    f"Failed to create transient Triton HTTP client: {exc}",
+                )
 
         request = TritonRequest(
             model_name=model_name,
