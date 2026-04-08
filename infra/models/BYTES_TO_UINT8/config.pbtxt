@@ -2,10 +2,10 @@ name: "BYTES_TO_UINT8"
 backend: "python"
 max_batch_size: 0
 input [
-  { name: "BYTES" data_type: TYPE_UINT8 dims: [ -1 ] }
+  { name: "BYTES" data_type: TYPE_UINT8 dims: [ -1 ] },
   { name: "IMG_SIZE" data_type: TYPE_INT32 dims: [ 2 ] }
 ]
 output [
-  { name: "IMG_UINT8" data_type: TYPE_UINT8 dims: [ 3, -1, -1 ] }
+  { name: "IMG_UINT8" data_type: TYPE_UINT8 dims: [ 3, -1, -1 ] },
   { name: "IMG_ORIGINAL" data_type: TYPE_UINT8 dims: [ -1 ] }
 ]
