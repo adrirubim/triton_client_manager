@@ -50,7 +50,7 @@ docker compose -f infra/triton/docker-compose.yml up -d
 
 This will:
 
-- pull the `nvcr.io/nvidia/tritonserver:24.11-py3` image (first run),
+- pull the `nvcr.io/nvidia/tritonserver:26.03-py3` image (first run),
 - start the `tcm-triton-ephemeral` container,
 - expose Triton HTTP on port `8001` of the host.
 

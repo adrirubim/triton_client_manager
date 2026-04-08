@@ -1,0 +1,40 @@
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    CFLAGS="-Wno-error=incompatible-pointer-types" \
+    PYTHONPATH="/app"
+
+WORKDIR /app
+
+# System libraries:
+# - runtime libs for Pillow/crypto
+# - temporary build toolchain for packages that ship sdist (e.g. geventhttpclient)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    libjpeg62-turbo \
+    zlib1g \
+    libpng16-16 \
+    libfreetype6 \
+    libssl3 \
+    build-essential \
+    libffi-dev \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY apps/manager/requirements.txt apps/manager/requirements-test.txt ./apps/manager/
+
+RUN python -m pip install --upgrade pip \
+    && pip install -r apps/manager/requirements.txt \
+    && apt-get purge -y --auto-remove build-essential libffi-dev libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy repo (includes apps/manager, src/, docs/, etc.)
+COPY . /app
+
+EXPOSE 8000
+
+# Run manager dev server by default (adjust in production deployments).
+CMD ["python", "apps/manager/dev_server.py"]
+

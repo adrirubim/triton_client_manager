@@ -204,7 +204,7 @@ async def main() -> None:
                 "flavor": "m1.medium",
             },
             docker={
-                "image": "nvcr.io/nvidia/tritonserver:23.08-py3",
+                "image": "nvcr.io/nvidia/tritonserver:26.03-py3",
                 "command": "tritonserver --model-repository=/models",
             },
             minio={

@@ -1,16 +1,19 @@
-version: "3.9"
-
 services:
   triton:
-    image: nvcr.io/nvidia/tritonserver:24.11-py3
+    image: nvcr.io/nvidia/tritonserver:26.03-py3
     container_name: tcm-triton-ephemeral
     restart: unless-stopped
+    shm_size: "2gb"
+    mem_limit: 4g
+    cpus: 2.0
     command: >
       tritonserver
       --model-repository=/models
       --allow-http=true
-      --allow-grpc=false
+      --allow-grpc=true
       --model-control-mode=none
+      --exit-on-error=false
+      --strict-readiness=false
     volumes:
       - ../../infra/models:/models:ro
     ports:
