@@ -3,6 +3,7 @@ import logging
 from classes.job.jobthread import JobThread
 
 SECRET_TOKEN = "SECRET_TOKEN_TEST_123"
+CORRELATION_ID_CLEAR = "corr-id-clear-text"
 
 
 def _make_minimal_jobthread() -> JobThread:
@@ -160,3 +161,37 @@ def test_no_secrets_logged_when_inference_queue_is_full(caplog) -> None:
     log_text = "\n".join(record.getMessage() for record in caplog.records)
 
     assert SECRET_TOKEN not in log_text, "Sensitive token leaked into logs (inference)"
+
+
+def test_correlation_id_is_not_logged_in_clear_text(caplog) -> None:
+    """
+    CodeQL flags correlation IDs as potentially sensitive.
+    Ensure we never log the raw value, but keep a stable hashed identifier.
+    """
+
+    caplog.set_level(logging.WARNING)
+
+    jt = _make_minimal_jobthread()
+
+    user_id = "user-authz-1"
+    msg = {
+        "uuid": user_id,
+        "type": "management",
+        "payload": {"action": "creation"},
+        "_correlation_id": CORRELATION_ID_CLEAR,
+        # Missing roles triggers authz_reject warning path.
+        "_auth": {"roles": []},
+    }
+
+    jt.on_message(user_id, msg)
+
+    # Find the authz rejection warning record
+    recs = [r for r in caplog.records if "Rejected management request due to missing role" in r.getMessage()]
+    assert recs, "Expected authz rejection warning log record"
+
+    record = recs[-1]
+    correlation_id = getattr(record, "correlation_id", "")
+
+    assert CORRELATION_ID_CLEAR not in "\n".join(r.getMessage() for r in caplog.records)
+    assert correlation_id.startswith("sha256:"), f"Expected hashed correlation_id, got: {correlation_id!r}"
+    assert CORRELATION_ID_CLEAR not in correlation_id, "Raw correlation id leaked into structured log field"

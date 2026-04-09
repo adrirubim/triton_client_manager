@@ -5,6 +5,7 @@ from queue import Empty
 
 # Import bounded executor instead of standard ThreadPoolExecutor
 from utils.bounded_executor import BoundedThreadPoolExecutor
+from utils.log_safety import safe_log_id
 from utils.metrics import observe_job_processing, observe_job_rejected
 
 from .inference import JobInference
@@ -202,7 +203,7 @@ class JobThread(threading.Thread):
         """
         msg_uuid = msg.get("uuid")
         msg_type = msg.get("type")
-        correlation_id = msg.get("_correlation_id", "-")
+        correlation_id = safe_log_id(msg.get("_correlation_id"))
 
         # Authorization context (populated by WebSocketThread if available)
         auth_ctx = msg.get("_auth", {})

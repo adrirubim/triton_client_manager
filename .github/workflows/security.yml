@@ -29,38 +29,17 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install dependencies for apps/manager
-        working-directory: apps/manager
+      - name: Security gate (via scripts/check.sh + docker_controller audit)
         run: |
+          # apps/manager security (Bandit + pip-audit) via shared script
+          bash scripts/check.sh
+
+          # apps/docker_controller dependency audit (CI policy)
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Install dependencies for apps/docker_controller
-        working-directory: apps/docker_controller
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Install security tooling
-        run: |
-          python -m pip install pip-audit bandit
-
-      - name: Dependency vulnerability scan (pip-audit)
-        run: |
-          # Audit direct dependencies as declared in requirements files.
-          # The build fails if ANY vulnerability is found. If an exception is
-          # required, it must be justified and handled via explicit ignore rules.
-          # NOTE: ONNX is only used for offline model inspection, never for
-          # handling untrusted inputs at runtime. CVE-2026-28500 is therefore
-          # explicitly ignored here, but tracked in CHANGELOG_INTERNAL.
-          pip-audit -r apps/manager/requirements.txt \
-            --ignore-vuln CVE-2026-28500
-          pip-audit -r apps/docker_controller/requirements.txt \
-            --ignore-vuln CVE-2026-28500
-
-      - name: Static application security testing (Bandit)
-        working-directory: apps/manager
-        run: |
-          # Recursively scan application code; tests are excluded to reduce noise.
-          bandit -c bandit.yaml -r classes utils client_manager.py
+          python -m pip install pip-audit
+          pip-audit -r apps/docker_controller/requirements.txt --ignore-vuln CVE-2026-28500
+        env:
+          CHECK_LINT: "0"
+          CHECK_COMPILE: "0"
+          CHECK_TESTS: "0"
 
