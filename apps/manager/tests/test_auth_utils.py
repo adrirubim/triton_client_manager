@@ -30,9 +30,8 @@ def _make_jwt(payload: dict) -> str:
 
 def test_b64url_decode_roundtrip():
     original = b"hello-world"
-    encoded = _b64url_decode(
-        "aGVsbG8td29ybGQ"  # "hello-world" without padding, precomputed
-    )
+    # "hello-world" without padding, precomputed
+    encoded = _b64url_decode("aGVsbG8td29ybGQ")
     assert encoded == original
 
 
