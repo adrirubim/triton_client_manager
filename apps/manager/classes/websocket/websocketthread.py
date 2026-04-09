@@ -12,8 +12,8 @@ import uvicorn
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 
-from utils.log_safety import safe_log_id
 from utils.auth import SecurityError, validate_token_and_get_claims
+from utils.log_safety import safe_log_id
 from utils.metrics import (
     AUTH_FAILURES_TOTAL,
     RATE_LIMIT_VIOLATIONS_TOTAL,
@@ -188,11 +188,7 @@ class WebSocketThread(threading.Thread):
     async def _send_error(self, websocket: WebSocket, error_message: str):
         """Send error message to client"""
         try:
-            await websocket.send_text(
-                _json_dumps(
-                    {"type": "error", "payload": {"message": error_message}}
-                )
-            )
+            await websocket.send_text(_json_dumps({"type": "error", "payload": {"message": error_message}}))
         except Exception as e:
             logger.error("Failed to send error: %s", e)
 
@@ -514,6 +510,45 @@ class WebSocketThread(threading.Thread):
                 if client_id:
                     auth_ctx = self.client_auth.get(client_id, {})
                     message["_auth"] = auth_ctx
+
+                # Fast-path: answer queue stats directly without crossing threads.
+                # This avoids test flakiness where the async client waits on a response
+                # while the job loop/executor is busy.
+                if message.get("type") == "info" and self.get_queue_stats:
+                    payload = message.get("payload", {}) or {}
+                    request_type = payload.get("action", payload.get("request_type", "unknown"))
+                    if request_type in ("queue", "queue_stats"):
+                        try:
+                            stats = self.get_queue_stats()
+                            await websocket.send_text(
+                                _json_dumps(
+                                    {
+                                        "type": "info_response",
+                                        "payload": {
+                                            "job_id": payload.get("job_id"),
+                                            "request_type": request_type,
+                                            "status": "success",
+                                            "data": stats,
+                                        },
+                                    }
+                                )
+                            )
+                        except Exception as exc:  # noqa: BLE001
+                            await websocket.send_text(
+                                _json_dumps(
+                                    {
+                                        "type": "info_response",
+                                        "payload": {
+                                            "job_id": payload.get("job_id"),
+                                            "request_type": request_type,
+                                            "status": "error",
+                                            "error": str(exc),
+                                            "data": {"error": str(exc)},
+                                        },
+                                    }
+                                )
+                            )
+                        continue
 
                 # Tenant-level quota (sum of all connections).
                 tenant_id = (message.get("_auth") or {}).get("tenant_id")

@@ -33,7 +33,7 @@ async def test_client(
             print(f"[{user_id}] Sent auth")
 
             # Wait for auth response
-            response = await websocket.recv()
+            response = await asyncio.wait_for(websocket.recv(), timeout=5)
             auth_response = json.loads(response)
             print(f"[{user_id}] Auth response: {auth_response}")
 
@@ -51,7 +51,7 @@ async def test_client(
             print(f"[{user_id}] Sent info request")
 
             # Wait for response
-            response = await websocket.recv()
+            response = await asyncio.wait_for(websocket.recv(), timeout=5)
             info_response = json.loads(response)
             print(f"[{user_id}] Info response:")
             print(json.dumps(info_response, indent=2))
@@ -87,7 +87,7 @@ async def test_client(
                 await websocket.send(json.dumps(inference_request))
                 print(f"[{user_id}] Sent inference request")
 
-                response = await websocket.recv()
+                response = await asyncio.wait_for(websocket.recv(), timeout=10)
                 inference_response = json.loads(response)
                 print(f"[{user_id}] Inference response:")
                 print(json.dumps(inference_response, indent=2))
@@ -99,6 +99,8 @@ async def test_client(
 
             print(f"[{user_id}] Closing connection")
 
+    except asyncio.TimeoutError as e:
+        print(f"[{user_id}] Timeout waiting for server: {e}")
     except Exception as e:
         print(f"[{user_id}] Error: {e}")
 

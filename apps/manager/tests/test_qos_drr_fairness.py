@@ -71,12 +71,8 @@ def test_drr_light_tenant_maintains_throughput_while_heavy_is_throttled() -> Non
     q_light = QueueJob(maxsize=0)
 
     for _ in range(200):
-        q_heavy.put_nowait(
-            {"uuid": "u-heavy", "type": "inference", "payload": {}, "_auth": {"tenant_id": "heavy"}}
-        )
-        q_light.put_nowait(
-            {"uuid": "u-light", "type": "inference", "payload": {}, "_auth": {"tenant_id": "light"}}
-        )
+        q_heavy.put_nowait({"uuid": "u-heavy", "type": "inference", "payload": {}, "_auth": {"tenant_id": "heavy"}})
+        q_light.put_nowait({"uuid": "u-light", "type": "inference", "payload": {}, "_auth": {"tenant_id": "light"}})
 
     queues = {"u-heavy": q_heavy, "u-light": q_light}
     exec_inline = _InlineExecutor(slots=1)
@@ -96,4 +92,3 @@ def test_drr_light_tenant_maintains_throughput_while_heavy_is_throttled() -> Non
 
     assert after_light == before_light + (cycles * 10)
     assert after_heavy == before_heavy
-

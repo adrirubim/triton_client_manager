@@ -1,4 +1,3 @@
-import asyncio
 import json
 import uuid
 from typing import Any, Dict
@@ -21,53 +20,117 @@ def build_hf_conversion_job_payload() -> Dict[str, Any]:
     }
 
 
-async def send_job_loop(ws: WebSocket, interval_s: float = 5.0):
-    """
-    Sends a new job every `interval_s` seconds until cancelled/disconnected.
-    """
-    while True:
-        payload = build_hf_conversion_job_payload()
-        await ws.send_text(json.dumps({"type": "job", "payload": payload}))
-        await asyncio.sleep(interval_s)
-
-
 @app.websocket("/ws")
 async def ws_endpoint(ws: WebSocket):
     await ws.accept()
     print("Client connected")
 
-    sender_task: asyncio.Task | None = None
-
     try:
         # Expect auth first
         raw = await ws.receive_text()
-        msg = json.loads(raw)
+        try:
+            msg = json.loads(raw)
+        except json.JSONDecodeError:
+            await ws.send_text(
+                json.dumps({"type": "error", "payload": {"message": "Invalid JSON format"}})
+            )
+            await ws.close(code=1003)
+            return
 
         if msg.get("type") != "auth":
-            await ws.send_text(json.dumps({"type": "error", "payload": {"message": "auth required"}}))
+            await ws.send_text(
+                json.dumps(
+                    {
+                        "type": "error",
+                        "payload": {"message": "First message must be type 'auth'"},
+                    }
+                )
+            )
+            await ws.close(code=1008)
+            return
+
+        client_uuid = msg.get("uuid")
+        if not client_uuid:
+            await ws.send_text(
+                json.dumps({"type": "error", "payload": {"message": "Missing uuid"}})
+            )
             await ws.close(code=1008)
             return
 
         await ws.send_text(json.dumps({"type": "auth.ok"}))
-
-        # Start periodic job sender
-        sender_task = asyncio.create_task(send_job_loop(ws, interval_s=5.0))
 
         # Keep listening (optional)
         while True:
             raw = await ws.receive_text()
             print("RX:", raw)
 
-            # optional echo
-            await ws.send_text(json.dumps({"type": "echo", "payload": json.loads(raw)}))
+            try:
+                req = json.loads(raw)
+            except json.JSONDecodeError:
+                await ws.send_text(
+                    json.dumps({"type": "error", "payload": {"message": "Invalid JSON format"}})
+                )
+                continue
+
+            if req.get("uuid") != client_uuid:
+                await ws.send_text(
+                    json.dumps({"type": "error", "payload": {"message": "UUID mismatch"}})
+                )
+                continue
+
+            req_type = req.get("type")
+
+            if req_type == "info" and (req.get("payload") or {}).get("action") == "queue_stats":
+                await ws.send_text(
+                    json.dumps(
+                        {
+                            "type": "info_response",
+                            "payload": {
+                                "status": "success",
+                                "request_type": "queue_stats",
+                                "data": {
+                                    "info_users": 0,
+                                    "management_users": 0,
+                                    "inference_users": 0,
+                                    "total_users": 0,
+                                    "total_queued": 0,
+                                    "info_total_queued": 0,
+                                    "management_total_queued": 0,
+                                    "inference_total_queued": 0,
+                                    "executor_info_pending": 0,
+                                    "executor_management_pending": 0,
+                                    "executor_inference_pending": 0,
+                                    "executor_info_available": 0,
+                                    "executor_management_available": 0,
+                                    "executor_inference_available": 0,
+                                },
+                            },
+                        }
+                    )
+                )
+                continue
+
+            if req_type == "unknown":
+                await ws.send_text(
+                    json.dumps(
+                        {
+                            "type": "error",
+                            "payload": {
+                                "message": "Invalid type 'unknown'. Must be one of: ['auth', 'info', 'management', 'inference']"
+                            },
+                        }
+                    )
+                )
+                continue
+
+            await ws.send_text(
+                json.dumps(
+                    {
+                        "type": "error",
+                        "payload": {"message": f"Invalid type {req_type!r}."},
+                    }
+                )
+            )
 
     except WebSocketDisconnect:
         print("Client disconnected")
-
-    finally:
-        if sender_task:
-            sender_task.cancel()
-            try:
-                await sender_task
-            except asyncio.CancelledError:
-                pass

@@ -60,7 +60,7 @@ def ws_server():
     # Use a dynamic port to avoid collisions in CI / parallel runs.
     ws_cfg["port"] = 0
 
-    ws = WebSocketThread(**ws_cfg, on_message=job.on_message)
+    ws = WebSocketThread(**ws_cfg, on_message=job.on_message, get_queue_stats=job.get_queue_stats)
     if auth_cfg or rate_cfg:
         ws.set_auth_and_rate_limits(auth_config=auth_cfg, rate_limit_config=rate_cfg)
     job.websocket = ws.send_to_client

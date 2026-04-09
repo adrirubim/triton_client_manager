@@ -61,3 +61,6 @@ infra/models/**/1/weights/
 infra/models/**/1/weights/*.onnx
 infra/models/**/1/weights/*.plan
 infra/models/**/1/weights/*.engine
+
+# runtime state
+state/

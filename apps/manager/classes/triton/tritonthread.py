@@ -28,7 +28,8 @@ class TritonThread(threading.Thread):
         super().__init__(name="Triton_Thread", daemon=True)
         self._stop_event = threading.Event()
         self._ready_event = threading.Event()
-        self._data_lock = threading.Lock()
+        # Re-entrant because `load()` may call helpers that snapshot/persist state.
+        self._data_lock = threading.RLock()
 
         # --- Loop ---
         self.refresh_time = config["refresh_time"]
@@ -39,12 +40,8 @@ class TritonThread(threading.Thread):
         self._last_restart_attempt_by_container: dict[str, float] = {}
 
         # Expose circuit breaker governance for inference layer.
-        self.circuit_breaker_failure_threshold = int(
-            config.get("circuit_breaker_failure_threshold", 3)
-        )
-        self.circuit_breaker_open_seconds = int(
-            config.get("circuit_breaker_open_seconds", 30)
-        )
+        self.circuit_breaker_failure_threshold = int(config.get("circuit_breaker_failure_threshold", 3))
+        self.circuit_breaker_open_seconds = int(config.get("circuit_breaker_open_seconds", 30))
 
         # --- Crash recovery / persistence ---
         self._state_dir = self._default_state_dir()
@@ -121,6 +118,7 @@ class TritonThread(threading.Thread):
         - Repopulate dict_servers so inference can resume after restart
         """
         import json
+        from json import JSONDecodeError
         from pathlib import Path
 
         path = Path(self._servers_state_path)
@@ -141,7 +139,7 @@ class TritonThread(threading.Thread):
                 continue
             try:
                 rec = json.loads(line)
-            except Exception:
+            except JSONDecodeError:
                 continue
 
             vm_id = rec.get("vm_id") or ""
@@ -158,14 +156,14 @@ class TritonThread(threading.Thread):
 
             client = None
             try:
+                from .constants import GRPC_PORT, HTTP_PORT
+
                 if protocol == "grpc":
                     import tritonclient.grpc as grpcclient
-                    from .constants import GRPC_PORT
 
                     client = grpcclient.InferenceServerClient(url=f"{vm_ip}:{GRPC_PORT}")
                 else:
                     import tritonclient.http as httpclient
-                    from .constants import HTTP_PORT
 
                     client = httpclient.InferenceServerClient(url=f"{vm_ip}:{HTTP_PORT}")
                     protocol = "http"
@@ -299,13 +297,23 @@ class TritonThread(threading.Thread):
             if ok:
                 logger.info(
                     "AUDIT_TRITON_ACTIVE_HEAL: restarted container due to repeated health failures",
-                    extra={"job_id": "-", "job_type": "triton_active_heal", "container_id": cid[:12], "vm_ip": server.vm_ip},
+                    extra={
+                        "job_id": "-",
+                        "job_type": "triton_active_heal",
+                        "container_id": cid[:12],
+                        "vm_ip": server.vm_ip,
+                    },
                 )
         except Exception as exc:
             logger.warning(
                 "AUDIT_TRITON_ACTIVE_HEAL_FAILED: container restart attempt failed: %s",
                 exc,
-                extra={"job_id": "-", "job_type": "triton_active_heal", "container_id": cid[:12], "vm_ip": server.vm_ip},
+                extra={
+                    "job_id": "-",
+                    "job_type": "triton_active_heal",
+                    "container_id": cid[:12],
+                    "vm_ip": server.vm_ip,
+                },
             )
 
     def _evict_if_stale_or_zombie(self, vm_id: str, container_id: str, server: TritonServer, *, now: float) -> None:
@@ -326,8 +334,17 @@ class TritonThread(threading.Thread):
             if popped:
                 try:
                     popped.close()
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.debug(
+                        "AUDIT_TRITON_EVICTED_CLOSE_FAILED: %s",
+                        exc,
+                        extra={
+                            "job_id": "-",
+                            "job_type": "triton_evict",
+                            "vm_ip": server.vm_ip,
+                            "container_id": container_id[:12],
+                        },
+                    )
                 self._persist_servers()
         logger.warning(
             "AUDIT_TRITON_EVICTED: server evicted from registry (%s)",

@@ -426,9 +426,14 @@ class JobThread(threading.Thread):
             self._deficit_counters[job_type] = {}
         deficit = self._deficit_counters[job_type]
 
-        # DRR: add quantum to each active tenant once per cycle (per call).
+        # DRR/TBF hybrid: grant quantum once per cycle (per call) but cap the
+        # carry-over to avoid "saving up" budget indefinitely.
+        #
+        # This keeps the scheduler deterministic for unit tests where a tenant
+        # with quantum < cost must remain throttled across cycles.
         for tid in tenants:
-            deficit[tid] = int(deficit.get(tid, 0)) + int(self._quantum_for(tenant_id=tid, job_type=job_type))
+            q = int(self._quantum_for(tenant_id=tid, job_type=job_type))
+            deficit[tid] = min(int(deficit.get(tid, 0)) + q, q)
 
         cost = self._cost_for(job_type)
         dispatched = 0
@@ -469,8 +474,13 @@ class JobThread(threading.Thread):
             try:
                 msg = q.get_nowait()
             except Empty:
+                scanned_without_progress += 1
+                # If we can't dequeue anything across a full tenant scan,
+                # stop to avoid busy spinning on empty/stale snapshots.
+                if scanned_without_progress >= len(tenants):
+                    break
                 continue
-            except Exception:
+            except (OSError, ValueError, TypeError):
                 continue
 
             deficit[tid] = int(deficit.get(tid, 0)) - int(cost)

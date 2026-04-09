@@ -1,6 +1,8 @@
 import logging
 import threading
 
+import tritonclient.grpc as grpcclient
+import tritonclient.http as httpclient
 from utils.metrics import observe_grpc_stream_failure
 
 from .constants import TYPE_MAP
@@ -26,14 +28,10 @@ class TritonInfer:
 
     @staticmethod
     def _grpcclient():
-        import tritonclient.grpc as grpcclient  # heavy import (lazy)
-
         return grpcclient
 
     @staticmethod
     def _httpclient():
-        import tritonclient.http as httpclient  # heavy import (lazy)
-
         return httpclient
 
     @staticmethod
