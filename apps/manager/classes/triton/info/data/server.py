@@ -1,9 +1,6 @@
 import logging
 from dataclasses import dataclass, field
-from typing import Union
-
-import tritonclient.grpc as grpcclient
-import tritonclient.http as httpclient
+from typing import Any, Optional, Literal
 
 
 @dataclass
@@ -13,11 +10,16 @@ class TritonServer:
     vm_id: str
     vm_ip: str
     container_id: str
-    client: Union[grpcclient.InferenceServerClient, httpclient.InferenceServerClient]
+    client: Any
     model_name: str = ""
     inputs: list = field(default_factory=list)
     outputs: list = field(default_factory=list)
     status: str = "ready"
+    protocol: Optional[Literal["http", "grpc"]] = None
+    consecutive_health_failures: int = 0
+    last_healthy_ts: float = 0.0
+    circuit_open_until_ts: float = 0.0
+    consecutive_inference_failures: int = 0
 
     def has_changed(self, other: "TritonServer") -> tuple:
         changed_fields = []
@@ -33,6 +35,7 @@ class TritonServer:
 
     def close(self) -> None:
         try:
-            self.client.close()
+            if self.client is not None:
+                self.client.close()
         except Exception as exc:
             logging.getLogger(__name__).warning("Error while closing Triton client in TritonServer.close: %s", exc)

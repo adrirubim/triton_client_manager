@@ -24,7 +24,7 @@ def configure_logging(level: int = logging.INFO) -> None:
         level=level,
         format=(
             "%(asctime)s [%(name)s] %(levelname)s "
-            "[uuid=%(client_uuid)s job=%(job_id)s type=%(job_type)s]: %(message)s"
+            "[uuid=%(client_uuid)s job=%(job_id)s type=%(job_type)s corr=%(correlation_id)s]: %(message)s"
         ),
         datefmt="%Y-%m-%d %H:%M:%S",
         stream=sys.stdout,

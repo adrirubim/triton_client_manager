@@ -1,10 +1,6 @@
 import logging
 import threading
 
-import numpy as np
-import tritonclient.grpc as grpcclient
-import tritonclient.http as httpclient
-
 from utils.metrics import observe_grpc_stream_failure
 
 from .constants import TYPE_MAP
@@ -23,6 +19,24 @@ class TritonInfer:
     """Sends inference requests to Triton — gRPC streaming (LLM) or HTTP (ML)."""
 
     @staticmethod
+    def _np():
+        import numpy as np  # heavy import (lazy)
+
+        return np
+
+    @staticmethod
+    def _grpcclient():
+        import tritonclient.grpc as grpcclient  # heavy import (lazy)
+
+        return grpcclient
+
+    @staticmethod
+    def _httpclient():
+        import tritonclient.http as httpclient  # heavy import (lazy)
+
+        return httpclient
+
+    @staticmethod
     def _to_numpy(datatype: str, value):
         """
         Avoid corrupting tensor dimensions by wrapping everything in [value].
@@ -30,6 +44,7 @@ class TritonInfer:
         - If scalar: np.asarray([value]) (preserves a batch-like dimension)
         Special case BYTES: produce dtype=object and encode strings.
         """
+        np = TritonInfer._np()
         if datatype == "BYTES":
             if isinstance(value, (list, tuple, np.ndarray)):
                 encoded = [v.encode("utf-8") if isinstance(v, str) else v for v in np.asarray(value).tolist()]
@@ -65,6 +80,7 @@ class TritonInfer:
     @staticmethod
     def _build_grpc_inputs(inputs: list) -> list:
         """Convert payload inputs to tritonclient.grpc InferInput objects."""
+        grpcclient = TritonInfer._grpcclient()
         grpc_inputs = []
         for inp in inputs:
             dims = inp["dims"]
@@ -84,6 +100,7 @@ class TritonInfer:
     @staticmethod
     def _build_http_inputs(inputs: list) -> list:
         """Convert payload inputs to tritonclient.http InferInput objects."""
+        httpclient = TritonInfer._httpclient()
         http_inputs = []
         for inp in inputs:
             dims = inp["dims"]
@@ -112,6 +129,7 @@ class TritonInfer:
         others → .tolist() (int, float, bool)
         """
         arr = result.as_numpy(output_name)
+        np = TritonInfer._np()
 
         if arr.dtype == object:  # BYTES
             flat = [v.decode("utf-8") if isinstance(v, bytes) else v for v in arr.flat]

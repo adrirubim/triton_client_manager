@@ -16,7 +16,7 @@ Thank you for your interest in contributing to this project. Please read this gu
 
 Always validate locally with the same steps that CI will run.
 
-> **Prerequisite:** complete the one-time setup in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)
+> **Prerequisite:** complete the one-time setup in [TECHNICAL_GUIDE.md](TECHNICAL_GUIDE.md)
 > so the repo-root venv `.venv/` exists and dependencies are installed.
 
 
@@ -91,7 +91,7 @@ source ../.venv/bin/activate
 python -m pytest tests/test_integration_backends.py -v
 ```
 
-See `docs/TESTING.md` for details and recommended usage in CI.
+See [TECHNICAL_GUIDE.md](TECHNICAL_GUIDE.md) for details and recommended usage in CI.
 
 ---
 
@@ -127,9 +127,8 @@ Fix any reported issues before pushing.
 
 ## Documentation
 
-- Update [`docs/`](docs/) when changing architecture, API contracts, configuration, or operations.
+- Update [TECHNICAL_GUIDE.md](TECHNICAL_GUIDE.md) when changing architecture, API contracts, configuration, or operations.
 - Keep internal-only notes out of public docs.
-- Keep [`apps/manager/README.md`](apps/manager/README.md) as a slim quick-start; move detailed content to `docs/`.
 
 ---
 

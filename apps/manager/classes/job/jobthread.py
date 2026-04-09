@@ -6,7 +6,12 @@ from queue import Empty
 # Import bounded executor instead of standard ThreadPoolExecutor
 from utils.bounded_executor import BoundedThreadPoolExecutor
 from utils.log_safety import safe_log_id
-from utils.metrics import observe_job_processing, observe_job_rejected
+from utils.metrics import (
+    observe_job_processing,
+    observe_job_rejected,
+    observe_qos_deficit_spent,
+    observe_qos_slot_consumed,
+)
 
 from .inference import JobInference
 
@@ -100,6 +105,77 @@ class JobThread(threading.Thread):
 
         # Extra
         self.kwargs = kwargs
+        self.qos = (kwargs.get("qos") or {}) if isinstance(kwargs.get("qos"), dict) else {}
+        self._job_type_weights = {}
+        self._tenant_weights = {}
+        self._job_type_costs = {"inference": 10, "management": 5, "info": 1}
+        self._tenant_quantum_multipliers = {}
+        self._base_quantum = 10
+        self._deficit_counters: dict[str, dict[str, int]] = {"info": {}, "management": {}, "inference": {}}
+        self._rr_cursor: dict[str, int] = {"info": 0, "management": 0, "inference": 0}
+        self._last_budget_warn: dict[tuple[str, str], float] = {}
+        try:
+            jt = self.qos.get("job_type_weights") or {}
+            tw = self.qos.get("tenant_weights") or {}
+            costs = self.qos.get("job_type_costs") or {}
+            tqm = self.qos.get("tenant_quantum_multipliers") or {}
+            bq = self.qos.get("base_quantum", 10)
+            if isinstance(jt, dict):
+                self._job_type_weights = {str(k): int(v) for k, v in jt.items()}
+            if isinstance(tw, dict):
+                self._tenant_weights = {str(k): int(v) for k, v in tw.items()}
+            if isinstance(costs, dict):
+                self._job_type_costs = {str(k): int(v) for k, v in costs.items()}
+            if isinstance(tqm, dict):
+                self._tenant_quantum_multipliers = {str(k): int(v) for k, v in tqm.items()}
+            self._base_quantum = int(bq)
+        except Exception:
+            # Keep defaults empty; scheduler will fall back to 1.
+            self._job_type_weights = {}
+            self._tenant_weights = {}
+
+    def _weight_for(self, *, tenant_id: str, job_type: str) -> int:
+        base = int(self._job_type_weights.get(job_type, 1))
+        mult = int(self._tenant_weights.get(str(tenant_id or ""), 1))
+        w = base * mult
+        return w if w > 0 else 1
+
+    def _cost_for(self, job_type: str) -> int:
+        c = int(self._job_type_costs.get(job_type, 1))
+        return c if c > 0 else 1
+
+    def _quantum_for(self, *, tenant_id: str, job_type: str) -> int:
+        """
+        DRR quantum (cost units) granted to a tenant per scheduler cycle.
+
+        We reuse the existing job_type_weights and tenant_weights as an extra
+        multiplier to preserve Phase 9 semantics while moving to DRR.
+        """
+        base = int(self._base_quantum or 10)
+        mult = int(self._tenant_quantum_multipliers.get(str(tenant_id or ""), 1))
+        weight = self._weight_for(tenant_id=tenant_id, job_type=job_type)
+        q = base * max(1, mult) * max(1, weight)
+        return q if q > 0 else base
+
+    def _peek_tenant_id(self, q: QueueJob) -> str:
+        """
+        Best-effort tenant_id peek without dequeuing.
+
+        We rely on queue.Queue internals safely under q.mutex. If unavailable,
+        we fall back to "unknown".
+        """
+        try:
+            with q.mutex:  # type: ignore[attr-defined]
+                if not q.queue:  # type: ignore[attr-defined]
+                    return "unknown"
+                msg = q.queue[0]  # type: ignore[attr-defined]
+        except Exception:
+            return "unknown"
+        if not isinstance(msg, dict):
+            return "unknown"
+        auth = msg.get("_auth") or {}
+        tid = auth.get("tenant_id")
+        return str(tid) if isinstance(tid, str) and tid.strip() else "unknown"
 
     # --------------- Thread Related ---------------
     def start(self):
@@ -142,10 +218,10 @@ class JobThread(threading.Thread):
             try:
                 # --- Info ---
                 self.fair_process_queues(
-                    self.info_queues,
-                    self.executor_info,
-                    self.job_info.handle_info,
-                    "info",
+                    self.inference_queues,
+                    self.executor_inference,
+                    self.job_inference.handle_inference,
+                    "inference",
                 )
 
                 # --- Management ---
@@ -156,12 +232,12 @@ class JobThread(threading.Thread):
                     "management",
                 )
 
-                # --- Inference ---
+                # --- Info ---
                 self.fair_process_queues(
-                    self.inference_queues,
-                    self.executor_inference,
-                    self.job_inference.handle_inference,
-                    "inference",
+                    self.info_queues,
+                    self.executor_info,
+                    self.job_info.handle_info,
+                    "info",
                 )
 
                 # -- Clean-Up ---
@@ -200,6 +276,12 @@ class JobThread(threading.Thread):
         """
         Route incoming message to appropriate queue.
         Called by WebSocketThread when message arrives.
+
+        Correlation / tracing:
+        - WebSocketThread injects a per-message `_correlation_id` (UUID4 string).
+        - For logging, we hash it via `safe_log_id(...)` and store it in the
+          structured `correlation_id` field (never log the raw value).
+        - There is no separate `request_id` concept in the manager at this time.
         """
         msg_uuid = msg.get("uuid")
         msg_type = msg.get("type")
@@ -319,56 +401,146 @@ class JobThread(threading.Thread):
         job_type: str,
     ):
         # --- Executor Status ---
-        if executor.get_available_slots() == 0:
+        slots = int(executor.get_available_slots() or 0)
+        if slots <= 0:
             return
 
-        # --- Retrieve ---
+        # --- Snapshot queues ---
         with self.queue_lock:
             user_ids = list(queue_dict.keys())
 
-        for user_id in user_ids:
+        # Build tenant -> [user_id...] for users with non-empty queues
+        tenant_users: dict[str, list[str]] = {}
+        for uid in user_ids:
+            q = queue_dict.get(uid)
+            if q is None or q.empty():
+                continue
+            tid = self._peek_tenant_id(q)
+            tenant_users.setdefault(tid, []).append(uid)
+
+        if not tenant_users:
+            return
+
+        tenants = list(tenant_users.keys())
+        if job_type not in self._deficit_counters:
+            self._deficit_counters[job_type] = {}
+        deficit = self._deficit_counters[job_type]
+
+        # DRR: add quantum to each active tenant once per cycle (per call).
+        for tid in tenants:
+            deficit[tid] = int(deficit.get(tid, 0)) + int(self._quantum_for(tenant_id=tid, job_type=job_type))
+
+        cost = self._cost_for(job_type)
+        dispatched = 0
+
+        cursor = int(self._rr_cursor.get(job_type, 0))
+        scanned_without_progress = 0
+
+        while dispatched < slots and tenants:
+            if executor.get_available_slots() == 0:
+                break
+
+            tid = tenants[cursor % len(tenants)]
+            cursor += 1
+
+            # Not enough deficit → skip, but consider warning if queues are building.
+            if int(deficit.get(tid, 0)) < int(cost):
+                scanned_without_progress += 1
+                # If everyone is below cost, break to avoid busy spin.
+                if scanned_without_progress >= len(tenants):
+                    # Best-effort semantic backpressure warning (not a drop).
+                    self._maybe_warn_insufficient_budget(tenant_id=tid, job_type=job_type, tenant_users=tenant_users)
+                    break
+                continue
+
+            users = tenant_users.get(tid) or []
+            if not users:
+                continue
+
+            # Round-robin within tenant
+            uid = users.pop(0)
+            users.append(uid)
+            tenant_users[tid] = users
+
+            q = queue_dict.get(uid)
+            if q is None:
+                continue
+
             try:
-                # --- Executor Status ---
-                if executor.get_available_slots() == 0:
-                    continue
-
-                # --- Get ---
-                queue = queue_dict.get(user_id)
-                if queue is None:
-                    continue
-                msg = queue.get_nowait()
-
-                # --- Execute ---
-                def _wrapped(m: dict, _handler=handler, _job_type=job_type) -> None:
-                    start = time.time()
-                    try:
-                        _handler(m)
-                    except Exception:
-                        logger.exception(
-                            "Job handler error",
-                            extra={
-                                "job_id": "-",
-                                "job_type": _job_type,
-                                "correlation_id": m.get("_correlation_id", "-"),
-                            },
-                        )
-                    finally:
-                        duration = time.time() - start
-                        observe_job_processing(_job_type, duration)
-
-                executor.submit(_wrapped, msg)
-
+                msg = q.get_nowait()
             except Empty:
                 continue
-            except Exception as e:
-                logger.exception(
-                    "Error processing per-user queue",
-                    extra={
-                        "job_id": "-",
-                        "job_type": "queue_process",
-                        "queue_error": str(e),
+            except Exception:
+                continue
+
+            deficit[tid] = int(deficit.get(tid, 0)) - int(cost)
+            observe_qos_slot_consumed(tid, job_type)
+            observe_qos_deficit_spent(tid, job_type, cost)
+
+            def _wrapped(m: dict, _handler=handler, _job_type=job_type) -> None:
+                start = time.time()
+                try:
+                    _handler(m)
+                except Exception:
+                    logger.exception(
+                        "Job handler error",
+                        extra={
+                            "job_id": "-",
+                            "job_type": _job_type,
+                            "correlation_id": safe_log_id(m.get("_correlation_id")),
+                        },
+                    )
+                finally:
+                    duration = time.time() - start
+                    observe_job_processing(_job_type, duration)
+
+            executor.submit(_wrapped, msg)
+            dispatched += 1
+            scanned_without_progress = 0
+
+        self._rr_cursor[job_type] = cursor % max(1, len(tenants))
+
+    def _maybe_warn_insufficient_budget(
+        self,
+        *,
+        tenant_id: str,
+        job_type: str,
+        tenant_users: dict[str, list[str]],
+    ) -> None:
+        """
+        Semantic backpressure: warn that a tenant is being throttled by DRR budget.
+        This is a best-effort signal and rate-limited to avoid spamming clients.
+        """
+        now = time.time()
+        key = (tenant_id, job_type)
+        last = float(self._last_budget_warn.get(key, 0.0))
+        if now - last < 5.0:
+            return
+        self._last_budget_warn[key] = now
+
+        # Pick one user_id (uuid) from this tenant to notify.
+        users = tenant_users.get(tenant_id) or []
+        if not users:
+            return
+        msg_uuid = users[0]
+        if not self.websocket:
+            return
+        try:
+            self.websocket(
+                msg_uuid,
+                {
+                    "type": "error",
+                    "payload": {
+                        "code": "BACKPRESSURE_INSUFFICIENT_BUDGET",
+                        "message": "Request delayed due to tenant budget (DRR cost-aware fairness).",
+                        "job_type": job_type,
+                        "tenant_id": tenant_id,
                     },
-                )
+                },
+            )
+        except Exception:
+            # Best-effort only.
+            return
 
     def cleanup_empty_queues(self):
         """

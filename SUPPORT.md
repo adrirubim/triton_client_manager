@@ -28,7 +28,7 @@ Open an issue using the **Feature request** template. Include:
 
 ## Questions
 
-For general questions, see the repository `README.md` and documentation under `docs/`.
+For general questions, see the repository `README.md` and the consolidated technical guide in `TECHNICAL_GUIDE.md`.
 
 If you still need help, contact the maintainer (see `SECURITY.md` for the email address).
 

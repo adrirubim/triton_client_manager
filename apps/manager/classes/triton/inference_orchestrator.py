@@ -38,8 +38,17 @@ class TritonInference:
       - basic error normalization via TritonInferenceFailed.
     """
 
-    def __init__(self, runner: Optional[TritonInfer] = None) -> None:
+    def __init__(
+        self,
+        runner: Optional[TritonInfer] = None,
+        *,
+        cb_failure_threshold: int = 3,
+        cb_open_seconds: int = 30,
+    ) -> None:
         self._runner = runner or TritonInfer()
+        # Circuit breaker settings (governed by triton.yaml via TritonThread).
+        self._cb_failure_threshold = int(cb_failure_threshold)
+        self._cb_open_seconds = int(cb_open_seconds)
 
     @property
     def runner(self) -> TritonInfer:
@@ -108,6 +117,16 @@ class TritonInference:
         last_error: Exception | None = None
         for _ in range(attempts):
             try:
+                # Circuit breaker: if open, fail fast with retry hint.
+                now = __import__("time").time()
+                open_until = float(getattr(server, "circuit_open_until_ts", 0.0) or 0.0)
+                if open_until and now < open_until:
+                    retry_after = int(max(1, open_until - now))
+                    raise TritonInferenceFailed(
+                        request.model_name or "unknown",
+                        f"CIRCUIT_OPEN: retry_after={retry_after}s",
+                    )
+
                 if protocol == "http":
                     result = self.runner.infer(
                         server.client,
@@ -115,6 +134,9 @@ class TritonInference:
                         request.inputs or [],
                         timeout=request.timeout,
                     )
+                    # Success closes breaker.
+                    server.consecutive_inference_failures = 0
+                    server.circuit_open_until_ts = 0.0
                     return TritonInfer.decode_response(result)
 
                 # gRPC streaming
@@ -126,6 +148,8 @@ class TritonInference:
                         on_chunk=on_chunk,
                         output_name=request.output_name,
                     )
+                    server.consecutive_inference_failures = 0
+                    server.circuit_open_until_ts = 0.0
                     return None
 
                 # Convenience path: accumulate chunks when no callback is provided.
@@ -141,9 +165,17 @@ class TritonInference:
                     on_chunk=_collect,
                     output_name=request.output_name,
                 )
+                server.consecutive_inference_failures = 0
+                server.circuit_open_until_ts = 0.0
                 return "".join(chunks)
             except TritonInferenceFailed as e:
                 last_error = e
+                # Record failure; open circuit if threshold reached.
+                fails = int(getattr(server, "consecutive_inference_failures", 0) or 0) + 1
+                server.consecutive_inference_failures = fails
+                if fails >= self._cb_failure_threshold:
+                    now = __import__("time").time()
+                    server.circuit_open_until_ts = now + float(self._cb_open_seconds)
                 continue
 
         # If we exit the loop without returning, re-raise last TritonInferenceFailed

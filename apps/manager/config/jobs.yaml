@@ -19,3 +19,22 @@ queue_idle_threshold: 900
 
 info_actions_available: [queue, queue_stats]
 management_actions_available: [creation, deletion, create_vm, create_container, create_server, delete_server, delete_container, delete_vm]
+
+# Multi-tenant QoS (weighted scheduling)
+qos:
+  # Deficit Round Robin (DRR): cost-aware scheduling
+  base_quantum: 10
+  job_type_costs:
+    inference: 10
+    management: 5
+    info: 1
+  # Optional tenant overrides (tenant_id -> quantum multiplier)
+  tenant_quantum_multipliers: {}
+
+  # Legacy/compat weights (still supported; used as an extra multiplier for quantum)
+  job_type_weights:
+    inference: 5
+    management: 2
+    info: 1
+  # Optional tenant overrides (tenant_id -> weight multiplier)
+  tenant_weights: {}

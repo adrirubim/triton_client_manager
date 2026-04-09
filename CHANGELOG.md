@@ -15,9 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **JWT Security**
   - Auth model documented and enforced via structured payloads (`token` + `client.*` claims) with validation paths ready for corporate IdPs.
-  - Security runbook and metrics for authentication failures and rate limiting (`tcm_auth_failures_total`, `tcm_rate_limit_violations_total`) captured in `SECURITY.md` and `docs/RUNBOOK.md`.
+  - Security and auth hardening (trust-no-payload, fail-fast) documented in `SECURITY.md` and `TECHNICAL_GUIDE.md`.
 
--- **Prometheus / Grafana stack**
+- **Prometheus / Grafana stack**
   - `/metrics` endpoint exposes queue, executor and WebSocket metrics suitable for SRE teams.
   - Local monitoring stack under `infra/monitoring/` (`docker-compose.yml`, `prometheus.yml`) plus a reference Grafana dashboard at `infra/grafana/tcm_dashboard.json`.
 
@@ -34,7 +34,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Upgrade notes
 
 - Existing deployments should review:
-  - `docs/RUNBOOK.md` for updated operational guidance (monitoring, scaling, Kubernetes).
+  - `TECHNICAL_GUIDE.md` for operational guidance (monitoring, scaling, Kubernetes, API contracts).
   - `SECURITY.md` for auth and rate-limit recommendations.
-  - `docs/WEBSOCKET_API.md` and `apps/manager/legacy_ws_examples/README.md` for the SDK quickstart and message contracts.
 

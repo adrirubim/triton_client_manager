@@ -1,7 +1,5 @@
 import logging
 
-import docker
-
 logger = logging.getLogger(__name__)
 
 
@@ -14,6 +12,8 @@ class DockerCreation:
         self.registry_address = config.get("registry_address", "localhost:5000")
 
     def handle(self, worker_ip: str, image: str, **kwargs) -> str:
+        import docker  # heavy import (lazy)
+
         client = None
         try:
             full_image = f"{self.registry_address}/{image}"

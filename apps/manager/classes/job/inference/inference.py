@@ -58,8 +58,14 @@ class JobInference:
         if not hasattr(self.triton, "triton_infer") or not isinstance(self.triton.triton_infer, TritonInfer):
             raise RuntimeError("TritonThread.triton_infer is not initialized")
 
-        # Build orchestration layer and handlers
-        self._triton_inference = TritonInference(self.triton.triton_infer)
+        # Build orchestration layer and handlers (include circuit breaker governance if available)
+        cb_fail = getattr(self.triton, "circuit_breaker_failure_threshold", 3)
+        cb_open = getattr(self.triton, "circuit_breaker_open_seconds", 30)
+        self._triton_inference = TritonInference(
+            self.triton.triton_infer,
+            cb_failure_threshold=cb_fail,
+            cb_open_seconds=cb_open,
+        )
         self._http = JobInferenceHttp(self.docker, self._triton_inference, self.triton)
         self._grpc = JobInferenceGrpc(self.docker, self._triton_inference, self.triton)
 
@@ -125,13 +131,26 @@ class JobInference:
             )
         except TritonInferenceFailed as e:
             logger.warning("Triton inference failed: %s", e)
+            # Graceful degradation: provide retry hint when circuit breaker is open.
+            msg = str(e)
+            data: object = msg
+            if "CIRCUIT_OPEN: retry_after=" in msg:
+                try:
+                    retry_after_s = int(msg.split("retry_after=")[1].split("s")[0])
+                except Exception:
+                    retry_after_s = 5
+                data = {
+                    "code": "DEGRADED_CIRCUIT_OPEN",
+                    "message": msg,
+                    "retry_after_seconds": retry_after_s,
+                }
             self.websocket(
                 msg_uuid,
                 self._make_payload(
                     msg_uuid,
                     "FAILED",
                     e.model_name if hasattr(e, "model_name") else None,
-                    str(e),
+                    data,
                 ),
             )
         except Exception as e:  # noqa: BLE001

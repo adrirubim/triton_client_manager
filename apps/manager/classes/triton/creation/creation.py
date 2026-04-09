@@ -1,11 +1,6 @@
-import json
 import logging
 import time
 
-import boto3
-import tritonclient.grpc as grpcclient
-import tritonclient.http as httpclient
-from google.protobuf import json_format, text_format
 from pydantic import ValidationError
 from src.Domains.Config.Schemas.RuntimeMinioPayload import RuntimeMinioPayload
 
@@ -33,6 +28,41 @@ class TritonCreation:
         self.server_ready_timeout = config.get("server_ready_timeout", 60)
         self.model_ready_timeout = config.get("model_ready_timeout", 120)
 
+    @staticmethod
+    def _json_dumps(obj) -> str:
+        import json
+
+        return json.dumps(obj, separators=(",", ":"))
+
+    @staticmethod
+    def _boto3_client(minio_config: dict):
+        import boto3  # heavy import (lazy)
+
+        return boto3.client(
+            "s3",
+            endpoint_url=minio_config["endpoint"],
+            aws_access_key_id=minio_config["access_key"],
+            aws_secret_access_key=minio_config["secret_key"],
+        )
+
+    @staticmethod
+    def _grpcclient():
+        import tritonclient.grpc as grpcclient  # heavy import (lazy)
+
+        return grpcclient
+
+    @staticmethod
+    def _httpclient():
+        import tritonclient.http as httpclient  # heavy import (lazy)
+
+        return httpclient
+
+    @staticmethod
+    def _protobuf_tools():
+        from google.protobuf import json_format, text_format  # heavy import (lazy)
+
+        return json_format, text_format
+
     def handle(self, vm_id: str, vm_ip: str, minio: dict, triton: dict, container_id: str) -> TritonServer:
         # --- Extrapolate config.pbtxt ---
         config_json, inputs, outputs, model_name, port = self._process_config(minio_config=minio, triton_params=triton)
@@ -46,9 +76,13 @@ class TritonCreation:
 
         # --- Single client based on port ---
         if port == GRPC_PORT:
+            grpcclient = self._grpcclient()
             client = grpcclient.InferenceServerClient(url=f"{vm_ip}:{GRPC_PORT}")
+            protocol = "grpc"
         else:
+            httpclient = self._httpclient()
             client = httpclient.InferenceServerClient(url=f"{vm_ip}:{HTTP_PORT}")
+            protocol = "http"
 
         # --- Wait server ready ---
         start = time.time()
@@ -88,6 +122,7 @@ class TritonCreation:
             model_name=model_name,
             inputs=inputs,
             outputs=outputs,
+            protocol=protocol,
         )
 
         logger.info(f" Server ({vm_ip}, {container_id[:12]}) ready — model='{model_name}'")
@@ -100,12 +135,7 @@ class TritonCreation:
 
     def _download_pbtxt(self, key: str, minio_config: dict) -> str:
         try:
-            s3 = boto3.client(
-                "s3",
-                endpoint_url=minio_config["endpoint"],
-                aws_access_key_id=minio_config["access_key"],
-                aws_secret_access_key=minio_config["secret_key"],
-            )
+            s3 = self._boto3_client(minio_config)
             obj = s3.get_object(Bucket=minio_config["bucket"], Key=key)
             return obj["Body"].read().decode("utf-8")
         except Exception as e:
@@ -113,6 +143,9 @@ class TritonCreation:
 
     def _pbtxt_to_config(self, parameters: dict, pbtxt_content: str) -> tuple:
         """Parse pbtxt, apply parameters, return (compact JSON string, inputs, outputs, model_name, port)."""
+        grpcclient = self._grpcclient()
+        json_format, text_format = self._protobuf_tools()
+
         cfg = grpcclient.model_config_pb2.ModelConfig()
         text_format.Parse(pbtxt_content, cfg)
 
@@ -143,7 +176,7 @@ class TritonCreation:
         decoupled = cfg_dict.get("model_transaction_policy", {}).get("decoupled", False)
         port = GRPC_PORT if decoupled else HTTP_PORT
 
-        config_json = json.dumps(cfg_dict, separators=(",", ":"))
+        config_json = self._json_dumps(cfg_dict)
         return config_json, inputs, outputs, model_name, port
 
     def _process_config(self, minio_config: dict, triton_params: dict) -> tuple:

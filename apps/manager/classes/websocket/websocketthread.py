@@ -12,6 +12,7 @@ import uvicorn
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 
+from utils.log_safety import safe_log_id
 from utils.auth import SecurityError, validate_token_and_get_claims
 from utils.metrics import (
     AUTH_FAILURES_TOTAL,
@@ -25,8 +26,43 @@ from utils.metrics import (
 
 logger = logging.getLogger(__name__)
 
+try:
+    import orjson  # type: ignore
+except Exception:  # noqa: BLE001
+    orjson = None
+
+
+def _json_loads(s: str):
+    if orjson is not None:
+        return orjson.loads(s)
+    return json.loads(s)
+
+
+def _json_dumps(obj: object) -> str:
+    if orjson is not None:
+        return orjson.dumps(obj).decode("utf-8")
+    return json.dumps(obj)
+
 
 class WebSocketThread(threading.Thread):
+    """
+    WebSocket server thread (FastAPI + uvicorn).
+
+    Message envelope (client → server):
+    - `uuid`: client identifier (string). Must remain consistent for the life of the connection.
+    - `type`: one of `auth`, `info`, `management`, `inference`.
+    - `payload`: type-specific dict payload.
+
+    Internal fields (server-only, never required from clients):
+    - `_correlation_id`: injected UUID4 string for every inbound message (including `auth`).
+      This is used for tracing across threads/handlers; logs should use `safe_log_id(...)`
+      so the raw value never appears in output.
+    - `_auth`: dict of verified auth context (`sub`, `tenant_id`, `roles`) attached after auth.
+
+    Notes:
+    - Backpressure NACKs are emitted by `JobThread` when per-user queues are full; see `docs/RUNBOOK.md`.
+    """
+
     def __init__(
         self,
         host: str,
@@ -74,6 +110,9 @@ class WebSocketThread(threading.Thread):
         self._rate_lock = threading.Lock()
         self._msg_timestamps: Dict[str, List[float]] = {}
         self._auth_fail_timestamps: Dict[str, List[float]] = {}
+        # Tenant-level token bucket (sum across all connections).
+        # {tenant_id: {"tokens": float, "last": float}}
+        self._tenant_buckets: Dict[str, dict] = {}
 
         # FastAPI app
         self.app = FastAPI()
@@ -149,7 +188,11 @@ class WebSocketThread(threading.Thread):
     async def _send_error(self, websocket: WebSocket, error_message: str):
         """Send error message to client"""
         try:
-            await websocket.send_text(json.dumps({"type": "error", "payload": {"message": error_message}}))
+            await websocket.send_text(
+                _json_dumps(
+                    {"type": "error", "payload": {"message": error_message}}
+                )
+            )
         except Exception as e:
             logger.error("Failed to send error: %s", e)
 
@@ -205,6 +248,42 @@ class WebSocketThread(threading.Thread):
             self._msg_timestamps[client_id] = timestamps
         return True
 
+    def _check_tenant_rate(self, tenant_id: str) -> bool:
+        """
+        Apply a tenant-scoped token bucket if configured.
+
+        This is in-memory per replica (defence-in-depth). For true global quotas
+        across replicas, enforce limits at the gateway or via a shared store.
+        """
+        limit = int(self.rate_limit_config.get("messages_per_second_per_tenant") or 0)
+        if limit <= 0:
+            return True
+
+        tid = str(tenant_id or "unknown")
+        now = time.time()
+        with self._rate_lock:
+            b = self._tenant_buckets.get(tid)
+            if b is None:
+                b = {"tokens": float(limit), "last": now}
+                self._tenant_buckets[tid] = b
+
+            last = float(b.get("last", now))
+            tokens = float(b.get("tokens", float(limit)))
+
+            # Refill tokens (rate = limit tokens/sec), cap at limit.
+            elapsed = max(0.0, now - last)
+            tokens = min(float(limit), tokens + (elapsed * float(limit)))
+
+            if tokens < 1.0:
+                b["tokens"] = tokens
+                b["last"] = now
+                RATE_LIMIT_VIOLATIONS_TOTAL.labels(scope="tenant").inc()
+                return False
+
+            b["tokens"] = tokens - 1.0
+            b["last"] = now
+            return True
+
     def _record_auth_failure(self, client_id: str) -> bool:
         """Record an auth failure and enforce per-client limits if configured."""
         limit = (
@@ -255,7 +334,7 @@ class WebSocketThread(threading.Thread):
                 return
 
             try:
-                message = json.loads(raw_msg)
+                message = _json_loads(raw_msg)
             except json.JSONDecodeError:
                 await self._send_error(websocket, "Invalid JSON format")
                 await websocket.close(code=1008)
@@ -368,7 +447,7 @@ class WebSocketThread(threading.Thread):
                 }
 
             # Send auth confirmation
-            await websocket.send_text(json.dumps({"type": "auth.ok"}))
+            await websocket.send_text(_json_dumps({"type": "auth.ok"}))
             logger.info(
                 "Client '%s' authenticated",
                 client_id,
@@ -399,8 +478,8 @@ class WebSocketThread(threading.Thread):
                     break
 
                 try:
-                    message = json.loads(raw_msg)
-                except json.JSONDecodeError:
+                    message = _json_loads(raw_msg)
+                except Exception:
                     await self._send_error(websocket, "Invalid JSON format")
                     continue  # Don't close connection, just skip this message
 
@@ -436,11 +515,28 @@ class WebSocketThread(threading.Thread):
                     auth_ctx = self.client_auth.get(client_id, {})
                     message["_auth"] = auth_ctx
 
+                # Tenant-level quota (sum of all connections).
+                tenant_id = (message.get("_auth") or {}).get("tenant_id")
+                if not self._check_tenant_rate(str(tenant_id or "unknown")):
+                    await websocket.send_text(
+                        _json_dumps(
+                            {
+                                "type": "error",
+                                "payload": {
+                                    "code": "BACKPRESSURE_TENANT_LIMIT_REACHED",
+                                    "message": "Tenant quota exceeded (messages per second).",
+                                },
+                            }
+                        )
+                    )
+                    await websocket.close(code=1008)
+                    break
+
                 # Call message handler in executor to avoid blocking async loop
                 if self.on_message:
                     try:
                         observe_ws_message(message.get("type", "unknown"))
-                        corr = message.get("_correlation_id", "-")
+                        corr = safe_log_id(message.get("_correlation_id"))
                         await asyncio.get_event_loop().run_in_executor(None, self.on_message, client_id, message)
                     except Exception as e:
                         logger.exception(
@@ -539,7 +635,10 @@ class WebSocketThread(threading.Thread):
 
         try:
             # Schedule send in the event loop
-            future = asyncio.run_coroutine_threadsafe(websocket.send_text(json.dumps(message)), self.loop)
+            future = asyncio.run_coroutine_threadsafe(
+                websocket.send_text(_json_dumps(message)),
+                self.loop,
+            )
 
             # Fire-and-forget: never block worker threads on the async loop.
             def _done(f):

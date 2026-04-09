@@ -16,7 +16,6 @@ docker==7.0.0
 tritonclient[grpc,http]==2.67.0
 numpy==1.26.0
 protobuf==6.33.5
-onnx==1.21.0
 
 # MinIO / S3 / model tooling
 boto3==1.35.0

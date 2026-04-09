@@ -1,15 +1,22 @@
 """Authentication helpers for WebSocket auth hardening.
 
-This module focuses on token structure and claims validation and can
-optionally perform cryptographic verification when JWKS/PEM configuration
-is provided. It is designed to be extended or swapped for project‑specific
-IdP integrations.
+Trust model (source of truth):
 
-Main goals:
+- **Never trust client-provided identity/roles for authorization in secure environments.**
+- In `auth.mode: "strict"`, identity and authorization context must be derived
+  **exclusively** from the validated token's JWT claims.
+- The WebSocket layer may accept a `payload.client` block for backwards
+  compatibility, but it must not grant privileges outside development.
 
-- Provide a clear extension point for token validation before accepting `auth`.
-- Enforce basic claims such as `exp`, `aud`, `iss` when configured.
-- Avoid logging or exposing raw tokens.
+What this module does:
+
+- Validates token presence and claim semantics (`exp`, `aud`, `iss`, required claims).
+- When `jwks_url` or `public_key_pem` is configured, performs cryptographic signature verification via PyJWT.
+- Enforces safety guardrails:
+  - HS* algorithms are allowed only in `TCM_ENV=development`.
+  - In non-development environments, `auth.mode: "strict"` requires JWKS/PEM (fail-fast via `SecurityError`).
+
+This module intentionally avoids logging or exposing raw tokens.
 """
 
 import base64
@@ -87,11 +94,31 @@ def validate_token_and_get_claims(
     token: Optional[str],
     config: Optional[Dict[str, Any]] = None,
 ) -> Tuple[bool, str, Dict[str, Any]]:
-    """
-    Validate an auth token and (when available) return verified JWT claims.
+    """Validate an auth token and (when available) return verified JWT claims.
+
+    This function is the **only** supported way to obtain JWT claims used for
+    authorization decisions in the manager.
+
+    Modes (from `websocket.yaml` → `auth`):
+
+    - `mode != "strict"` (simple/legacy):
+      - Returns `(True, "", {})` when allowed by `require_token`.
+      - No claims are returned and callers must treat the client as having
+        **no implicit privileges** in non-development environments.
+
+    - `mode == "strict"`:
+      - Requires a token and returns claims suitable for deriving:
+        `sub`, `tenant_id` and `roles`.
+      - If `jwks_url` or `public_key_pem` is configured, the claims are
+        cryptographically verified.
+      - If no key material is configured:
+        - In `TCM_ENV != "development"`: raises `SecurityError` (fail-fast).
+        - In `TCM_ENV == "development"`: allows "claims-only" validation by
+          decoding the JWT payload without verifying the signature.
 
     Returns:
-        (is_valid, error_message, claims)
+        `(is_valid, error_message, claims)` where `claims` is a dict of JWT
+        claims (empty when not available).
     """
     cfg = config or {}
     mode = cfg.get("mode", "simple")

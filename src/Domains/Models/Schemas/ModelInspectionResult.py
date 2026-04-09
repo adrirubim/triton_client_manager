@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -38,6 +38,7 @@ class ModelInspectionResult(BaseModel):
     io_info: ModelIOInfo = Field(default_factory=ModelIOInfo)
     supported_modalities: List[SupportedModality] = Field(default_factory=list)
     issues: List[InspectionIssue] = Field(default_factory=list)
+    metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
 class AnalyzeModelV2Payload(BaseModel):

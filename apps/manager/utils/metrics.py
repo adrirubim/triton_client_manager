@@ -60,6 +60,20 @@ RATE_LIMIT_VIOLATIONS_TOTAL = Counter(
     registry=registry,
 )
 
+QOS_SLOTS_CONSUMED_TOTAL = Counter(
+    "tcm_qos_slots_consumed_total",
+    "Total scheduler slots consumed, labeled by tenant and job type",
+    ["tenant_id", "job_type"],
+    registry=registry,
+)
+
+QOS_DEFICIT_SPENT_TOTAL = Counter(
+    "tcm_qos_deficit_spent_total",
+    "Total DRR deficit cost units spent, labeled by tenant and job type",
+    ["tenant_id", "job_type"],
+    registry=registry,
+)
+
 UNSAFE_CONFIG_STARTUPS_TOTAL = Counter(
     "tcm_unsafe_config_startups_total",
     "Total unsafe configuration patterns detected at startup",
@@ -225,6 +239,20 @@ def observe_model_analysis_issue(code: str) -> None:
 
 def observe_grpc_stream_failure(reason: str) -> None:
     GRPC_STREAM_FAILURES_TOTAL.labels(reason=reason).inc()
+
+
+def observe_qos_slot_consumed(tenant_id: str, job_type: str) -> None:
+    QOS_SLOTS_CONSUMED_TOTAL.labels(
+        tenant_id=str(tenant_id or "unknown"),
+        job_type=str(job_type or "unknown"),
+    ).inc()
+
+
+def observe_qos_deficit_spent(tenant_id: str, job_type: str, cost_units: int) -> None:
+    QOS_DEFICIT_SPENT_TOTAL.labels(
+        tenant_id=str(tenant_id or "unknown"),
+        job_type=str(job_type or "unknown"),
+    ).inc(max(0, int(cost_units)))
 
 
 # Register domain-side emitter callback (keeps domain layer decoupled from Prometheus).

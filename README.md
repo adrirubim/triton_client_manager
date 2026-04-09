@@ -4,16 +4,16 @@
 
 # Triton Client Manager
 
-Python-based orchestration service for AI inference that coordinates OpenStack VMs, Docker containers, and NVIDIA Triton Inference Server via WebSockets. It provides per-user job queues, management pipelines (VM/container/server creation & deletion), and HTTP/gRPC inference endpoints.
+> A modern, enterprise-grade orchestration service for AI inference that coordinates OpenStack VMs, Docker containers, and NVIDIA Triton Inference Server via WebSockets. It provides multi-tenant scheduling (DRR), operational guardrails, and production-grade observability.
 
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![Uvicorn](https://img.shields.io/badge/Uvicorn-0.30+-499848)](https://www.uvicorn.org/)
-[![Docker](https://img.shields.io/badge/Docker-24+-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
-[![Triton Client](https://img.shields.io/badge/Triton_Client-2.48+-76B900)](https://github.com/triton-inference-server/client)
+[![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=flat&logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.135.3-009688?style=flat&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Uvicorn](https://img.shields.io/badge/Uvicorn-0.30.0-499848?style=flat)](https://www.uvicorn.org/)
+[![Docker](https://img.shields.io/badge/Docker-24+-2496ED?style=flat&logo=docker&logoColor=white)](https://www.docker.com/)
+[![Triton Client](https://img.shields.io/badge/Triton_Client-2.67.0-76B900?style=flat)](https://github.com/triton-inference-server/client)
 [![Tests](https://img.shields.io/github/actions/workflow/status/adrirubim/triton_client_manager/tests.yml?branch=main&label=Tests&style=flat&color=brightgreen)](https://github.com/adrirubim/triton_client_manager/actions/workflows/tests.yml)
 [![Lint](https://img.shields.io/github/actions/workflow/status/adrirubim/triton_client_manager/lint.yml?branch=main&label=Lint&style=flat&color=blue)](https://github.com/adrirubim/triton_client_manager/actions/workflows/lint.yml)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-MIT-blue?style=flat)](LICENSE)
 
 ## 📋 Table of Contents
 
@@ -62,8 +62,8 @@ with **one command per scenario**.
 
 For deeper operational details and configuration options, see:
 
-- **Runbook:** [docs/RUNBOOK.md](docs/RUNBOOK.md)
-- **Configuration reference:** [docs/CONFIGURATION.md](docs/CONFIGURATION.md)
+- **Technical guide:** [TECHNICAL_GUIDE.md](TECHNICAL_GUIDE.md)
+- **Version stack:** [VERSION_STACK.md](VERSION_STACK.md)
 
 ### Operational entrypoints diagram
 
@@ -106,7 +106,7 @@ The system exposes inference endpoints (HTTP and gRPC) and manages per-user job 
 - **WebSockets:** Authenticated clients, per-user queues, typed job routing
 - **Configuration-first:** YAML-driven configuration for jobs, OpenStack, Docker, Triton, and MinIO
 - **Testing:** Smoke runtime test, regression suite, and integration tests for WebSockets
-- **Documentation:** Full docs in [docs/](docs/), including architecture, configuration, and version stack
+- **Documentation:** Master technical documentation lives in [TECHNICAL_GUIDE.md](TECHNICAL_GUIDE.md)
 
 > **Virtual environment:** this monorepo is validated with a repo-root venv (`.venv/`). Some older references mention `apps/manager/.venv`; prefer the repo-root venv to avoid dependency drift.
 
@@ -136,7 +136,7 @@ The system exposes inference endpoints (HTTP and gRPC) and manages per-user job 
 ### 🧠 Inference Workflows
 
 - ✅ **HTTP inference** — Single request/response via Triton HTTP client
-- ✅ **gRPC inference** — Streaming support via Triton gRPC client (planned/experimental; see [ARCHITECTURE](docs/ARCHITECTURE.md))
+- ✅ **gRPC inference** — Streaming support via Triton gRPC client (planned/experimental; see [TECHNICAL_GUIDE](TECHNICAL_GUIDE.md))
 - ✅ **Routing by IDs** — Uses `vm_id` and `container_id` for routing (aligned with Triton server registration)
 - ✅ **Payload examples** — Sample management and inference payloads in [apps/manager/payload_examples/](apps/manager/payload_examples/)
 
@@ -145,7 +145,7 @@ The system exposes inference endpoints (HTTP and gRPC) and manages per-user job 
 - ✅ **Dependency Injection** — Job threads receive clear dependencies (Docker, OpenStack, Triton, WebSocket)
 - ✅ **Regression tests** — Contracts for DI, deletion normalization, auth, and inference examples
 - ✅ **Smoke test** — Validates startup, WebSocket auth, and `queue_stats` with mocks
-- ✅ **Engineering changelog** — [CHANGELOG_INTERNAL](docs/CHANGELOG_INTERNAL.md) tracks notable engineering changes
+- ✅ **Engineering changelog** — [CHANGELOG](CHANGELOG.md) tracks notable changes for the 1.0.0 line
 - ✅ **Observability stack** — Sample Prometheus + Grafana setup with a ready‑to‑use dashboard ([infra/monitoring/](infra/monitoring/), [infra/grafana/tcm_dashboard.json](infra/grafana/tcm_dashboard.json))
 
 ### 👥 Target users & use cases
@@ -188,7 +188,7 @@ The system exposes inference endpoints (HTTP and gRPC) and manages per-user job 
 - **Python** ≥ 3.10 (CI validates on 3.12)  
   Check: `python3 --version`
 - **Virtual environment** (mandatory on Ubuntu/WSL due to PEP 668)  
-  Canonical setup: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) (venv lives in repo root: `.venv/`)
+  Canonical setup: [TECHNICAL_GUIDE.md](TECHNICAL_GUIDE.md) (venv lives in repo root: `.venv/`)
 - **OpenStack access** (for full pipeline)  
   - Keystone URL (`OPENSTACK_AUTH_URL`)
   - Application credential ID and secret
@@ -221,7 +221,7 @@ pip install -r apps/manager/requirements.txt
 pip install -e ./sdk
 ```
 
-Canonical setup and advanced options: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+Canonical setup and advanced options: [TECHNICAL_GUIDE.md](TECHNICAL_GUIDE.md).
 
 ### 4. Configure
 
@@ -238,7 +238,7 @@ Canonical setup and advanced options: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)
   credentials (`TCM_ENV`, `OPENSTACK_*`, `REGISTRY_TOKEN`, `REGISTRY_TOKEN_NAME`,
   `MINIO_*`, etc.).
 
-See [CONFIGURATION](docs/CONFIGURATION.md) for full details.
+See [TECHNICAL_GUIDE.md](TECHNICAL_GUIDE.md) for full details.
 
 ### 6. Run the Application
 
@@ -288,16 +288,13 @@ For vulnerability reporting and security guidelines, see [SECURITY.md](SECURITY.
 <a id="documentation"></a>
 ## 📚 Documentation
 
-All documentation lives under [docs/](docs/). The main index is [docs/README.md](docs/README.md).
+Master documentation files (root):
 
 | Section          | Links                                                                                                                                                    |
 | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Architecture** | [ARCHITECTURE](docs/ARCHITECTURE.md) · [API_CONTRACTS](docs/API_CONTRACTS.md) · [VERSION_STACK](docs/VERSION_STACK.md)                                  |
-| **Operations**   | **[RUNBOOK](docs/RUNBOOK.md)** · **[CONFIGURATION](docs/CONFIGURATION.md)**                                                                             |
-| **Development**  | [payload_examples/](apps/manager/payload_examples/) — JSON examples for management and inference payloads                                                    |
-| **Testing**      | [TESTING](docs/TESTING.md)                                                                                                                               |
-| **Support**      | [TROUBLESHOOTING](docs/TROUBLESHOOTING.md) · [CHANGELOG_INTERNAL](docs/CHANGELOG_INTERNAL.md)                                                           |
-| **Policy**       | [CONTRIBUTING](CONTRIBUTING.md) · [SECURITY](SECURITY.md)                                                                                               |
+| **Technical** | **[TECHNICAL_GUIDE](TECHNICAL_GUIDE.md)** · **[VERSION_STACK](VERSION_STACK.md)** |
+| **Policy** | [CONTRIBUTING](CONTRIBUTING.md) · [SECURITY](SECURITY.md) · [CHANGELOG](CHANGELOG.md) · [CODE_OF_CONDUCT](CODE_OF_CONDUCT.md) · [SUPPORT](SUPPORT.md) · [REPO_STANDARD](REPO_STANDARD.md) |
+| **Examples** | `apps/manager/payload_examples/` — JSON examples for management and inference payloads |
 
 For a navigable, high-level overview, you can also use the
 [GitHub Wiki](https://github.com/adrirubim/triton_client_manager/wiki).
@@ -375,7 +372,7 @@ source ../.venv/bin/activate
 python -m pytest tests/test_integration_ws.py -v
 ```
 
-Full details and known caveats are documented in [docs/TESTING.md](docs/TESTING.md).
+Full details and known caveats are documented in [TECHNICAL_GUIDE.md](TECHNICAL_GUIDE.md).
 
 ### Full Test Suite (pytest)
 
@@ -387,7 +384,7 @@ source ../.venv/bin/activate
 python -m pytest tests/ -v
 ```
 
-Prerequisite: complete the one-time setup in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+Prerequisite: complete the one-time setup in [TECHNICAL_GUIDE.md](TECHNICAL_GUIDE.md).
 
 ---
 
@@ -409,14 +406,14 @@ WebSocket → JobThread → JobInfo | JobManagement | JobInference
 | Module                | Responsibility                                                    |
 | --------------------- | ---------------------------------------------------------------- |
 | `client_manager.py`   | Entry point; loads config, wires dependencies, starts threads   |
-| `tcm/websocket/`      | WebSocket server (FastAPI/uvicorn), auth, type validation       |
-| `tcm/job/`            | Per-user queues, routing by type (info, management, inference) |
-| `tcm/openstack/`      | OpenStack auth and VM lifecycle                                 |
-| `tcm/docker/`         | Docker container lifecycle on worker VMs                        |
-| `tcm/triton/`         | Triton server lifecycle, health checks, inference               |
+| `apps/manager/classes/websocket/` | WebSocket server (FastAPI/uvicorn), auth, type validation |
+| `apps/manager/classes/job/` | Per-user queues, routing by type (info, management, inference) |
+| `apps/manager/classes/openstack/` | OpenStack auth and VM lifecycle |
+| `apps/manager/classes/docker/` | Docker container lifecycle on worker VMs |
+| `apps/manager/classes/triton/` | Triton server lifecycle, health checks, inference |
 | `tcm/minio/`          | (If present) MinIO / S3 integration for model storage           |
 
-For in-depth diagrams and contracts, see [ARCHITECTURE](docs/ARCHITECTURE.md) and [API_CONTRACTS](docs/API_CONTRACTS.md).
+For in-depth diagrams and contracts, see [TECHNICAL_GUIDE](TECHNICAL_GUIDE.md).
 
 ---
 
@@ -456,11 +453,11 @@ it exists purely as an optional helper for image lifecycle management.
 <a id="project-status"></a>
 ## 📊 Project Status
 
-- **Current release:** `v1.0.0` — **STABLE**
+- **Current release:** **Production Ready v1.0.0** — **STABLE**
 - **Changelog:** see [CHANGELOG.md](CHANGELOG.md) for highlights and upgrade notes.
 - **Roadmap completion:** the internal **13-stage project roadmap** has been fully completed and verified (CI, DX, observability, security, SDKs, horizontal scaling).
 
-This repository now represents the **1.0.0 product line** for Triton Client Manager; future changes will follow semantic versioning and be documented in the changelog.
+This repository now represents the **1.0.0 production line** for Triton Client Manager, with documentation **100% synced to the current implementation**. Future changes will follow semantic versioning and be documented in the changelog.
 
 ---
 
@@ -549,7 +546,7 @@ if __name__ == "__main__":
 
 The SDK is validated by contract tests ([apps/manager/tests/test_client_sdk_contract.py](apps/manager/tests/test_client_sdk_contract.py)) and mirrors the
 runtime behavior of the internal client in [apps/manager/ws_sdk/sdk.py](apps/manager/ws_sdk/sdk.py). For full API contract
-details, see [API_CONTRACTS](docs/API_CONTRACTS.md) / [WEBSOCKET_API](docs/WEBSOCKET_API.md).
+details, see [TECHNICAL_GUIDE](TECHNICAL_GUIDE.md).
 
 ### Compilation Check
 
@@ -640,5 +637,5 @@ MIT — See [LICENSE](LICENSE).
 
 ---
 
-**Last Updated:** March 2026 · **Status:** Stable (v1.0.0) ✅ · **Stack:** [docs/VERSION_STACK.md](docs/VERSION_STACK.md)
+**Last Updated:** April 2026 · **Status:** Stable ✅ · **Version:** v1.0.0 · **Stack:** [VERSION_STACK.md](VERSION_STACK.md)
 

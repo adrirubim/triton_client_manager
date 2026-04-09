@@ -214,6 +214,51 @@ def _pbtxt_dims_for_tensor(
 class TritonConfigBridge:
     model_name: str
 
+    def _instance_group_block(
+        self, inspection: ModelInspectionResult, *, issues: List[InspectionIssue]
+    ) -> List[str]:
+        """
+        Optional GPU-aware config:
+
+        If `inspection.metadata["gpu_id"]` is provided, emit an `instance_group`
+        stanza pinning the model to that GPU id.
+
+        This is best-effort and backwards compatible: when gpu_id is absent or
+        invalid, no instance_group is emitted.
+        """
+        meta = getattr(inspection, "metadata", {}) or {}
+        gpu_id = meta.get("gpu_id") if isinstance(meta, dict) else None
+        if gpu_id is None:
+            return []
+        try:
+            gid = int(gpu_id)
+        except Exception:
+            issues.append(
+                InspectionIssue(
+                    level=IssueLevel.warning,
+                    code="TRITON_GPU_ID_INVALID",
+                    source="TritonConfigBridge",
+                    message=f"metadata.gpu_id is not an integer ({gpu_id!r}); ignoring instance_group.",
+                )
+            )
+            return []
+        if gid < 0:
+            issues.append(
+                InspectionIssue(
+                    level=IssueLevel.warning,
+                    code="TRITON_GPU_ID_INVALID",
+                    source="TritonConfigBridge",
+                    message=f"metadata.gpu_id is negative ({gid}); ignoring instance_group.",
+                )
+            )
+            return []
+        return [
+            "instance_group {",
+            "  kind: KIND_GPU",
+            f"  gpus: {gid}",
+            "}",
+        ]
+
     def generate(
         self, inspection: ModelInspectionResult
     ) -> Tuple[str, List[InspectionIssue]]:
@@ -279,6 +324,7 @@ class TritonConfigBridge:
             'platform: "onnxruntime_onnx"',
             f"max_batch_size: {max_batch_size}",
         ]
+        lines.extend(self._instance_group_block(inspection, issues=issues))
         for inp in inputs:
             safe_in_name = _sanitize_pbtxt_string(
                 inp.name, issues=issues, field="input.name"
@@ -373,8 +419,13 @@ class TritonConfigBridge:
             f'name: "{self.model_name}"',
             'backend: "python"',
             f"max_batch_size: {max_batch_size}",
-            "input [",
         ]
+        lines.extend(self._instance_group_block(inspection, issues=issues))
+        lines.extend(
+            [
+            "input [",
+            ]
+        )
         for i, inp in enumerate(inputs):
             safe_in_name = _sanitize_pbtxt_string(
                 inp.name, issues=issues, field="input.name"

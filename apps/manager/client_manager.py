@@ -132,6 +132,8 @@ class ClientManager:
         self.job.openstack = self.openstack
         self.job.triton = self.triton
         self.docker.openstack = self.openstack
+        # Enable active healing actions (restart containers) from TritonThread.
+        self.triton.docker = self.docker
 
         # --- Send back response ---
         self.job.websocket = self.websocket.send_to_client

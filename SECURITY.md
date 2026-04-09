@@ -1,11 +1,3 @@
-#### Recommended auth modes per environment
-
-| Environment | Recommended `auth.mode` | JWT signature                    | HS* tokens                                |
-|------------:|-------------------------|----------------------------------|-------------------------------------------|
-| `dev`       | `simple` or `strict`    | Optional                         | Allowed for local testing only            |
-| `staging`   | `strict`                | Required (JWKS/PEM)              | **Not allowed** (startup will fail)       |
-| `prod`      | `strict`                | Required (JWKS/PEM)              | **Not allowed** (startup will fail)       |
-
 # Security Policy
 
 ## Supported Versions
@@ -28,170 +20,35 @@ If you discover a security vulnerability in this project, please report it **res
 
 1. **Email:** [adrianmorillasperez@gmail.com](mailto:adrianmorillasperez@gmail.com)  
    Use a descriptive subject, for example: `[Security] triton_client_manager – short description`.
-2. **Include (if possible):**
+2. **Include:**
    - Description of the vulnerability
-   - Steps to reproduce
-   - Impact and affected components
-   - Suggested fix or workaround (optional)
+   - Steps to reproduce (if possible)
+   - Impact and suggested fix (optional)
 
 ### What to expect
 
-- You will receive an acknowledgement as soon as possible.
-- A fix will be investigated and you will be kept informed of progress.
-- Once fixed, a security advisory may be published (crediting you if you wish).
+- We will acknowledge receipt as soon as possible.
+- We will work on a fix and keep you updated.
+- Once fixed, we may publish a security advisory (crediting you if you wish).
 
 ---
 
 ## Do Not Commit Secrets
 
-- Never commit API keys, passwords, tokens, or credentials.
-- Use environment variables or secure secret stores for runtime secrets.
-- Config files in [`apps/manager/config/`](apps/manager/config/) may contain placeholders; replace with real values only in deployment environments.
-- **SSH keys (`.pem`)**: Never commit private keys. `*.pem` files are in [`.gitignore`](.gitignore). Use environment variables or a secret manager (for example `SSH_KEY_PATH`) to supply key paths at runtime.
+- Never commit `.env` files or any file containing real secrets.
+- Use `.env.example` as a template for local setup; each environment must provide its own real secrets.
+- Do not commit API keys, passwords, access tokens, or private keys.
 
 ---
 
 ## Safe Handling of Credentials
 
-- Credentials for OpenStack, Docker registry, MinIO / S3, Triton, and similar services must be supplied at runtime (env vars, secret manager, CI secrets).
-- Avoid logging credentials, tokens, or full request/response payloads that may contain sensitive data.
-- Review [`apps/manager/config/`](apps/manager/config/) before committing to ensure no accidental credential inclusion.
-
-### Registry access tokens (`apps/docker_controller`)
-
-- The helper under `apps/docker_controller/` uses `REGISTRY_TOKEN` / `REGISTRY_TOKEN_NAME` to pull images from a remote container registry and push them into a local registry. The same pattern applies to GitLab, GHCR, Docker Hub, or any other provider, as long as the token has equivalent pull scopes.
-- The local registry used by this helper is intended to be **local-only** by default:
-  - `apps/docker_controller/start_container.sh` binds to `127.0.0.1` unless overridden.
-  - The Docker controller queries the registry over HTTP by default (`LOCAL_REGISTRY_SCHEME=http`).
-  - If you bind the registry to non-local interfaces, you must apply network restrictions and (preferably) TLS in front of it.
-- In non-local environments:
-  - restrict the registry token to the minimal scope required to **read** container images (for example, `read_registry` in GitLab or the equivalent in your provider);
-  - avoid using tokens with admin or write scopes unrelated to image pulls;
-  - treat the token as sensitive even when only partially printed in local test scripts.
-- Rotate the registry token periodically and on any suspicion of compromise, and update the environment / secrets manager where it is configured.
-
-### Example vs production stacks
-
-- The monitoring stack under `infra/monitoring/` (Prometheus + Grafana) is intended **only for local development**.
-- Default credentials such as `GF_SECURITY_ADMIN_USER=admin` / `GF_SECURITY_ADMIN_PASSWORD=admin` must **never** be reused in shared, staging or production environments.
-- For any non-local deployment, always override example credentials via secrets or environment-specific configuration and treat monitoring access as sensitive (VPN, restricted ingress, strong auth).
-
-### WebSocket auth tokens
-
-- The WebSocket entrypoint (`/ws`) accepts an `auth` message whose
-  `payload.token` is a JWT-like token issued by your IdP.
-- The runtime exposes two high‑level modes, configured via
-  [`apps/manager/config/websocket.yaml`](apps/manager/config/websocket.yaml):
-  - `auth.mode: "simple"` (default): the server treats the token as opaque and
-    can only require its presence (`require_token`). Use this in development
-    or when cryptographic validation happens upstream (API gateway, IdP,
-    backend).
-  - `auth.mode: "strict"`: the server requires a token and validates its
-    structure, basic claims (`exp`, `aud`, `iss` if configured) and,
-    optionally, its signature when key material is provided.
-- In strict mode:
-  - If **neither** `jwks_url` nor `public_key_pem` is configured,
-    `utils.auth.validate_token` validates only claim semantics (shape, `exp`,
-    `iss`, `aud`).
-  - If `jwks_url` (JWKS) or `public_key_pem` (RSA/ECDSA public key or HS*
-    secret for dev) is configured, `validate_token` uses PyJWT to:
-    - Verify the token signature cryptographically.
-    - Restrict algorithms to `auth.algorithms` (for example `["RS256","ES256"]`).
-      If `auth.algorithms` is omitted/empty, the server defaults to `["RS256","ES256"]`.
-      HS* algorithms are allowed only in development and must be explicitly configured.
-    - Enforce `exp`, `aud`, `iss` and `required_claims`.
-  - Invalid, expired, or incorrectly signed tokens produce an `error` message
-    and close the WebSocket with code `1008`.
-- For regulated environments:
-  - Keep a **central IdP or API gateway** as the primary source of
-    authentication truth and run Triton Client Manager behind that layer.
-  - `auth.mode: "strict"` + `jwks_url` / `public_key_pem` should be treated as
-    an additional defence‑in‑depth layer, not the only line of defence.
-
-### Rate limiting: gateway vs manager
-
-- The manager implements **per‑replica, in‑memory rate limiting** for WebSocket traffic,
-  configured via [`apps/manager/config/websocket.yaml`](apps/manager/config/websocket.yaml)
-  under the `rate_limits` section and surfaced as Prometheus metrics:
-  - `tcm_rate_limit_violations_total{scope="messages"|"auth"}`
-  - `tcm_unsafe_config_startups_total`
-- In production, global rate limiting (per IP / tenant / route) should be enforced
-  primarily at the **API gateway / ingress** layer (for example, NGINX, Envoy, Kong),
-  using a shared backend (such as Redis) when strict global quotas are required.
-- Recommended pattern:
-  - Use the gateway as the **source of truth** for global limits and abuse protection.
-  - Use Triton Client Manager’s in‑memory limits as a **defence‑in‑depth** mechanism
-    to protect individual replicas and to expose detailed metrics for SRE teams.
-  - Document which limits live in the gateway and which live in the manager, and
-    keep `websocket.yaml`, this `SECURITY.md` and `docs/RUNBOOK.md` in sync when
-    policies change.
+- Configure credentials only through environment variables or secret managers.
+- Avoid logging credentials, tokens, or sensitive payloads.
 
 ---
 
 ## Dependency Hygiene
 
-- Keep dependencies in [`apps/manager/requirements.txt`](apps/manager/requirements.txt) up to date.
-- Run `pip list --outdated` periodically and review upgrade notes before bumping versions.
-- Pin or range-lock versions where stability matters (for example `uvicorn` and other infra components, see
-  [`docs/CONFIGURATION.md`](docs/CONFIGURATION.md)).
-
-### Automated security checks (CI)
-
-- A dedicated **Security** GitHub Actions workflow runs on every push and pull request:
-  - **`pip-audit`** against:
-    - [`apps/manager/requirements.txt`](apps/manager/requirements.txt)
-    - `apps/docker_controller/requirements.txt`
-    - The build currently **fails if any vulnerability is detected**.
-    - **Active exception (tracked):**
-      - `CVE-2026-28500` is currently ignored in CI (`.github/workflows/security.yml`) because ONNX is used only for offline inspection.
-      - This exception must remain time-bounded and be re-evaluated regularly.
-      - Tracking: `docs/CHANGELOG_INTERNAL.md` (search for the CVE id when adding/updating the exception).
-    - If any additional exception is needed, it must be:
-      - Documented in the commit / pull request that introduces it.
-      - Justified in this `SECURITY.md` file (reason, affected package/version, mitigation, and removal plan).
-  - **`bandit`** SAST scan over [`apps/manager/classes`](apps/manager/classes), [`apps/manager/utils`](apps/manager/utils), and
-    [`apps/manager/client_manager.py`](apps/manager/client_manager.py) (tests excluded to reduce noise).
-- This policy reflects the current stance: **no known vulnerabilities are accepted** in the main branch without an explicit, documented exception.
-
-### ONNX model loading policy (supply-chain safety)
-
-- `onnx` is used for **offline model analysis** and metadata inspection (see
-  `apps/manager/requirements-model-tools.txt`). It is **not** required for the
-  manager runtime dependencies.
-- This project must **not** use `onnx.hub` / `onnx.hub.load()` to fetch models from remote Git repositories (GitHub/GitLab) at runtime.
-  - Treat models as **controlled artifacts** (filesystem, MinIO/S3, registry) with environment-specific governance.
-  - This mitigates hub-related supply-chain risks (including cases where security prompts/warnings can be suppressed).
-- A security guardrail test (`apps/manager/tests/test_security_no_onnx_hub.py`) enforces this policy.
-
----
-
-## Logging and Debugging Caution
-
-- Do not log full request/response bodies that may include user data or credentials.
-- Prefer structured logs with minimal necessary context.
-- In production, avoid verbose stack traces that could expose internal paths, configuration, or infrastructure details.
-
-### Auditability and incident response
-
-- Logs are generated in a structured format (`uuid`, `job`, `type`) and can be
-  enriched with identity (`sub`, `tenant_id`, `roles`) coming from the `auth`
-  payload.
-- Good practices for auditability:
-  - Correlate activity using the WebSocket `uuid` (`client_uuid`), the
-    `job_id`, and, when applicable, any propagated identity fields.
-  - Use Prometheus metrics `tcm_auth_failures_total{reason=...}` and
-    `tcm_rate_limit_violations_total{scope=...}` to detect patterns of auth
-    abuse or message floods.
-- Recommended flow when investigating a security incident:
-  1. Identify the relevant `uuid`, `sub`, or `tenant_id` from upstream
-     systems.
-  2. Filter logs by `uuid=<client_uuid>` and, if present, by `tenant_id` /
-     `roles` in relevant messages.
-  3. Review historical metrics for:
-     - `tcm_auth_failures_total` (auth failure reasons).
-     - `tcm_rate_limit_violations_total` (possible floods).
-     - Queue and backpressure metrics (`tcm_queue_*`,
-       `tcm_jobs_rejected_total`).
-  4. Take corrective action (revoke credentials in the IdP, block IPs at the
-     network layer, adjust rate‑limit thresholds) and document the incident in
-     line with your organisation’s policies.
+- Keep Python dependencies up to date and review security advisories.
+- Run audits in CI and test changes in a non‑production environment before deploying major upgrades.

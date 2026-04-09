@@ -4,8 +4,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List
 
-import onnx
-from onnx import TensorProto
+try:
+    import onnx
+    from onnx import TensorProto
+except Exception:  # noqa: BLE001
+    onnx = None  # type: ignore[assignment]
+    TensorProto = None  # type: ignore[assignment]
 
 from src.Domains.Models.Schemas.ModelAnalysisReport import ModelIO
 
@@ -42,6 +46,12 @@ class OnnxInspector:
         return ModelIO(name=tensor.name, dtype=dtype, shape=dims)
 
     def run(self) -> OnnxInspection:
+        if onnx is None or TensorProto is None:
+            raise ImportError(
+                "ONNX inspection requires optional dependency 'onnx'. "
+                "Install it via: pip install -r apps/manager/requirements-model-tools.txt"
+            )
+
         path = Path(self.model_path)
         if not path.is_file():
             raise FileNotFoundError(f"ONNX model not found: {path}")

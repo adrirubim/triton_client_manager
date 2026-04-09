@@ -1,6 +1,35 @@
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field, PositiveInt
+
+
+class JobsQoSConfig(BaseModel):
+    """QoS governance for multi-tenant scheduling."""
+
+    # DRR governance
+    base_quantum: int = Field(
+        default=10,
+        description="Base quantum added to each tenant deficit per scheduler cycle (cost units)",
+    )
+    job_type_costs: Dict[str, int] = Field(
+        default_factory=lambda: {"inference": 10, "management": 5, "info": 1},
+        description="Cost per dispatched job by type (cost units)",
+    )
+    tenant_quantum_multipliers: Dict[str, int] = Field(
+        default_factory=dict,
+        description="Optional per-tenant quantum multipliers (tenant_id -> multiplier)",
+    )
+
+    job_type_weights: Dict[str, int] = Field(
+        default_factory=lambda: {"inference": 5, "management": 2, "info": 1},
+        description="Relative weights per job_type for scheduler slot allocation",
+    )
+    tenant_weights: Dict[str, int] = Field(
+        default_factory=dict,
+        description="Optional per-tenant weight overrides (tenant_id -> weight)",
+    )
+
+    model_config = ConfigDict(extra="forbid")
 
 
 class JobsConfig(BaseModel):
@@ -23,6 +52,8 @@ class JobsConfig(BaseModel):
 
     info_actions_available: List[str]
     management_actions_available: List[str]
+
+    qos: JobsQoSConfig = Field(default_factory=JobsQoSConfig)
 
     model_config = ConfigDict(extra="forbid")
 
@@ -48,6 +79,7 @@ class WebsocketRateLimitsConfig(BaseModel):
 
     messages_per_second_per_client: int = 0
     auth_failures_per_minute_per_client: int = 0
+    messages_per_second_per_tenant: int = 0
 
     model_config = ConfigDict(extra="forbid")
 
@@ -86,6 +118,34 @@ class TritonConfig(BaseModel):
     health_check_timeout: PositiveInt
     stream_timeout: PositiveInt
     http_infer_timeout: PositiveInt
+
+    # Auto-healing / stale eviction governance (Phase 8.5+)
+    health_failure_evict_threshold: PositiveInt = Field(
+        default=3,
+        description="Evict a TritonServer after N consecutive failed health checks",
+    )
+    stale_evict_seconds: PositiveInt = Field(
+        default=300,
+        description="Evict a TritonServer if it has not been healthy for this many seconds",
+    )
+    active_heal_restart_threshold: PositiveInt = Field(
+        default=2,
+        description="Attempt container restart after N consecutive failed health checks",
+    )
+    active_heal_restart_cooldown_seconds: PositiveInt = Field(
+        default=300,
+        description="Cooldown between restart attempts for the same container_id",
+    )
+
+    # Circuit breaker governance (inference)
+    circuit_breaker_failure_threshold: PositiveInt = Field(
+        default=3,
+        description="Open circuit after N consecutive inference failures per server",
+    )
+    circuit_breaker_open_seconds: PositiveInt = Field(
+        default=30,
+        description="How long the circuit remains open (fail-fast) before retrying",
+    )
 
     model_config = ConfigDict(extra="forbid")
 

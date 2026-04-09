@@ -3,7 +3,6 @@ import threading
 import time
 from typing import TYPE_CHECKING, Callable, Optional
 
-import docker
 from utils.metrics import observe_backend_error
 
 from .creation import DockerCreation
@@ -120,6 +119,8 @@ class DockerThread(threading.Thread):
                 self.dict_containers = new_containers
 
     def create_container(self, data: dict) -> str:
+        import docker  # heavy import (lazy)
+
         # --- Validation ---
         if "image" not in data:
             raise DockerCreationMissingField("image")
@@ -177,3 +178,30 @@ class DockerThread(threading.Thread):
 
         # --- Return payload ---
         return data
+
+    def restart_container(self, container_id: str, *, timeout: int = 10) -> bool:
+        """
+        Best-effort restart for active healing.
+
+        This uses the Docker Remote API on the worker where the container runs.
+        Requires that `dict_containers` contains the container_id so we can resolve
+        the worker IP.
+        """
+        import docker  # heavy import (lazy)
+
+        with self._data_lock:
+            container = self.dict_containers.get(container_id)
+            if not container:
+                raise DockerMissingContainer(container_id)
+            worker_ip = container.worker_ip
+
+        client = None
+        try:
+            base_url = f"tcp://{worker_ip}:{self.docker_creation.remote_api_port}"
+            client = docker.DockerClient(base_url=base_url, timeout=self.docker_creation.remote_api_timeout)
+            c = client.containers.get(container_id)
+            c.restart(timeout=timeout)
+            return True
+        finally:
+            if client:
+                client.close()
