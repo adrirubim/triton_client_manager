@@ -38,8 +38,6 @@ class TritonCreation:
 
     @staticmethod
     def _boto3_client(minio_config: dict):
-        import boto3  # heavy import (lazy)
-
         return boto3.client(
             "s3",
             endpoint_url=minio_config["endpoint"],
@@ -55,8 +53,6 @@ class TritonCreation:
 
     @staticmethod
     def _httpclient():
-        import tritonclient.http as httpclient  # heavy import (lazy)
-
         return httpclient
 
     @staticmethod

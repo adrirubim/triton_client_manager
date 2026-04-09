@@ -3,6 +3,7 @@ import threading
 
 import tritonclient.grpc as grpcclient
 import tritonclient.http as httpclient
+
 from utils.metrics import observe_grpc_stream_failure
 
 from .constants import TYPE_MAP

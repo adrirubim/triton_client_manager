@@ -23,6 +23,9 @@ exclude = [".venv", "__pycache__", "*.egg-info"]
 select = ["E", "F", "I", "N", "W"]
 ignore = ["E501", "N818"]
 
+[tool.ruff.lint.isort]
+known-first-party = ["classes", "utils"]
+
 [tool.ruff.format]
 quote-style = "double"
 

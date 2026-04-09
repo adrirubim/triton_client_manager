@@ -31,9 +31,7 @@ async def ws_endpoint(ws: WebSocket):
         try:
             msg = json.loads(raw)
         except json.JSONDecodeError:
-            await ws.send_text(
-                json.dumps({"type": "error", "payload": {"message": "Invalid JSON format"}})
-            )
+            await ws.send_text(json.dumps({"type": "error", "payload": {"message": "Invalid JSON format"}}))
             await ws.close(code=1003)
             return
 
@@ -51,9 +49,7 @@ async def ws_endpoint(ws: WebSocket):
 
         client_uuid = msg.get("uuid")
         if not client_uuid:
-            await ws.send_text(
-                json.dumps({"type": "error", "payload": {"message": "Missing uuid"}})
-            )
+            await ws.send_text(json.dumps({"type": "error", "payload": {"message": "Missing uuid"}}))
             await ws.close(code=1008)
             return
 
@@ -68,14 +64,17 @@ async def ws_endpoint(ws: WebSocket):
                 req = json.loads(raw)
             except json.JSONDecodeError:
                 await ws.send_text(
-                    json.dumps({"type": "error", "payload": {"message": "Invalid JSON format"}})
+                    json.dumps(
+                        {
+                            "type": "error",
+                            "payload": {"message": "Invalid JSON format"},
+                        }
+                    )
                 )
                 continue
 
             if req.get("uuid") != client_uuid:
-                await ws.send_text(
-                    json.dumps({"type": "error", "payload": {"message": "UUID mismatch"}})
-                )
+                await ws.send_text(json.dumps({"type": "error", "payload": {"message": "UUID mismatch"}}))
                 continue
 
             req_type = req.get("type")
@@ -116,7 +115,10 @@ async def ws_endpoint(ws: WebSocket):
                         {
                             "type": "error",
                             "payload": {
-                                "message": "Invalid type 'unknown'. Must be one of: ['auth', 'info', 'management', 'inference']"
+                                "message": (
+                                    "Invalid type 'unknown'. Must be one of: "
+                                    "['auth', 'info', 'management', 'inference']"
+                                )
                             },
                         }
                     )
