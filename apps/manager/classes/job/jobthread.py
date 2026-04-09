@@ -135,7 +135,7 @@ class JobThread(threading.Thread):
     def run(self) -> None:
         logger.info(
             "Started",
-            extra={"client_uuid": "-", "job_id": "-", "job_type": "job_loop"},
+            extra={"job_id": "-", "job_type": "job_loop"},
         )
 
         while not self._stop_event.is_set():
@@ -174,19 +174,19 @@ class JobThread(threading.Thread):
                 logger.exception(
                     "Main loop error: %s",
                     e,
-                    extra={"client_uuid": "-", "job_id": "-", "job_type": "job_loop"},
+                    extra={"job_id": "-", "job_type": "job_loop"},
                 )
 
         logger.info(
             "Stopped",
-            extra={"client_uuid": "-", "job_id": "-", "job_type": "job_loop"},
+            extra={"job_id": "-", "job_type": "job_loop"},
         )
 
     def stop(self) -> None:
         """Stop the thread and shutdown executors"""
         logger.info(
             "Stopping",
-            extra={"client_uuid": "-", "job_id": "-", "job_type": "job_loop"},
+            extra={"job_id": "-", "job_type": "job_loop"},
         )
         self._stop_event.set()
 
@@ -225,15 +225,12 @@ class JobThread(threading.Thread):
                             msg_uuid,
                             {
                                 "type": "error",
-                                "payload": {
-                                    "message": "Forbidden: missing 'management' role"
-                                },
+                                "payload": {"message": "Forbidden: missing 'management' role"},
                             },
                         )
                     logger.warning(
                         "Rejected management request due to missing role",
                         extra={
-                            "client_uuid": "-",
                             "job_id": "-",
                             "job_type": "authz_reject",
                             "correlation_id": correlation_id,
@@ -253,15 +250,12 @@ class JobThread(threading.Thread):
                             msg_uuid,
                             {
                                 "type": "error",
-                                "payload": {
-                                    "message": "Forbidden: missing 'inference' role"
-                                },
+                                "payload": {"message": "Forbidden: missing 'inference' role"},
                             },
                         )
                     logger.warning(
                         "Rejected inference request due to missing role",
                         extra={
-                            "client_uuid": "-",
                             "job_id": "-",
                             "job_type": "authz_reject",
                             "correlation_id": correlation_id,
@@ -293,11 +287,7 @@ class JobThread(threading.Thread):
             logger.warning("Queue full for incoming message (backpressure activated)")
 
             # Explicit backpressure NACK to client (no payload echo).
-            if (
-                self.websocket
-                and msg_uuid
-                and msg_type in {"info", "management", "inference"}
-            ):
+            if self.websocket and msg_uuid and msg_type in {"info", "management", "inference"}:
                 try:
                     self.websocket(
                         msg_uuid,
@@ -315,7 +305,6 @@ class JobThread(threading.Thread):
                     logger.debug(
                         "Failed to send backpressure NACK to client",
                         extra={
-                            "client_uuid": "-",
                             "job_id": "-",
                             "job_type": "backpressure_nack_failed",
                         },
@@ -359,7 +348,6 @@ class JobThread(threading.Thread):
                         logger.exception(
                             "Job handler error",
                             extra={
-                                "client_uuid": "-",
                                 "job_id": "-",
                                 "job_type": _job_type,
                                 "correlation_id": m.get("_correlation_id", "-"),
@@ -377,7 +365,6 @@ class JobThread(threading.Thread):
                 logger.exception(
                     "Error processing per-user queue",
                     extra={
-                        "client_uuid": user_id,
                         "job_id": "-",
                         "job_type": "queue_process",
                         "queue_error": str(e),
@@ -400,8 +387,7 @@ class JobThread(threading.Thread):
             empty_info = [
                 uid
                 for uid, q in self.info_queues.items()
-                if q.empty()
-                and (current_time - q.last_entry) > self.queue_idle_threshold
+                if q.empty() and (current_time - q.last_entry) > self.queue_idle_threshold
             ]
             for uid in empty_info:
                 del self.info_queues[uid]
@@ -411,8 +397,7 @@ class JobThread(threading.Thread):
             empty_management = [
                 uid
                 for uid, q in self.management_queues.items()
-                if q.empty()
-                and (current_time - q.last_entry) > self.queue_idle_threshold
+                if q.empty() and (current_time - q.last_entry) > self.queue_idle_threshold
             ]
             for uid in empty_management:
                 del self.management_queues[uid]
@@ -422,8 +407,7 @@ class JobThread(threading.Thread):
             empty_inference = [
                 uid
                 for uid, q in self.inference_queues.items()
-                if q.empty()
-                and (current_time - q.last_entry) > self.queue_idle_threshold
+                if q.empty() and (current_time - q.last_entry) > self.queue_idle_threshold
             ]
             for uid in empty_inference:
                 del self.inference_queues[uid]
@@ -438,15 +422,12 @@ class JobThread(threading.Thread):
                 len(empty_management),
                 len(empty_inference),
                 extra={
-                    "client_uuid": "-",
                     "job_id": "-",
                     "job_type": "queue_cleanup",
                 },
             )
 
-    def get_or_create_queue(
-        self, user_id: str, max_size: int, queue_dict: dict
-    ) -> QueueJob:
+    def get_or_create_queue(self, user_id: str, max_size: int, queue_dict: dict) -> QueueJob:
         """
         Thread-safe queue creation for per-user queues.
         Creates queue on-demand when user first sends request.
@@ -460,7 +441,6 @@ class JobThread(threading.Thread):
                 logger.info(
                     "Created per-user queue",
                     extra={
-                        "client_uuid": "-",
                         "job_id": "-",
                         "job_type": "queue_create",
                     },
@@ -477,22 +457,14 @@ class JobThread(threading.Thread):
             inference_users_count = len(self.inference_queues)
 
             info_total_queued = sum(q.qsize() for q in self.info_queues.values())
-            management_total_queued = sum(
-                q.qsize() for q in self.management_queues.values()
-            )
-            inference_total_queued = sum(
-                q.qsize() for q in self.inference_queues.values()
-            )
+            management_total_queued = sum(q.qsize() for q in self.management_queues.values())
+            inference_total_queued = sum(q.qsize() for q in self.inference_queues.values())
 
             # Aggregate view across all types (unique users and total queued)
             total_unique_users = len(
-                set(self.info_queues.keys())
-                | set(self.management_queues.keys())
-                | set(self.inference_queues.keys())
+                set(self.info_queues.keys()) | set(self.management_queues.keys()) | set(self.inference_queues.keys())
             )
-            total_queued = (
-                info_total_queued + management_total_queued + inference_total_queued
-            )
+            total_queued = info_total_queued + management_total_queued + inference_total_queued
 
             return {
                 # Per-user queue stats
