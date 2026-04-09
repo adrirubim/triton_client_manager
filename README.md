@@ -295,6 +295,7 @@ Master documentation files (root):
 | **Technical** | **[TECHNICAL_GUIDE](TECHNICAL_GUIDE.md)** · **[VERSION_STACK](VERSION_STACK.md)** |
 | **Policy** | [CONTRIBUTING](CONTRIBUTING.md) · [SECURITY](SECURITY.md) · [CHANGELOG](CHANGELOG.md) · [CODE_OF_CONDUCT](CODE_OF_CONDUCT.md) · [SUPPORT](SUPPORT.md) · [REPO_STANDARD](REPO_STANDARD.md) |
 | **Examples** | [`apps/manager/payload_examples/`](apps/manager/payload_examples/) — JSON examples for management and inference payloads |
+| **Model Layout** | [`docs/models/README.md`](docs/models/README.md) — strict contract for model docs/templates (no binaries) |
 
 For a navigable, high-level overview, you can also use the
 [GitHub Wiki](https://github.com/adrirubim/triton_client_manager/wiki).
