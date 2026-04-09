@@ -233,7 +233,7 @@ class JobThread(threading.Thread):
                     logger.warning(
                         "Rejected management request due to missing role",
                         extra={
-                            "client_uuid": msg_uuid or "-",
+                            "client_uuid": "-",
                             "job_id": "-",
                             "job_type": "authz_reject",
                             "correlation_id": correlation_id,
@@ -261,7 +261,7 @@ class JobThread(threading.Thread):
                     logger.warning(
                         "Rejected inference request due to missing role",
                         extra={
-                            "client_uuid": msg_uuid or "-",
+                            "client_uuid": "-",
                             "job_id": "-",
                             "job_type": "authz_reject",
                             "correlation_id": correlation_id,
@@ -315,7 +315,7 @@ class JobThread(threading.Thread):
                     logger.debug(
                         "Failed to send backpressure NACK to client",
                         extra={
-                            "client_uuid": msg_uuid or "-",
+                            "client_uuid": "-",
                             "job_id": "-",
                             "job_type": "backpressure_nack_failed",
                         },
@@ -359,7 +359,7 @@ class JobThread(threading.Thread):
                         logger.exception(
                             "Job handler error",
                             extra={
-                                "client_uuid": (m.get("uuid") or user_id or "-"),
+                                "client_uuid": "-",
                                 "job_id": "-",
                                 "job_type": _job_type,
                                 "correlation_id": m.get("_correlation_id", "-"),
