@@ -294,7 +294,7 @@ Master documentation files (root):
 | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Technical** | **[TECHNICAL_GUIDE](TECHNICAL_GUIDE.md)** · **[VERSION_STACK](VERSION_STACK.md)** |
 | **Policy** | [CONTRIBUTING](CONTRIBUTING.md) · [SECURITY](SECURITY.md) · [CHANGELOG](CHANGELOG.md) · [CODE_OF_CONDUCT](CODE_OF_CONDUCT.md) · [SUPPORT](SUPPORT.md) · [REPO_STANDARD](REPO_STANDARD.md) |
-| **Examples** | `apps/manager/payload_examples/` — JSON examples for management and inference payloads |
+| **Examples** | [`apps/manager/payload_examples/`](apps/manager/payload_examples/) — JSON examples for management and inference payloads |
 
 For a navigable, high-level overview, you can also use the
 [GitHub Wiki](https://github.com/adrirubim/triton_client_manager/wiki).
