@@ -35,9 +35,7 @@ class OpenstackInfo:
 
     def execute_request(self, endpoint: str) -> dict:
         """Execute GET request to OpenStack API"""
-        response = requests.get(
-            endpoint, headers=self.headers, verify=self.auth.verify_ssl, timeout=5
-        )
+        response = requests.get(endpoint, headers=self.headers, verify=self.auth.verify_ssl, timeout=5)
         response.raise_for_status()
         return response.json()
 
@@ -82,8 +80,6 @@ class OpenstackInfo:
     def load_single_vm(self, vm_id: str) -> VM:
         config = self.endpoints["vms"]
         service = getattr(self.auth.catalog, config["service"])
-        endpoint = service.endpoint_internal + config["path"].replace(
-            "/detail", f"/{vm_id}"
-        )
+        endpoint = service.endpoint_internal + config["path"].replace("/detail", f"/{vm_id}")
         data = self.execute_request(endpoint)
         return VM.from_id(data.get("server", {}))

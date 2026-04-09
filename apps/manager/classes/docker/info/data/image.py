@@ -53,9 +53,7 @@ class Image:
             try:
                 # Fetch manifest for this specific tag to get digest and details
                 manifest_url = f"{endpoint}/v2/{repo_name}/manifests/{tag}"
-                headers = {
-                    "Accept": "application/vnd.docker.distribution.manifest.v2+json"
-                }
+                headers = {"Accept": "application/vnd.docker.distribution.manifest.v2+json"}
 
                 response = requests.get(manifest_url, headers=headers, timeout=5)
                 response.raise_for_status()
@@ -91,9 +89,7 @@ class Image:
                 )
 
             except Exception as e:
-                logger.warning(
-                    "Failed to fetch manifest for %s:%s: %s", repo_name, tag, e
-                )
+                logger.warning("Failed to fetch manifest for %s:%s: %s", repo_name, tag, e)
                 # Create minimal image entry even if manifest fetch fails
                 image_key = f"{repo_name}:{tag}"
                 images[image_key] = cls(

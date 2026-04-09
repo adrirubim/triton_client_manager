@@ -106,9 +106,7 @@ def test_send_to_client_success(monkeypatch):
 
         return _F()
 
-    monkeypatch.setattr(
-        asyncio, "run_coroutine_threadsafe", fake_run_coroutine_threadsafe
-    )
+    monkeypatch.setattr(asyncio, "run_coroutine_threadsafe", fake_run_coroutine_threadsafe)
 
     assert ws.send_to_client("c1", {"x": 1}) is True
     assert dummy.sent
@@ -117,9 +115,7 @@ def test_send_to_client_success(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_handle_client_rejects_oversized_and_invalid_messages(
-    monkeypatch, caplog
-):
+async def test_handle_client_rejects_oversized_and_invalid_messages(monkeypatch, caplog):
     ws = WebSocketThread(
         host="127.0.0.1",
         port=0,
@@ -185,9 +181,7 @@ async def test_rate_limit_state_is_cleared_on_disconnect() -> None:
         nonlocal calls
         calls += 1
         if calls == 1:
-            return json.dumps(
-                {"uuid": client_id, "type": "auth", "payload": {"token": None}}
-            )
+            return json.dumps({"uuid": client_id, "type": "auth", "payload": {"token": None}})
         raise WebSocketDisconnect()
 
     dummy.accept = accept  # type: ignore[attr-defined]
@@ -284,9 +278,7 @@ async def test_roles_are_derived_from_jwt_claims_not_client_payload(monkeypatch)
     )
 
     client_id = "u-roles-1"
-    token = _make_jwt(
-        {"sub": "user-1", "roles": ["inference"], "exp": int(time.time()) + 60}
-    )
+    token = _make_jwt({"sub": "user-1", "roles": ["inference"], "exp": int(time.time()) + 60})
 
     dummy = _DummyWebSocket()
 

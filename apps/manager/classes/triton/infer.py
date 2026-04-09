@@ -32,10 +32,7 @@ class TritonInfer:
         """
         if datatype == "BYTES":
             if isinstance(value, (list, tuple, np.ndarray)):
-                encoded = [
-                    v.encode("utf-8") if isinstance(v, str) else v
-                    for v in np.asarray(value).tolist()
-                ]
+                encoded = [v.encode("utf-8") if isinstance(v, str) else v for v in np.asarray(value).tolist()]
                 return np.asarray(encoded, dtype=object)
             return np.asarray(
                 [value.encode("utf-8") if isinstance(value, str) else value],
@@ -59,16 +56,8 @@ class TritonInfer:
         np_dtype = dtype_map.get(datatype)
 
         if isinstance(value, (list, tuple, np.ndarray)):
-            return (
-                np.asarray(value, dtype=np_dtype)
-                if np_dtype is not None
-                else np.asarray(value)
-            )
-        return (
-            np.asarray([value], dtype=np_dtype)
-            if np_dtype is not None
-            else np.asarray([value])
-        )
+            return np.asarray(value, dtype=np_dtype) if np_dtype is not None else np.asarray(value)
+        return np.asarray([value], dtype=np_dtype) if np_dtype is not None else np.asarray([value])
 
     # -------------------------------------------- #
     #               INPUT BUILDERS                  #
@@ -137,10 +126,7 @@ class TritonInfer:
     def decode_response(result) -> dict:
         """Decode all outputs from an HTTP infer result into {output_name: decoded_value}."""
         response = result.get_response()
-        return {
-            o["name"]: TritonInfer.decode_output(result, o["name"])
-            for o in response.get("outputs", [])
-        }
+        return {o["name"]: TritonInfer.decode_output(result, o["name"]) for o in response.get("outputs", [])}
 
     # -------------------------------------------- #
     #          gRPC STREAMING  (LLM)               #
@@ -199,9 +185,7 @@ class TritonInfer:
 
             if not done.wait(timeout=timeout):
                 observe_grpc_stream_failure("timeout")
-                raise TritonInferenceFailed(
-                    model_name, f"Stream timed out after {timeout}s"
-                )
+                raise TritonInferenceFailed(model_name, f"Stream timed out after {timeout}s")
         except TritonInferenceFailed:
             raise
         except Exception as e:
@@ -228,8 +212,6 @@ class TritonInfer:
         """
         try:
             http_inputs = self._build_http_inputs(inputs)
-            return http_client.infer(
-                model_name=model_name, inputs=http_inputs, timeout=timeout
-            )
+            return http_client.infer(model_name=model_name, inputs=http_inputs, timeout=timeout)
         except Exception as e:
             raise TritonInferenceFailed(model_name, str(e))

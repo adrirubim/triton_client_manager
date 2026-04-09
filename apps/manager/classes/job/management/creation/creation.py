@@ -17,7 +17,6 @@ class JobCreation:
         docker: "DockerThread",
         openstack: "OpenstackThread",
     ):
-
         self._vm = JobCreateVM(openstack)
         self._container = JobCreateContainer(docker, openstack=openstack)
         self._triton = JobCreateServer(triton) if triton else None
@@ -49,9 +48,7 @@ class JobCreation:
 
         # ------------ Create Server ------------
         try:
-            result = self._triton.handle(
-                msg_uuid, payload, vm_id=vm_id, vm_ip=vm_ip, container_id=container_id
-            )
+            result = self._triton.handle(msg_uuid, payload, vm_id=vm_id, vm_ip=vm_ip, container_id=container_id)
         except Exception:
             # --- Remove Error ---
             if container_id:

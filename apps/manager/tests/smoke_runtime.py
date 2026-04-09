@@ -106,10 +106,7 @@ def run_smoke(include_ws_client=False):
             }
             await sock.send(json.dumps(info_msg))
             r = json.loads(await sock.recv())
-            results["info"] = (
-                r.get("type") == "info_response"
-                and r.get("payload", {}).get("status") == "success"
-            )
+            results["info"] = r.get("type") == "info_response" and r.get("payload", {}).get("status") == "success"
 
     asyncio.run(_test())
 
@@ -145,9 +142,7 @@ if __name__ == "__main__":
     try:
         r = run_smoke(include_ws_client=args.with_ws_client)
         print(json.dumps(r, indent=2))
-        if r.get("auth") is False or (
-            r.get("info") is False and r.get("auth") is not None
-        ):
+        if r.get("auth") is False or (r.get("info") is False and r.get("auth") is not None):
             sys.exit(1)
         if r.get("ws_client") is False:
             sys.exit(1)

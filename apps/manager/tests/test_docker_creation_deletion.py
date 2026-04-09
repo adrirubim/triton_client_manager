@@ -22,9 +22,7 @@ def test_docker_creation_handle_builds_full_image_and_closes_client():
     fake_client = MagicMock()
     fake_client.containers.run.return_value = fake_container
 
-    with patch(
-        "classes.docker.creation.creation.docker.DockerClient", return_value=fake_client
-    ) as mock_client_cls:
+    with patch("classes.docker.creation.creation.docker.DockerClient", return_value=fake_client) as mock_client_cls:
         cid = dc.handle(
             worker_ip="10.0.0.5",
             image="myimage:latest",
@@ -55,9 +53,7 @@ def test_docker_deletion_handle_success_and_client_closed():
     fake_client = MagicMock()
     fake_client.containers.get.return_value = fake_container
 
-    with patch(
-        "classes.docker.deletion.deletion.docker.DockerClient", return_value=fake_client
-    ) as mock_client_cls:
+    with patch("classes.docker.deletion.deletion.docker.DockerClient", return_value=fake_client) as mock_client_cls:
         dd.handle(ip="10.0.0.6", force=False, container_id="cid-1", remove_volumes=True)
 
     mock_client_cls.assert_called_once_with(base_url="tcp://10.0.0.6:2376", timeout=5)

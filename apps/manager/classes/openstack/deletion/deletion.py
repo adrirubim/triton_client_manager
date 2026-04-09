@@ -22,7 +22,6 @@ class OpenstackDeletion:
     """Handles VM deletion operations"""
 
     def __init__(self, auth: "OpenstackAuth", timeout: int, endpoint: str):
-
         self.auth = auth
         self.timeout = timeout
         self.endpoint = endpoint
@@ -33,7 +32,6 @@ class OpenstackDeletion:
         return {"Accept": "application/json", "X-Auth-Token": self.auth.token}
 
     def handle(self, vm_id: str):
-
         # --- Data ---
         full_endpoint = self.auth.catalog.compute.endpoint_internal
         full_endpoint += self.endpoint + "/" + vm_id

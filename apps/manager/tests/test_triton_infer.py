@@ -180,9 +180,7 @@ def test_stream_errors_and_timeout():
             pass
 
     with pytest.raises(TritonInferenceFailed) as exc1:
-        ti.stream(
-            ErrorClient(), "model-y", inputs=[], on_chunk=lambda _: None, timeout=5
-        )
+        ti.stream(ErrorClient(), "model-y", inputs=[], on_chunk=lambda _: None, timeout=5)
     assert "stream-error" in str(exc1.value)
 
     # Case 2: timeout waiting on done event

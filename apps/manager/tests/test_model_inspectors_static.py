@@ -62,9 +62,7 @@ if "pydantic" not in sys.modules:
                     setattr(self, k, data[k])
                     continue
                 default = getattr(cls, k, None)
-                if isinstance(default, _FieldInfo) and callable(
-                    default.default_factory
-                ):
+                if isinstance(default, _FieldInfo) and callable(default.default_factory):
                     setattr(self, k, default.default_factory())
                 elif isinstance(default, (list, dict, set)):
                     setattr(self, k, default.__class__(default))
@@ -151,10 +149,7 @@ def test_analyze_model_v2_detects_mock_gguf(tmp_path: Path) -> None:
     assert payload.inspection.format == ModelFormat.gguf
     assert payload.inspection.size_bytes == len(gguf_bytes)
     assert payload.inspection.io_info.inputs and payload.inspection.io_info.outputs
-    assert any(
-        "GGUF inspection is KV-metadata only" in i.message
-        for i in payload.inspection.issues
-    )
+    assert any("GGUF inspection is KV-metadata only" in i.message for i in payload.inspection.issues)
     assert 'backend: "python"' in payload.triton_config_pbtxt
     assert 'name: "prompt"' in payload.triton_config_pbtxt
     assert 'name: "text"' in payload.triton_config_pbtxt
@@ -203,16 +198,9 @@ def test_analyze_model_v2_inspects_mock_pytorch_zip_pt(tmp_path: Path) -> None:
     assert payload.inspection.format == ModelFormat.pytorch
     assert payload.inspection.io_info.inputs == []
     assert payload.inspection.io_info.outputs == []
-    assert any(
-        "inspection is ZIP central-directory only" in i.message
-        for i in payload.inspection.issues
-    )
-    assert any(
-        "inspection-only for safety" in i.message for i in payload.inspection.issues
-    )
-    assert any(
-        f"~{len(member_bytes)} bytes" in i.message for i in payload.inspection.issues
-    )
+    assert any("inspection is ZIP central-directory only" in i.message for i in payload.inspection.issues)
+    assert any("inspection-only for safety" in i.message for i in payload.inspection.issues)
+    assert any(f"~{len(member_bytes)} bytes" in i.message for i in payload.inspection.issues)
 
 
 def test_analyze_model_v2_pytorch_non_zip_falls_back(tmp_path: Path) -> None:

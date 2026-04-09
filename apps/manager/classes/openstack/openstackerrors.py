@@ -19,9 +19,7 @@ class OpenstackVMStateChanged(Exception):
         self.vm_id = vm_id
         self.vm_name = vm_name
         self.changed_fields = changed_fields
-        super().__init__(
-            f"{STATIC_START}VM '{vm_name}' ({vm_id}) state changed: {', '.join(changed_fields)}"
-        )
+        super().__init__(f"{STATIC_START}VM '{vm_name}' ({vm_id}) state changed: {', '.join(changed_fields)}")
 
 
 class OpenstackMissingArgument(Exception):

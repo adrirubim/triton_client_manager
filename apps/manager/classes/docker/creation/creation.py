@@ -20,9 +20,7 @@ class DockerCreation:
             logger.info("Using image: %s", full_image)
 
             base_url = f"tcp://{worker_ip}:{self.remote_api_port}"
-            client = docker.DockerClient(
-                base_url=base_url, timeout=self.remote_api_timeout
-            )
+            client = docker.DockerClient(base_url=base_url, timeout=self.remote_api_timeout)
 
             name = kwargs.get("name")
             command = kwargs.get("command")

@@ -55,9 +55,7 @@ def test_websocket_schemas_happy_paths_and_validation():
 
     # InferenceMessage with HTTP request config and inputs list
     inputs = [
-        InferenceInputsEntry(
-            name="input_1", type="FP32", dims=[1, 3], value=[0.1, 0.2]
-        ),
+        InferenceInputsEntry(name="input_1", type="FP32", dims=[1, 3], value=[0.1, 0.2]),
     ]
     inf = InferenceMessage(
         uuid="u5",
@@ -156,9 +154,7 @@ def test_metrics_endpoint_and_logging_config_in_fastapi_app():
     @app.get("/metrics")
     def metrics_endpoint():
         # Use a minimal stats provider
-        return generate_metrics_response(
-            lambda: {"total_users": 1, "executor_info_available": 42}
-        )
+        return generate_metrics_response(lambda: {"total_users": 1, "executor_info_available": 42})
 
     client = TestClient(app)
     res = client.get("/metrics")

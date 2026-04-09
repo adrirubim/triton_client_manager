@@ -125,9 +125,7 @@ def validate_token_and_get_claims(
         """
         return ["RS256", "ES256"]
 
-    algorithms: list[str] = (
-        list(algorithms_cfg) if algorithms_cfg else _default_algorithms()
-    )
+    algorithms: list[str] = list(algorithms_cfg) if algorithms_cfg else _default_algorithms()
 
     # Guardrail: HS* algorithms are only allowed in development and must be explicit.
     uses_hs = any(isinstance(a, str) and a.upper().startswith("HS") for a in algorithms)

@@ -105,9 +105,7 @@ class TestDeletionPayloadNormalization(unittest.TestCase):
         }
         # Build normalized structure (same logic as handle, without executing)
         vm_id = payload.get("vm_id") or payload.get("openstack", {}).get("vm_id")
-        container_id = payload.get("container_id") or payload.get("docker", {}).get(
-            "container_id"
-        )
+        container_id = payload.get("container_id") or payload.get("docker", {}).get("container_id")
         vm_ip = (
             payload.get("vm_ip")
             or payload.get("openstack", {}).get("vm_ip")
@@ -145,9 +143,7 @@ class TestInferenceExample(unittest.TestCase):
 
     def test_inference_example_uses_vm_id_and_container_id(self):
         """payload_examples/inference.json must have vm_id and container_id for API contract."""
-        path = os.path.join(
-            os.path.dirname(__file__), "..", "payload_examples", "inference.json"
-        )
+        path = os.path.join(os.path.dirname(__file__), "..", "payload_examples", "inference.json")
         with open(path, encoding="utf-8") as f:
             data = json.load(f)
         payload = data.get("payload", {})

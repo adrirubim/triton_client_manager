@@ -96,9 +96,7 @@ class _DummyDeleteStep:
 
 def test_job_creation_happy_path_executes_all_steps_and_returns_payload():
     """Full JobCreation pipeline: VM + container + Triton server."""
-    creation = JobCreation(
-        triton=None, docker=None, openstack=None
-    )  # dependencies are patched below
+    creation = JobCreation(triton=None, docker=None, openstack=None)  # dependencies are patched below
 
     vm_step = _DummyVM()
     container_step = _DummyContainer()

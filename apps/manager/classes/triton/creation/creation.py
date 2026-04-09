@@ -33,19 +33,12 @@ class TritonCreation:
         self.server_ready_timeout = config.get("server_ready_timeout", 60)
         self.model_ready_timeout = config.get("model_ready_timeout", 120)
 
-    def handle(
-        self, vm_id: str, vm_ip: str, minio: dict, triton: dict, container_id: str
-    ) -> TritonServer:
-
+    def handle(self, vm_id: str, vm_ip: str, minio: dict, triton: dict, container_id: str) -> TritonServer:
         # --- Extrapolate config.pbtxt ---
-        config_json, inputs, outputs, model_name, port = self._process_config(
-            minio_config=minio, triton_params=triton
-        )
+        config_json, inputs, outputs, model_name, port = self._process_config(minio_config=minio, triton_params=triton)
         # --- Check ---
         if not model_name:
-            raise TritonModelLoadFailed(
-                "unknown", "Could not determine model name from config.pbtxt"
-            )
+            raise TritonModelLoadFailed("unknown", "Could not determine model name from config.pbtxt")
         if not inputs:
             raise TritonModelLoadFailed(model_name, "config.pbtxt has no inputs")
         if not outputs:
@@ -80,9 +73,7 @@ class TritonCreation:
         start = time.time()
         while (time.time() - start) < self.model_ready_timeout:
             time.sleep(1)
-            if client.is_model_ready(
-                model_name, client_timeout=self.client_request_timeout
-            ):
+            if client.is_model_ready(model_name, client_timeout=self.client_request_timeout):
                 break
         else:
             raise TritonModelNotReady(model_name, self.model_ready_timeout)
@@ -99,9 +90,7 @@ class TritonCreation:
             outputs=outputs,
         )
 
-        logger.info(
-            f" Server ({vm_ip}, {container_id[:12]}) ready — model='{model_name}'"
-        )
+        logger.info(f" Server ({vm_ip}, {container_id[:12]}) ready — model='{model_name}'")
 
         return server
 
@@ -132,9 +121,7 @@ class TritonCreation:
 
         kwargs = dict(preserving_proto_field_name=True, use_integers_for_enums=False)
         try:
-            cfg_dict = json_format.MessageToDict(
-                cfg, including_default_value_fields=False, **kwargs
-            )
+            cfg_dict = json_format.MessageToDict(cfg, including_default_value_fields=False, **kwargs)
         except TypeError:
             cfg_dict = json_format.MessageToDict(cfg, **kwargs)
 
@@ -167,21 +154,15 @@ class TritonCreation:
         try:
             minio_runtime = RuntimeMinioPayload.model_validate(minio_config or {})
         except ValidationError as exc:
-            raise TritonConfigDownloadFailed(
-                f"Invalid MinIO payload (runtime): {exc}"
-            ) from exc
+            raise TritonConfigDownloadFailed(f"Invalid MinIO payload (runtime): {exc}") from exc
 
         folder = minio_runtime.folder
         key = f"{folder}/{folder.rstrip('/').split('/')[-1]}/config.pbtxt"
 
-        logger.info(
-            f" Downloading config from {minio_runtime.endpoint}/{minio_runtime.bucket}/{key}"
-        )
+        logger.info(f" Downloading config from {minio_runtime.endpoint}/{minio_runtime.bucket}/{key}")
         pbtxt = self._download_pbtxt(key, minio_config)
 
-        config_json, inputs, outputs, model_name, port = self._pbtxt_to_config(
-            triton_params, pbtxt
-        )
+        config_json, inputs, outputs, model_name, port = self._pbtxt_to_config(triton_params, pbtxt)
 
         if not triton_params:
             config_json = None

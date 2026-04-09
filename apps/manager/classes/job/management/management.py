@@ -47,7 +47,6 @@ class JobManagement:
         management_actions_available: list,
         **kwargs,
     ):
-
         self.websocket = websocket
         self.management_actions_available = management_actions_available
 

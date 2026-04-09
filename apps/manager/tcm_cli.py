@@ -155,9 +155,7 @@ def _cmd_model_pipeline(args: _PipelineArgs) -> int:
         print("[dry-run]   - MINIO_UPLOAD_IMG_BYTES")
         return 0
 
-    GeneratePipelineAction(
-        repo_root=str(REPO_ROOT), name=args.name, overwrite=args.overwrite
-    ).run()
+    GeneratePipelineAction(repo_root=str(REPO_ROOT), name=args.name, overwrite=args.overwrite).run()
     print(f"Pipeline generado: infra/models/{pipeline_name}")
     return 0
 
@@ -226,61 +224,41 @@ def _cmd_model_validate(args: _ModelValidateArgs) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        prog="tcm", description="TCM manager CLI (minimal)."
-    )
+    parser = argparse.ArgumentParser(prog="tcm", description="TCM manager CLI (minimal).")
     sub = parser.add_subparsers(dest="command", required=True)
 
     manager = sub.add_parser("manager", help="Manager commands")
     manager_sub = manager.add_subparsers(dest="manager_command", required=True)
     test = manager_sub.add_parser("test", help="Run manager tests (pytest)")
-    test.add_argument(
-        "--dry-run", action="store_true", help="Print actions without executing."
-    )
+    test.add_argument("--dry-run", action="store_true", help="Print actions without executing.")
     dev = manager_sub.add_parser("dev", help="Run manager in development mode")
-    dev.add_argument(
-        "--dry-run", action="store_true", help="Print actions without executing."
-    )
+    dev.add_argument("--dry-run", action="store_true", help="Print actions without executing.")
 
     config = sub.add_parser("config", help="Config commands")
     config_sub = config.add_subparsers(dest="config_command", required=True)
-    validate = config_sub.add_parser(
-        "validate", help="Validate apps/manager/config/*.yaml"
-    )
+    validate = config_sub.add_parser("validate", help="Validate apps/manager/config/*.yaml")
     validate.add_argument(
         "--base-dir",
         default=str(REPO_ROOT / "apps" / "manager"),
         help="Base dir containing config/ (default: apps/manager).",
     )
-    validate.add_argument(
-        "--dry-run", action="store_true", help="Print actions without executing."
-    )
+    validate.add_argument("--dry-run", action="store_true", help="Print actions without executing.")
 
     model = sub.add_parser("model", help="Model tooling commands")
     model_sub = model.add_subparsers(dest="model_command", required=True)
-    scaffold = model_sub.add_parser(
-        "scaffold", help="Scaffold Triton model structure under infra/models/"
-    )
+    scaffold = model_sub.add_parser("scaffold", help="Scaffold Triton model structure under infra/models/")
     scaffold.add_argument("--name", required=True)
-    scaffold.add_argument(
-        "--format", dest="fmt", required=True, help="onnx|safetensors"
-    )
+    scaffold.add_argument("--format", dest="fmt", required=True, help="onnx|safetensors")
     scaffold.add_argument("--path", required=True, help="Path to model file (weights).")
     scaffold.add_argument(
         "--overwrite",
         action="store_true",
         help="Allow overwriting existing weights file.",
     )
-    scaffold.add_argument(
-        "--dry-run", action="store_true", help="Print actions without executing."
-    )
+    scaffold.add_argument("--dry-run", action="store_true", help="Print actions without executing.")
 
-    analyze = model_sub.add_parser(
-        "analyze", help="Analyze a model artifact and print a typed report."
-    )
-    analyze.add_argument(
-        "--miniopath", required=True, help="s3://bucket/key or local file path"
-    )
+    analyze = model_sub.add_parser("analyze", help="Analyze a model artifact and print a typed report.")
+    analyze.add_argument("--miniopath", required=True, help="s3://bucket/key or local file path")
     analyze.add_argument("--name", required=True, help="Logical model name")
     analyze.add_argument(
         "--category",
@@ -294,35 +272,23 @@ def build_parser() -> argparse.ArgumentParser:
         required=False,
         help="Override format (onnx|safetensors)",
     )
-    analyze.add_argument(
-        "--dry-run", action="store_true", help="Print actions without executing."
-    )
+    analyze.add_argument("--dry-run", action="store_true", help="Print actions without executing.")
 
-    pipeline = model_sub.add_parser(
-        "pipeline", help="Generate a Triton ensemble pipeline scaffold."
-    )
-    pipeline.add_argument(
-        "--name", required=True, help="Base model name (must already be scaffolded)."
-    )
+    pipeline = model_sub.add_parser("pipeline", help="Generate a Triton ensemble pipeline scaffold.")
+    pipeline.add_argument("--name", required=True, help="Base model name (must already be scaffolded).")
     pipeline.add_argument(
         "--overwrite",
         action="store_true",
         help="Overwrite existing pipeline/step files.",
     )
-    pipeline.add_argument(
-        "--dry-run", action="store_true", help="Print actions without executing."
-    )
+    pipeline.add_argument("--dry-run", action="store_true", help="Print actions without executing.")
 
     validate_model = model_sub.add_parser(
         "validate",
         help="Validate that a Triton model is deployed and responds correctly (smoke test).",
     )
-    validate_model.add_argument(
-        "--name", required=True, help="Logical model name registered in Triton."
-    )
-    validate_model.add_argument(
-        "--vm-id", required=True, help="VM identifier used for routing."
-    )
+    validate_model.add_argument("--name", required=True, help="Logical model name registered in Triton.")
+    validate_model.add_argument("--vm-id", required=True, help="VM identifier used for routing.")
     validate_model.add_argument(
         "--vm-ip",
         required=False,
@@ -331,9 +297,7 @@ def build_parser() -> argparse.ArgumentParser:
             "from its Docker cache; providing it makes validation more robust."
         ),
     )
-    validate_model.add_argument(
-        "--container-id", required=True, help="Container identifier used for routing."
-    )
+    validate_model.add_argument("--container-id", required=True, help="Container identifier used for routing.")
     validate_model.add_argument(
         "--ws-uri",
         default="ws://127.0.0.1:8000/ws",
@@ -356,9 +320,7 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_manager_dev(dry_run=bool(args.dry_run))
 
     if args.command == "config" and args.config_command == "validate":
-        return _cmd_config_validate(
-            _ConfigValidateArgs(base_dir=str(args.base_dir), dry_run=bool(args.dry_run))
-        )
+        return _cmd_config_validate(_ConfigValidateArgs(base_dir=str(args.base_dir), dry_run=bool(args.dry_run)))
 
     if args.command == "model" and args.model_command == "scaffold":
         scaffold_args = _ScaffoldArgs(

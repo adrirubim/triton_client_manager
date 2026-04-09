@@ -106,9 +106,7 @@ class DockerThread(threading.Thread):
                 for container_id, new_container in new_containers.items():
                     if container_id in self.dict_containers:
                         old_container = self.dict_containers[container_id]
-                        has_changed, changed_fields = new_container.has_changed(
-                            old_container
-                        )
+                        has_changed, changed_fields = new_container.has_changed(old_container)
 
                         if has_changed:
                             error = DockerContainerStateChanged(
@@ -148,7 +146,6 @@ class DockerThread(threading.Thread):
         return container_id
 
     def delete_container(self, data: dict) -> bool:
-
         # --- Check ---
         if "vm_id" not in data:
             raise DockerMissingArgument("vm_id")

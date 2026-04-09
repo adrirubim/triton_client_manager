@@ -90,8 +90,6 @@ class VM:
             changed_fields.append(f"host_id: {other.host_id} -> {self.host_id}")
 
         if self.address_private != other.address_private:
-            changed_fields.append(
-                f"address_private: {other.address_private} -> {self.address_private}"
-            )
+            changed_fields.append(f"address_private: {other.address_private} -> {self.address_private}")
 
         return (len(changed_fields) > 0, changed_fields)

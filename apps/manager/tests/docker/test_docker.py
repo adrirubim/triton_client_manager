@@ -98,11 +98,7 @@ def test_3_container_discovery(config):
     print("=" * 60)
 
     docker_info = DockerInfo(config)
-    mock_vms = {
-        "vm-001": MockVM(
-            id="vm-001", name="docker-worker-1", address_private="10.0.0.5"
-        )
-    }
+    mock_vms = {"vm-001": MockVM(id="vm-001", name="docker-worker-1", address_private="10.0.0.5")}
 
     print("\n📡 Querying worker VMs...")
     print(f"   Worker: 10.0.0.5:{config['remote_api_port']}")
@@ -133,8 +129,7 @@ def test_4_container_lifecycle(config, mock_vms):
     worker_port = config.get("remote_api_port", 2376)
     if not _docker_worker_reachable(worker_ip, worker_port):
         pytest.skip(
-            f"Docker worker at {worker_ip}:{worker_port} not reachable "
-            "(run in environment with access to worker VM)"
+            f"Docker worker at {worker_ip}:{worker_port} not reachable " "(run in environment with access to worker VM)"
         )
 
     print("\n" + "=" * 60)
@@ -184,10 +179,7 @@ def test_4_container_lifecycle(config, mock_vms):
         found = False
         if worker_ip in containers_by_ip:
             for container in containers_by_ip[worker_ip]:
-                if (
-                    container.id == container_id
-                    or container.name == test_container_name
-                ):
+                if container.id == container_id or container.name == test_container_name:
                     found = True
                     print("\n✅ Container verified in list")
                     print(f"   Name: {container.name}")
@@ -228,10 +220,7 @@ def test_4_container_lifecycle(config, mock_vms):
         still_exists = False
         if worker_ip in containers_by_ip:
             for container in containers_by_ip[worker_ip]:
-                if (
-                    container.id == container_id
-                    or container.name == test_container_name
-                ):
+                if container.id == container_id or container.name == test_container_name:
                     still_exists = True
                     break
 
@@ -265,11 +254,7 @@ def main():
 
     results = []
     config = None
-    mock_vms = {
-        "vm-001": MockVM(
-            id="vm-001", name="docker-worker-1", address_private="10.0.0.5"
-        )
-    }
+    mock_vms = {"vm-001": MockVM(id="vm-001", name="docker-worker-1", address_private="10.0.0.5")}
 
     try:
         config = load_config()

@@ -7,7 +7,9 @@ import sys
 # executed as a standalone entrypoint (e.g. CI running `python -m unittest` with
 # `working-directory: apps/manager`).
 _here = os.path.dirname(os.path.abspath(__file__))
-_repo_root = os.path.abspath(os.path.join(_here, "..", "..", ".."))
+# __file__ = <repo>/apps/manager/classes/triton/__init__.py
+# We need <repo> on sys.path so `import src.*` works when CI runs from apps/manager.
+_repo_root = os.path.abspath(os.path.join(_here, "..", "..", "..", ".."))
 if _repo_root not in sys.path:
     sys.path.insert(0, _repo_root)
 

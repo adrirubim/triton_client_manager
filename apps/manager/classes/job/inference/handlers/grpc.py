@@ -49,9 +49,7 @@ class JobInferenceGrpc:
         server = self.triton.get_server(vm_ip, container_id)
         if not server:
             if not allow_transient:
-                raise TritonInferenceFailed(
-                    model_name, "No active Triton session for this instance"
-                )
+                raise TritonInferenceFailed(model_name, "No active Triton session for this instance")
 
             # Local-dev friendliness (explicit opt-in): allow streaming without a
             # pre-registered server by creating a transient TritonServer client.

@@ -77,6 +77,4 @@ def test_dimension_coercion_nonpositive_dims_become_minus1() -> None:
     # With batching enabled (first dim -1), pbtxt dims exclude batch dim and non-positive become -1.
     assert "max_batch_size: 8" in pbtxt
     assert "dims: -1" in pbtxt
-    assert any(
-        i.code in {"TRITON_DIM_NONPOSITIVE", "TRITON_DIM_COERCE"} for i in issues
-    )
+    assert any(i.code in {"TRITON_DIM_NONPOSITIVE", "TRITON_DIM_COERCE"} for i in issues)

@@ -30,9 +30,7 @@ class BoundedThreadPoolExecutor:
         future = executor.submit(my_function, arg1, arg2)
     """
 
-    def __init__(
-        self, max_workers: int, max_queue_size: int, thread_name_prefix: str = ""
-    ):
+    def __init__(self, max_workers: int, max_queue_size: int, thread_name_prefix: str = ""):
         """
         Initialize the bounded executor.
 
@@ -41,9 +39,7 @@ class BoundedThreadPoolExecutor:
             max_queue_size: Maximum pending tasks allowed
             thread_name_prefix: Prefix for thread names (optional)
         """
-        self.executor = ThreadPoolExecutor(
-            max_workers=max_workers, thread_name_prefix=thread_name_prefix
-        )
+        self.executor = ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix=thread_name_prefix)
 
         # Semaphore to limit queue size
         # Each submit() acquires, each completion releases

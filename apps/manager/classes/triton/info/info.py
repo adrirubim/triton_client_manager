@@ -20,13 +20,9 @@ class TritonInfo:
         self.timeout = timeout
         self.http_port = http_port
         self._clients: dict[str, httpclient.InferenceServerClient] = {}
-        self._clients_lock = (
-            None  # lazy init to avoid importing threading at module import time
-        )
+        self._clients_lock = None  # lazy init to avoid importing threading at module import time
 
-    def _client(
-        self, vm_ip: str, timeout: int = None
-    ) -> httpclient.InferenceServerClient:
+    def _client(self, vm_ip: str, timeout: int = None) -> httpclient.InferenceServerClient:
         # Cache only for default timeout to avoid unbounded cache cardinality on varying timeouts.
         if timeout is None:
             if self._clients_lock is None:
@@ -76,9 +72,7 @@ class TritonInfo:
             time.sleep(2)
         return False
 
-    def wait_for_model_ready(
-        self, vm_ip: str, model_name: str, timeout: int = 120
-    ) -> bool:
+    def wait_for_model_ready(self, vm_ip: str, model_name: str, timeout: int = 120) -> bool:
         start = time.time()
         while (time.time() - start) < timeout:
             if self.is_model_ready(vm_ip, model_name):
@@ -90,13 +84,9 @@ class TritonInfo:
     # -------------------------------------------- #
     #           MODEL MANAGEMENT                   #
     # -------------------------------------------- #
-    def load_model(
-        self, vm_ip: str, model_name: str, timeout: int = 30, config_json: str = None
-    ) -> bool:
+    def load_model(self, vm_ip: str, model_name: str, timeout: int = 30, config_json: str = None) -> bool:
         try:
-            self._client(vm_ip, timeout=timeout).load_model(
-                model_name, config=config_json
-            )
+            self._client(vm_ip, timeout=timeout).load_model(model_name, config=config_json)
             logger.info(f" Load request sent for model '{model_name}'")
             return True
         except Exception as e:

@@ -198,11 +198,7 @@ class VM:
         timestamps = Timestamps(
             created=parse_dt(pick(d, "created", "created_at")),
             updated=parse_dt(pick(d, "updated", "updated_at")),
-            launched=parse_dt(
-                pick(
-                    d, "OS-SRV-USG:launched_at", "OS_SRV_USG_launched_at", "launched_at"
-                )
-            ),
+            launched=parse_dt(pick(d, "OS-SRV-USG:launched_at", "OS_SRV_USG_launched_at", "launched_at")),
             terminated=parse_dt(
                 pick(
                     d,
@@ -224,12 +220,8 @@ class VM:
             or []
         )
 
-        power_state = getattr(s, "power_state", None) or pick(
-            d, "OS-EXT-STS:power_state", "OS_EXT_STS_power_state"
-        )
-        task_state = getattr(s, "task_state", None) or pick(
-            d, "OS-EXT-STS:task_state", "OS_EXT_STS_task_state"
-        )
+        power_state = getattr(s, "power_state", None) or pick(d, "OS-EXT-STS:power_state", "OS_EXT_STS_power_state")
+        task_state = getattr(s, "task_state", None) or pick(d, "OS-EXT-STS:task_state", "OS_EXT_STS_task_state")
 
         # Handle locked: if False/None -> None, if True -> get the reason string
         locked_bool = getattr(s, "locked", None)
@@ -239,9 +231,7 @@ class VM:
         locked_reason = None
         if locked_bool:
             locked_reason = (
-                getattr(s, "locked_reason", None)
-                or pick(d, "locked_reason")
-                or "Locked"
+                getattr(s, "locked_reason", None) or pick(d, "locked_reason") or "Locked"
             )  # Default if no reason provided
 
         state = State(
@@ -251,9 +241,7 @@ class VM:
             progress=pick(d, "progress"),
             host_status=pick(d, "host_status"),
             locked=locked_reason,
-            volumes_attached=(
-                list(volumes_attached) if isinstance(volumes_attached, list) else []
-            ),
+            volumes_attached=(list(volumes_attached) if isinstance(volumes_attached, list) else []),
         )
 
         return VM(

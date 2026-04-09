@@ -32,9 +32,7 @@ class RepoInfo:
         return round(bytes_size / DF_G, 2)
 
     @classmethod
-    def retrieve_info(
-        cls, hf_full: str, hf_gguf: str = "", revision: str = "main"
-    ) -> str:
+    def retrieve_info(cls, hf_full: str, hf_gguf: str = "", revision: str = "main") -> str:
         instance = cls(hf_full=hf_full, hf_gguf=hf_gguf, revision=revision)
         instance.execution()
 
@@ -42,9 +40,7 @@ class RepoInfo:
 
     def execution(self):
         api = HfApi()
-        info = api.model_info(
-            repo_id=self.hf_full, revision=self.revision, files_metadata=True
-        )
+        info = api.model_info(repo_id=self.hf_full, revision=self.revision, files_metadata=True)
 
         siblings = info.siblings
         names = [(s.rfilename or "") for s in siblings]
@@ -68,14 +64,10 @@ class RepoInfo:
 
             if self.hf_gguf:
                 if not any(self.hf_gguf == n for n in ggufs):
-                    raise ValueError(
-                        f"GGUF '{self.hf_gguf}' not found. Candidates: {pformat(ggufs)}"
-                    )
+                    raise ValueError(f"GGUF '{self.hf_gguf}' not found. Candidates: {pformat(ggufs)}")
             else:
                 if len(ggufs) > 1:
-                    raise ValueError(
-                        f"Multiple .gguf files found; please specify one: {pformat(ggufs)}"
-                    )
+                    raise ValueError(f"Multiple .gguf files found; please specify one: {pformat(ggufs)}")
                 self.hf_gguf = ggufs[0]
 
         # Now iterate once, compute weights

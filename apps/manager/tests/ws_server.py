@@ -44,9 +44,7 @@ async def ws_endpoint(ws: WebSocket):
         msg = json.loads(raw)
 
         if msg.get("type") != "auth":
-            await ws.send_text(
-                json.dumps({"type": "error", "payload": {"message": "auth required"}})
-            )
+            await ws.send_text(json.dumps({"type": "error", "payload": {"message": "auth required"}}))
             await ws.close(code=1008)
             return
 

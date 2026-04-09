@@ -264,9 +264,7 @@ def generate_metrics_response(
         executor_inference_pending = int(stats.get("executor_inference_pending", 0))
 
         executor_info_available = int(stats.get("executor_info_available", 0))
-        executor_management_available = int(
-            stats.get("executor_management_available", 0)
-        )
+        executor_management_available = int(stats.get("executor_management_available", 0))
         executor_inference_available = int(stats.get("executor_inference_available", 0))
 
         QUEUE_TOTAL_USERS.set(total_users)

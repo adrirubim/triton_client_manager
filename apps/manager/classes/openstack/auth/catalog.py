@@ -12,7 +12,6 @@ class ServiceEndpoint:
         endpoint_public: Optional[str] = None,
         endpoint_internal: Optional[str] = None,
     ):
-
         self.id = service_id
         self.name = name
         self.type = service_type

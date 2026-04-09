@@ -105,9 +105,7 @@ class WebSocketThread(threading.Thread):
                 host = request.client.host if request.client else ""
                 ip = ipaddress.ip_address(host)
                 if not (ip.is_loopback or ip.is_private):
-                    return JSONResponse(
-                        status_code=403, content={"detail": "Forbidden"}
-                    )
+                    return JSONResponse(status_code=403, content={"detail": "Forbidden"})
             except Exception:
                 return JSONResponse(status_code=403, content={"detail": "Forbidden"})
             return generate_metrics_response(self.get_queue_stats)
@@ -151,9 +149,7 @@ class WebSocketThread(threading.Thread):
     async def _send_error(self, websocket: WebSocket, error_message: str):
         """Send error message to client"""
         try:
-            await websocket.send_text(
-                json.dumps({"type": "error", "payload": {"message": error_message}})
-            )
+            await websocket.send_text(json.dumps({"type": "error", "payload": {"message": error_message}}))
         except Exception as e:
             logger.error("Failed to send error: %s", e)
 
@@ -186,9 +182,7 @@ class WebSocketThread(threading.Thread):
                     "tcm_env": env,
                 },
             )
-            raise SecurityError(
-                "Insecure auth config outside development (mode=simple or require_token=false)"
-            )
+            raise SecurityError("Insecure auth config outside development (mode=simple or require_token=false)")
 
     def _check_message_rate(self, client_id: str) -> bool:
         """Apply simple per-client message rate limiting if configured."""
@@ -293,9 +287,7 @@ class WebSocketThread(threading.Thread):
             # Token validation (strict mode returns verified claims).
             token = payload.get("token")
             try:
-                ok, token_error, claims = validate_token_and_get_claims(
-                    token, self.auth_config
-                )
+                ok, token_error, claims = validate_token_and_get_claims(token, self.auth_config)
             except SecurityError as exc:
                 AUTH_FAILURES_TOTAL.labels(reason="auth_config").inc()
                 await self._send_error(
@@ -337,21 +329,14 @@ class WebSocketThread(threading.Thread):
                     raw_tenant = claims.get("tenant_id") or claims.get("tenant")
                     if isinstance(raw_tenant, str):
                         tenant_id = raw_tenant
-                    raw_roles = (
-                        claims.get("roles")
-                        or claims.get("role")
-                        or claims.get("permissions")
-                        or []
-                    )
+                    raw_roles = claims.get("roles") or claims.get("role") or claims.get("permissions") or []
                     if isinstance(raw_roles, str):
                         roles = [raw_roles]
                     elif isinstance(raw_roles, (list, tuple)):
                         roles = [r for r in raw_roles if isinstance(r, str)]
 
             if env == "development" and mode != "strict":
-                client_block = (
-                    payload.get("client") if isinstance(payload, dict) else None
-                )
+                client_block = payload.get("client") if isinstance(payload, dict) else None
                 if isinstance(client_block, dict):
                     raw_roles = client_block.get("roles") or []
                     if isinstance(raw_roles, str):
@@ -370,9 +355,7 @@ class WebSocketThread(threading.Thread):
             # Check if client already connected
             with self.clients_lock:
                 if client_id in self.clients:
-                    await self._send_error(
-                        websocket, f"UUID '{client_id}' is already connected"
-                    )
+                    await self._send_error(websocket, f"UUID '{client_id}' is already connected")
                     await websocket.close(code=1008)
                     return
 
@@ -399,9 +382,7 @@ class WebSocketThread(threading.Thread):
             # Notify connection callback
             if self.on_connect:
                 try:
-                    await asyncio.get_event_loop().run_in_executor(
-                        None, self.on_connect, client_id
-                    )
+                    await asyncio.get_event_loop().run_in_executor(None, self.on_connect, client_id)
                 except Exception as e:
                     logger.exception("Error in on_connect callback: %s", e)
 
@@ -460,9 +441,7 @@ class WebSocketThread(threading.Thread):
                     try:
                         observe_ws_message(message.get("type", "unknown"))
                         corr = message.get("_correlation_id", "-")
-                        await asyncio.get_event_loop().run_in_executor(
-                            None, self.on_message, client_id, message
-                        )
+                        await asyncio.get_event_loop().run_in_executor(None, self.on_message, client_id, message)
                     except Exception as e:
                         logger.exception(
                             "Error in on_message callback: %s",
@@ -560,9 +539,7 @@ class WebSocketThread(threading.Thread):
 
         try:
             # Schedule send in the event loop
-            future = asyncio.run_coroutine_threadsafe(
-                websocket.send_text(json.dumps(message)), self.loop
-            )
+            future = asyncio.run_coroutine_threadsafe(websocket.send_text(json.dumps(message)), self.loop)
 
             # Fire-and-forget: never block worker threads on the async loop.
             def _done(f):
@@ -660,9 +637,7 @@ class WebSocketThread(threading.Thread):
                     "tcm_env": env,
                 },
             )
-            raise RuntimeError(
-                "Refusing to start: insecure auth config outside development"
-            )
+            raise RuntimeError("Refusing to start: insecure auth config outside development")
         logger.info(
             "Starting on %s:%s",
             self.host,

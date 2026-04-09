@@ -23,9 +23,7 @@ def _make_jobthread() -> JobThread:
     return jt
 
 
-def test_jobthread_rejects_management_when_roles_missing_and_payload_spoofs_roles() -> (
-    None
-):
+def test_jobthread_rejects_management_when_roles_missing_and_payload_spoofs_roles() -> None:
     jt = _make_jobthread()
     sent: list[tuple[str, dict]] = []
 
@@ -51,9 +49,7 @@ def test_jobthread_rejects_management_when_roles_missing_and_payload_spoofs_role
     assert "Forbidden" in sent[-1][1]["payload"]["message"]
 
 
-def test_jobthread_rejects_inference_when_roles_missing_and_payload_spoofs_roles() -> (
-    None
-):
+def test_jobthread_rejects_inference_when_roles_missing_and_payload_spoofs_roles() -> None:
     jt = _make_jobthread()
     sent: list[tuple[str, dict]] = []
 

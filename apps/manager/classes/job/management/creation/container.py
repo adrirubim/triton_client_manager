@@ -28,9 +28,7 @@ class JobCreateContainer:
         """
         # Preferred: resolve by vm_id from OpenStack cache.
         vm_id = (
-            payload.get("vm_id")
-            or (payload.get("openstack", {}) or {}).get("vm_id")
-            or payload.get("openstack_vm_id")
+            payload.get("vm_id") or (payload.get("openstack", {}) or {}).get("vm_id") or payload.get("openstack_vm_id")
         )
         if vm_id and self.openstack:
             vm = getattr(self.openstack, "dict_vms", {}).get(vm_id)
@@ -66,30 +64,20 @@ class JobCreateContainer:
             try:
                 minio_runtime = RuntimeMinioPayload.model_validate(minio_config)
             except ValidationError as exc:
-                raise JobContainerCreationFailed(
-                    f"Invalid MinIO payload (runtime): {exc}"
-                ) from exc
+                raise JobContainerCreationFailed(f"Invalid MinIO payload (runtime): {exc}") from exc
 
             # --- Model repository ---
             parsed = urlparse(str(minio_runtime.endpoint))
-            s3_url = (
-                f"s3://{parsed.netloc}/{minio_runtime.bucket}/{minio_runtime.folder}"
-            )
+            s3_url = f"s3://{parsed.netloc}/{minio_runtime.bucket}/{minio_runtime.folder}"
 
             # --- Create server start command ---
-            cmd = [
-                a
-                for a in docker_config.get("command", [])
-                if not a.startswith("--model-repository=")
-            ]
+            cmd = [a for a in docker_config.get("command", []) if not a.startswith("--model-repository=")]
             docker_config["command"] = cmd + [f"--model-repository={s3_url}"]
 
             # --- Environments to access MINIO ---
             docker_config.setdefault("environment", {})
             docker_config["environment"]["AWS_ACCESS_KEY_ID"] = minio_runtime.access_key
-            docker_config["environment"][
-                "AWS_SECRET_ACCESS_KEY"
-            ] = minio_runtime.secret_key
+            docker_config["environment"]["AWS_SECRET_ACCESS_KEY"] = minio_runtime.secret_key
             docker_config["environment"].setdefault(
                 "AWS_DEFAULT_REGION",
                 minio_config.get("region") or "us-east-1",

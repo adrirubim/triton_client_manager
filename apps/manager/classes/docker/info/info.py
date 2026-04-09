@@ -91,9 +91,7 @@ class DockerInfo:
                 worker_ip = vm.address_private
 
                 try:
-                    api_url = (
-                        f"http://{worker_ip}:{self.remote_api_port}/containers/json"
-                    )
+                    api_url = f"http://{worker_ip}:{self.remote_api_port}/containers/json"
                     response = requests.get(api_url, timeout=self.remote_api_timeout)
                     response.raise_for_status()
                     containers_data = response.json()
@@ -101,9 +99,7 @@ class DockerInfo:
                     containers = Container.from_api(containers_data, worker_ip)
                     all_containers.update(containers)
 
-                    logger.debug(
-                        "Loaded %d containers from %s", len(containers), worker_ip
-                    )
+                    logger.debug("Loaded %d containers from %s", len(containers), worker_ip)
 
                 except requests.exceptions.RequestException as e:
                     logger.warning("Cannot reach worker %s: %s", worker_ip, e)
@@ -140,9 +136,7 @@ class DockerInfo:
             return {}
 
     def load_single_container(self, worker_ip: str, container_id: str) -> Container:
-        api_url = (
-            f"http://{worker_ip}:{self.remote_api_port}/containers/{container_id}/json"
-        )
+        api_url = f"http://{worker_ip}:{self.remote_api_port}/containers/{container_id}/json"
         response = requests.get(api_url, timeout=self.remote_api_timeout)
         response.raise_for_status()
         container_data = response.json()

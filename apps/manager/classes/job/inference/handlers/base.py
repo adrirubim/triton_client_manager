@@ -15,13 +15,9 @@ def check_instance(docker: "DockerThread", vm_ip: str, container_id: str) -> Non
 
     container = dict_containers.get(container_id)
     if container is None:
-        raise ValueError(
-            f"Container '{container_id[:12]}' not found in known containers"
-        )
+        raise ValueError(f"Container '{container_id[:12]}' not found in known containers")
     if container.worker_ip != vm_ip:
-        raise ValueError(
-            f"Container '{container_id[:12]}' is not on VM '{vm_ip}' (found on '{container.worker_ip}')"
-        )
+        raise ValueError(f"Container '{container_id[:12]}' is not on VM '{vm_ip}' (found on '{container.worker_ip}')")
 
 
 def _normalize_triton_inputs(inputs: object) -> list:

@@ -22,7 +22,6 @@ class JobDeletion:
         docker: "DockerThread",
         openstack: "OpenstackThread",
     ):
-
         self._vm = JobDeleteVM(openstack)
         self._container = JobDeleteContainer(docker)
         self._triton = JobDeleteServer(triton)

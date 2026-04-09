@@ -45,9 +45,7 @@ class JobInferenceHttp:
             vm_ip = payload.get("vm_ip")
             container_id = payload.get("container_id")
             if not vm_ip or not container_id:
-                raise TritonInferenceFailed(
-                    "pipeline", "Missing 'vm_ip' or 'container_id' for pipeline"
-                )
+                raise TritonInferenceFailed("pipeline", "Missing 'vm_ip' or 'container_id' for pipeline")
 
             check_instance(self.docker, vm_ip, container_id)
 
@@ -56,9 +54,7 @@ class JobInferenceHttp:
 
             server = self.triton.get_server(vm_ip, container_id)
             if not server:
-                raise TritonInferenceFailed(
-                    "pipeline", "No active Triton session for this instance"
-                )
+                raise TritonInferenceFailed("pipeline", "No active Triton session for this instance")
 
             steps: list[TritonRequest] = []
             for step in steps_cfg:
@@ -102,9 +98,7 @@ class JobInferenceHttp:
         server = self.triton.get_server(vm_ip, container_id)
         if not server:
             if not allow_transient:
-                raise TritonInferenceFailed(
-                    model_name, "No active Triton session for this instance"
-                )
+                raise TritonInferenceFailed(model_name, "No active Triton session for this instance")
 
             # Local-dev friendliness (explicit opt-in): allow inference without a prior
             # management "creation" flow by creating a transient TritonServer client.

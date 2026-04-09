@@ -15,7 +15,6 @@ class DockerDeletion:
         self.remote_api_port = config.get("remote_api_port", 2376)
 
     def handle(self, ip: str, force: bool, container_id: str, remove_volumes: bool):
-
         # --- Docker client ---
         client = None
 

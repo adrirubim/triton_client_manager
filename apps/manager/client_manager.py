@@ -23,7 +23,6 @@ logger = logging.getLogger(__name__)
 
 class ClientManager:
     def __init__(self):
-
         self.running = True
 
         # --- Setup ---
@@ -32,7 +31,6 @@ class ClientManager:
 
     # --- Init ----
     def config(self):
-
         with open("config/jobs.yaml", encoding="utf-8") as f:
             raw_jobs = safe_load(f)
         with open("config/docker.yaml", encoding="utf-8") as f:
@@ -94,9 +92,7 @@ class ClientManager:
             )
 
         # Detect HS* usage in non‑dev environments and refuse to start.
-        uses_hs = any(
-            isinstance(a, str) and a.upper().startswith("HS") for a in algorithms
-        )
+        uses_hs = any(isinstance(a, str) and a.upper().startswith("HS") for a in algorithms)
         if env in {"staging", "production"} and uses_hs and public_key_pem:
             UNSAFE_CONFIG_STARTUPS_TOTAL.labels(
                 reason="hs_algorithm_in_non_dev_env",

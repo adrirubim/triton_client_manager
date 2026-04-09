@@ -30,8 +30,4 @@ def config():
 @pytest.fixture
 def mock_vms():
     """Mock VMs for container discovery and lifecycle tests."""
-    return {
-        "vm-001": MockVM(
-            id="vm-001", name="docker-worker-1", address_private="10.0.0.5"
-        )
-    }
+    return {"vm-001": MockVM(id="vm-001", name="docker-worker-1", address_private="10.0.0.5")}

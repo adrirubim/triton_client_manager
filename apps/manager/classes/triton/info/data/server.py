@@ -35,6 +35,4 @@ class TritonServer:
         try:
             self.client.close()
         except Exception as exc:
-            logging.getLogger(__name__).warning(
-                "Error while closing Triton client in TritonServer.close: %s", exc
-            )
+            logging.getLogger(__name__).warning("Error while closing Triton client in TritonServer.close: %s", exc)

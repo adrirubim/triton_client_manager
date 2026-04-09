@@ -19,7 +19,6 @@ class OpenstackCreation:
     """Handles VM creation operations"""
 
     def __init__(self, auth: "OpenstackAuth", timeout: int, endpoint: str):
-
         self.auth = auth
         self.timeout = timeout
         self.endpoint = endpoint
@@ -49,7 +48,6 @@ class OpenstackCreation:
         network_id: str,
         config_drive: bool,
     ) -> tuple:
-
         # --- Data ---
         full_endpoint = self.auth.catalog.compute.endpoint_internal + self.endpoint
         payload = {
@@ -81,11 +79,8 @@ class OpenstackCreation:
         return vm_ip, vm_id
 
     def loop_status(self, vm_id: str) -> str:
-
         # --- Endpoint ---
-        full_endpoint = (
-            self.auth.catalog.compute.endpoint_internal + self.endpoint + "/" + vm_id
-        )
+        full_endpoint = self.auth.catalog.compute.endpoint_internal + self.endpoint + "/" + vm_id
         # --- Timer ---
         start_time = time.time()
         vm_ip = None

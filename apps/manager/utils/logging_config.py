@@ -12,7 +12,7 @@ class ContextFilter(logging.Filter):
     """
 
     def filter(self, record: logging.LogRecord) -> bool:  # type: ignore[type-arg]
-        for attr in ("client_uuid", "job_id", "job_type"):
+        for attr in ("client_uuid", "job_id", "job_type", "correlation_id"):
             if not hasattr(record, attr):
                 setattr(record, attr, "-")
         return True
@@ -32,7 +32,12 @@ def configure_logging(level: int = logging.INFO) -> None:
     )
 
     root_logger = logging.getLogger()
-    root_logger.addFilter(ContextFilter())
+    # Attach the filter to handlers (not only the logger) so the default fields
+    # are present regardless of logger propagation settings.
+    context_filter = ContextFilter()
+    root_logger.addFilter(context_filter)
+    for handler in root_logger.handlers:
+        handler.addFilter(context_filter)
 
     # Reduce noise from third-party libs
     logging.getLogger("uvicorn").setLevel(logging.WARNING)

@@ -23,7 +23,6 @@ class JobInfo:
         websocket: Callable[[str, dict], bool],
         get_queue_stats: Callable[[], dict],
     ):
-
         self.docker = docker
         self.openstack = openstack
         self.websocket = websocket  # Now expects (client_id, message)

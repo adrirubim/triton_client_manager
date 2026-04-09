@@ -103,9 +103,7 @@ async def test_client(
         print(f"[{user_id}] Error: {e}")
 
 
-async def test_multiple_clients(
-    uri: str = "ws://localhost:8000/ws", keep_alive_sec: float = 10
-):
+async def test_multiple_clients(uri: str = "ws://localhost:8000/ws", keep_alive_sec: float = 10):
     """Test multiple clients connecting simultaneously."""
     tasks = [
         test_client("alice", uri=uri, keep_alive_sec=keep_alive_sec),

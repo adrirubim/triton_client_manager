@@ -82,9 +82,7 @@ def test_openstack_creation_loop_status_error_and_timeout(monkeypatch):
     import time as real_time
 
     monkeypatch.setattr("classes.openstack.creation.creation.time.time", real_time.time)
-    monkeypatch.setattr(
-        "classes.openstack.creation.creation.requests.get", fake_get_err
-    )
+    monkeypatch.setattr("classes.openstack.creation.creation.requests.get", fake_get_err)
     ip_err = oc.loop_status("vm2")
     assert ip_err is None
 
@@ -93,9 +91,7 @@ def test_openstack_creation_loop_status_error_and_timeout(monkeypatch):
         return DummyResp({"status": "BUILD", "ip": ""})
 
     # Simulate a timeout by repeating the loop several times without ACTIVE
-    monkeypatch.setattr(
-        "classes.openstack.creation.creation.requests.get", fake_get_build
-    )
+    monkeypatch.setattr("classes.openstack.creation.creation.requests.get", fake_get_build)
     ip_timeout = oc.loop_status("vm3")
     assert ip_timeout is None
 
@@ -126,9 +122,7 @@ def test_openstack_deletion_handle_happy_and_404(monkeypatch):
         calls["get"].append(resp.status_code)
         return resp
 
-    monkeypatch.setattr(
-        "classes.openstack.deletion.deletion.requests.delete", fake_delete
-    )
+    monkeypatch.setattr("classes.openstack.deletion.deletion.requests.delete", fake_delete)
     monkeypatch.setattr("classes.openstack.deletion.deletion.requests.get", fake_get)
 
     od.handle("vm1")
@@ -140,9 +134,7 @@ def test_openstack_deletion_handle_happy_and_404(monkeypatch):
         resp = DummyResp(404)
         raise requests.exceptions.HTTPError(response=resp)
 
-    monkeypatch.setattr(
-        "classes.openstack.deletion.deletion.requests.delete", fake_delete_404
-    )
+    monkeypatch.setattr("classes.openstack.deletion.deletion.requests.delete", fake_delete_404)
     with pytest.raises(OpenstackDeletionMissingVM):
         od.handle("vm-missing")
 
@@ -174,9 +166,7 @@ def test_openstack_deletion_timeout_and_errors(monkeypatch):
         # Nunca devuelve 404 -> fuerza timeout
         return DummyResp(200)
 
-    monkeypatch.setattr(
-        "classes.openstack.deletion.deletion.requests.delete", fake_delete
-    )
+    monkeypatch.setattr("classes.openstack.deletion.deletion.requests.delete", fake_delete)
     monkeypatch.setattr("classes.openstack.deletion.deletion.requests.get", fake_get)
     monkeypatch.setattr("classes.openstack.deletion.deletion.time.time", fake_time)
 
@@ -187,8 +177,6 @@ def test_openstack_deletion_timeout_and_errors(monkeypatch):
     def delete_raises(url, verify, timeout, headers):
         raise RuntimeError("boom")
 
-    monkeypatch.setattr(
-        "classes.openstack.deletion.deletion.requests.delete", delete_raises
-    )
+    monkeypatch.setattr("classes.openstack.deletion.deletion.requests.delete", delete_raises)
     with pytest.raises(OpenstackDeletionError):
         od.handle("vm-err")

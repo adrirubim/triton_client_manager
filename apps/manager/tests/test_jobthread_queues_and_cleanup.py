@@ -114,9 +114,7 @@ def test_jobthread_on_message_sends_backpressure_nack(monkeypatch):
     jt.on_message("u1", {"uuid": "u1", "type": "info", "payload": {}})
 
     assert any(
-        cid == "u1"
-        and m.get("type") == "error"
-        and m.get("payload", {}).get("code") == "BACKPRESSURE_QUEUE_FULL"
+        cid == "u1" and m.get("type") == "error" and m.get("payload", {}).get("code") == "BACKPRESSURE_QUEUE_FULL"
         for cid, m in sent
     )
 

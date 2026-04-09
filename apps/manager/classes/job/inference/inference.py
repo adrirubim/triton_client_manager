@@ -55,9 +55,7 @@ class JobInference:
         if self._http is not None and self._grpc is not None:
             return
 
-        if not hasattr(self.triton, "triton_infer") or not isinstance(
-            self.triton.triton_infer, TritonInfer
-        ):
+        if not hasattr(self.triton, "triton_infer") or not isinstance(self.triton.triton_infer, TritonInfer):
             raise RuntimeError("TritonThread.triton_infer is not initialized")
 
         # Build orchestration layer and handlers
@@ -88,9 +86,7 @@ class JobInference:
         if protocol not in ("http", "grpc"):
             error = f"Unsupported inference protocol: {protocol!r}"
             logger.warning("JobInference: %s", error)
-            self.websocket(
-                msg_uuid, self._make_payload(msg_uuid, "FAILED", None, error)
-            )
+            self.websocket(msg_uuid, self._make_payload(msg_uuid, "FAILED", None, error))
             return
 
         # Helper used by gRPC handler to stream chunks

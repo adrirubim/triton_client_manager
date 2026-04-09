@@ -48,7 +48,6 @@ class JobThread(threading.Thread):
         max_queue_size_inference_per_user: int,
         **kwargs,
     ):
-
         super().__init__(name="Job_Thread", daemon=True)
         self._stop_event = threading.Event()
         self._ready_event = threading.Event()
@@ -318,7 +317,6 @@ class JobThread(threading.Thread):
         handler,
         job_type: str,
     ):
-
         # --- Executor Status ---
         if executor.get_available_slots() == 0:
             return
