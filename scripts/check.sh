@@ -28,6 +28,9 @@ fi
 echo "==> Install dependencies (apps/manager)"
 "$PYTHON_BIN" -m pip install --upgrade pip
 "$PIP_BIN" install -r requirements.txt
+if [[ "$CHECK_TESTS" == "1" ]]; then
+  "$PIP_BIN" install -r requirements-test.txt
+fi
 
 if [[ "$CHECK_LINT" == "1" ]]; then
   echo "==> 2/5 Lint (apps/manager)"

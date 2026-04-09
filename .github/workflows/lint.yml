@@ -34,4 +34,5 @@ jobs:
           bash scripts/check.sh
         env:
           CHECK_SECURITY: "0"
+          CHECK_TESTS: "0"
 
