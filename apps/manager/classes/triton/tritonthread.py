@@ -34,9 +34,7 @@ class TritonThread(threading.Thread):
         self.refresh_time = config["refresh_time"]
 
         # --- Data ---
-        self.dict_servers: dict[tuple, TritonServer] = (
-            {}
-        )  # {(vm_id, container_id): TritonServer}
+        self.dict_servers: dict[tuple, TritonServer] = {}  # {(vm_id, container_id): TritonServer}
 
         # --- Handlers ---
         self.triton_info = TritonInfo(timeout=config["health_check_timeout"])
@@ -64,8 +62,7 @@ class TritonThread(threading.Thread):
             try:
                 self.load()
                 # Small jitter to avoid synchronized health-check bursts across servers.
-                # nosec B311 - jitter is for scheduling, not cryptography.
-                jitter = random.uniform(0.0, max(0.01, float(self.refresh_time) * 0.10))
+                jitter = random.uniform(0.0, max(0.01, float(self.refresh_time) * 0.10))  # nosec B311
                 time.sleep(float(self.refresh_time) + jitter)
             except Exception as e:
                 observe_backend_error("triton")
@@ -115,9 +112,7 @@ class TritonThread(threading.Thread):
                         )
             except Exception as e:
                 observe_backend_error("triton")
-                logger.info(
-                    f" Health check failed for ({vm_id}, {container_id[:12]}): {e}"
-                )
+                logger.info(f" Health check failed for ({vm_id}, {container_id[:12]}): {e}")
 
     # -------------------------------------------- #
     #               LIFECYCLE                      #

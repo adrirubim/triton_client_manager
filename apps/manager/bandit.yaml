@@ -1,0 +1,12 @@
+## Bandit configuration for apps/manager
+#
+# Goal: scan application code only (not virtualenvs / deps / tests).
+#
+# CI currently runs Bandit against a curated set of paths, but local runs often
+# use `bandit -r .` inside apps/manager, which would otherwise include
+# `.venv/` and third-party packages.
+exclude_dirs:
+  - ".venv"
+  - "tests"
+  - "__pycache__"
+

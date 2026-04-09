@@ -62,5 +62,5 @@ jobs:
         working-directory: apps/manager
         run: |
           # Recursively scan application code; tests are excluded to reduce noise.
-          bandit -r classes utils client_manager.py -x tests
+          bandit -c bandit.yaml -r classes utils client_manager.py
 
