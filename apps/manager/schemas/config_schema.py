@@ -77,6 +77,11 @@ class DockerConfig(BaseModel):
     registry_address: str
     remote_api_timeout: PositiveInt
     remote_api_port: PositiveInt
+    remote_api_scheme: str = "http"
+    remote_api_tls_verify: bool = True
+    remote_api_ca_cert_path: Optional[str] = None
+    remote_api_client_cert_path: Optional[str] = None
+    remote_api_client_key_path: Optional[str] = None
 
     model_config = ConfigDict(extra="forbid")
 

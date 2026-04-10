@@ -3,8 +3,7 @@ import threading
 import time
 from queue import Empty
 
-# Import bounded executor instead of standard ThreadPoolExecutor
-from utils.bounded_executor import BoundedThreadPoolExecutor
+from utils.bounded_executor import BoundedThreadPoolExecutor, ExecutorQueueFull
 from utils.log_safety import safe_log_id
 from utils.metrics import (
     observe_job_processing,
@@ -504,9 +503,35 @@ class JobThread(threading.Thread):
                     duration = time.time() - start
                     observe_job_processing(_job_type, duration)
 
-            executor.submit(_wrapped, msg)
-            dispatched += 1
-            scanned_without_progress = 0
+            try:
+                executor.submit(_wrapped, msg)
+                dispatched += 1
+                scanned_without_progress = 0
+            except ExecutorQueueFull:
+                # Backpressure: executor saturated. Reject the message without blocking the scheduler.
+                observe_job_rejected(job_type)
+                msg_uuid = msg.get("uuid")
+                if self.websocket and msg_uuid:
+                    try:
+                        self.websocket(
+                            msg_uuid,
+                            {
+                                "type": "error",
+                                "payload": {
+                                    "code": "BACKPRESSURE_EXECUTOR_FULL",
+                                    "message": "Request dropped due to backpressure (executor queue full).",
+                                    "dropped_type": job_type,
+                                },
+                            },
+                        )
+                    except Exception:
+                        # Best-effort only; do not leak payloads or recurse.
+                        logger.debug(
+                            "Failed to send executor backpressure NACK to client",
+                            extra={"job_id": "-", "job_type": "backpressure_executor_nack_failed"},
+                        )
+                # Stop dispatching more work in this cycle; executor is full.
+                break
 
         self._rr_cursor[job_type] = cursor % max(1, len(tenants))
 

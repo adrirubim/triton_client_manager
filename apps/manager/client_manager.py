@@ -106,6 +106,42 @@ class ClientManager:
                 "HS* algorithms are not allowed in staging/production for WebSocket auth",
             )
 
+        # Hardening checks for Docker Remote API transport (staging/production).
+        docker_cfg_dict = self.config_docker or {}
+        remote_scheme = (docker_cfg_dict.get("remote_api_scheme") or "http").lower()
+        tls_verify = bool(docker_cfg_dict.get("remote_api_tls_verify", True))
+        client_cert = docker_cfg_dict.get("remote_api_client_cert_path")
+        client_key = docker_cfg_dict.get("remote_api_client_key_path")
+
+        if env in {"staging", "production"}:
+            if remote_scheme != "https":
+                UNSAFE_CONFIG_STARTUPS_TOTAL.labels(reason="docker_remote_api_http").inc()
+                logger.critical(
+                    "Unsafe Docker Remote API config: remote_api_scheme=%r in '%s'. "
+                    "Use remote_api_scheme=https with TLS verification. Refusing to start.",
+                    remote_scheme,
+                    env,
+                )
+                raise RuntimeError("Unsafe Docker Remote API config (HTTP in staging/production)")
+
+            if not tls_verify:
+                UNSAFE_CONFIG_STARTUPS_TOTAL.labels(reason="docker_remote_api_tls_noverify").inc()
+                logger.critical(
+                    "Unsafe Docker Remote API config: remote_api_tls_verify=false in '%s'. " "Refusing to start.",
+                    env,
+                )
+                raise RuntimeError("Unsafe Docker Remote API config (TLS verify disabled)")
+
+            # If mTLS is configured, require both cert and key.
+            if bool(client_cert) ^ bool(client_key):
+                UNSAFE_CONFIG_STARTUPS_TOTAL.labels(reason="docker_remote_api_mtls_incomplete").inc()
+                logger.critical(
+                    "Invalid Docker Remote API mTLS config in '%s': you must set both "
+                    "remote_api_client_cert_path and remote_api_client_key_path.",
+                    env,
+                )
+                raise RuntimeError("Invalid Docker Remote API mTLS config (cert/key mismatch)")
+
     def setup(self):
         self.job = JobThread(**self.config_job)
         self.docker = DockerThread(self.config_docker)

@@ -1,3 +1,15 @@
+##
+## DEPRECATED (dev default)
+##
+## Este fichero se mantiene por compatibilidad.
+## Para desarrollo usa: `config/websocket.dev.yaml`
+## Para staging/producción usa: `config/websocket.prod.yaml`
+##
+## Nota: el runtime ya hace fail-fast en staging/production si la auth es insegura,
+## pero separar ficheros reduce errores humanos.
+##
+
+# Dev defaults (equivalente a websocket.dev.yaml)
 host: "0.0.0.0"
 port: 8000
 valid_types:
@@ -7,12 +19,6 @@ valid_types:
   - "inference"
 max_message_bytes: 65536
 
-# Optional auth hardening configuration.
-# This file is intended as a **dev/local default**. For staging/prod, see
-# docs/CONFIGURATION.md and SECURITY.md and override these values via your own
-# config or environment-specific overlays.
-# - mode: "strict"  -> token required and validated according to claims below
-# - mode: "simple"  -> no local claim validation; use only in dev or behind an authenticated gateway
 auth:
   mode: "simple"
   require_token: false
@@ -20,16 +26,10 @@ auth:
   issuer:
   audience:
   leeway_seconds: 60
-  # Optional JWT verification settings (used in strict mode):
-  # - jwks_url: URL of a JWKS endpoint for RSA/ECDSA keys.
-  # - public_key_pem: PEM-encoded public key (or shared secret for HS* in dev).
-  # - algorithms: list of allowed algorithms (e.g. ["RS256", "ES256"]).
   jwks_url:
   public_key_pem:
   algorithms: []
 
-# Optional per-client rate limiting (lightweight, in-memory).
-# Set to 0 to disable each limit.
 rate_limits:
   messages_per_second_per_client: 0
   auth_failures_per_minute_per_client: 0

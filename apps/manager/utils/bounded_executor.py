@@ -10,6 +10,10 @@ from threading import Lock, Semaphore
 from typing import Any, Callable
 
 
+class ExecutorQueueFull(RuntimeError):
+    """Raised when the bounded executor queue is full (non-blocking submit)."""
+
+
 class BoundedThreadPoolExecutor:
     """
     ThreadPoolExecutor with a bounded internal queue.
@@ -64,8 +68,10 @@ class BoundedThreadPoolExecutor:
         Returns:
             Future object representing the pending task
         """
-        # Acquire semaphore (blocks if queue is full)
-        self.semaphore.acquire()
+        # Acquire semaphore (non-blocking). If the queue is full, reject instead
+        # of blocking the caller thread (critical for JobThread liveness).
+        if not self.semaphore.acquire(blocking=False):
+            raise ExecutorQueueFull("Bounded executor queue is full")
         with self._slots_lock:
             self._available_slots -= 1
 

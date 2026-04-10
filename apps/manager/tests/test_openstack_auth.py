@@ -117,7 +117,7 @@ def test_authenticate_network_error_returns_false(mock_post):
 
 
 def test_get_verify_param_with_missing_cert_file(tmp_path, caplog):
-    """_get_verify_param should warn and return False when a cert path does not exist."""
+    """_get_verify_param should fail-fast when a cert path does not exist."""
     non_existing = tmp_path / "missing.pem"
 
     auth = OpenstackAuth(
@@ -127,11 +127,12 @@ def test_get_verify_param_with_missing_cert_file(tmp_path, caplog):
         verify_ssl=str(non_existing),
     )
 
-    with caplog.at_level("WARNING"):
-        value = auth._get_verify_param()
-
-    assert value is False
-    assert any("Certificate file not found" in msg for msg in caplog.text.splitlines())
+    try:
+        auth._get_verify_param()
+    except FileNotFoundError as exc:
+        assert "Certificate file not found" in str(exc)
+    else:  # pragma: no cover
+        raise AssertionError("Expected FileNotFoundError for missing certificate path")
 
 
 def test_is_token_valid_and_check_and_refresh_token(monkeypatch):

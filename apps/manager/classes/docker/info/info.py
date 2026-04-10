@@ -16,6 +16,31 @@ class DockerInfo:
         self.registry_image_types = config["registry_image_types"]
         self.remote_api_timeout = config.get("remote_api_timeout", 5)
         self.remote_api_port = config.get("remote_api_port", 2376)
+        self.remote_api_scheme = (config.get("remote_api_scheme") or "http").lower()
+        self.remote_api_tls_verify = config.get("remote_api_tls_verify", True)
+        self.remote_api_ca_cert_path = config.get("remote_api_ca_cert_path")
+        self.remote_api_client_cert_path = config.get("remote_api_client_cert_path")
+        self.remote_api_client_key_path = config.get("remote_api_client_key_path")
+
+        if self.remote_api_scheme not in {"http", "https"}:
+            raise ValueError(f"Invalid remote_api_scheme={self.remote_api_scheme!r} (expected http|https)")
+
+    def _remote_api_requests_kwargs(self) -> dict:
+        if self.remote_api_scheme != "https":
+            return {}
+
+        kwargs: dict = {}
+        if self.remote_api_ca_cert_path:
+            kwargs["verify"] = self.remote_api_ca_cert_path
+        else:
+            kwargs["verify"] = bool(self.remote_api_tls_verify)
+
+        if self.remote_api_client_cert_path and self.remote_api_client_key_path:
+            kwargs["cert"] = (
+                self.remote_api_client_cert_path,
+                self.remote_api_client_key_path,
+            )
+        return kwargs
 
     def load_images(self) -> Dict[str, Image]:
         """
@@ -91,8 +116,12 @@ class DockerInfo:
                 worker_ip = vm.address_private
 
                 try:
-                    api_url = f"http://{worker_ip}:{self.remote_api_port}/containers/json"
-                    response = requests.get(api_url, timeout=self.remote_api_timeout)
+                    api_url = f"{self.remote_api_scheme}://{worker_ip}:{self.remote_api_port}" "/containers/json"
+                    response = requests.get(
+                        api_url,
+                        timeout=self.remote_api_timeout,
+                        **self._remote_api_requests_kwargs(),
+                    )
                     response.raise_for_status()
                     containers_data = response.json()
 
@@ -115,8 +144,14 @@ class DockerInfo:
     # --------------- HELPERS ---------------
     def get_container_ports(self, worker_ip: str, container_id: str) -> dict:
         try:
-            api_url = f"http://{worker_ip}:{self.remote_api_port}/containers/{container_id}/json"
-            response = requests.get(api_url, timeout=self.remote_api_timeout)
+            api_url = (
+                f"{self.remote_api_scheme}://{worker_ip}:{self.remote_api_port}" f"/containers/{container_id}/json"
+            )
+            response = requests.get(
+                api_url,
+                timeout=self.remote_api_timeout,
+                **self._remote_api_requests_kwargs(),
+            )
             response.raise_for_status()
             container_data = response.json()
 
@@ -136,8 +171,8 @@ class DockerInfo:
             return {}
 
     def load_single_container(self, worker_ip: str, container_id: str) -> Container:
-        api_url = f"http://{worker_ip}:{self.remote_api_port}/containers/{container_id}/json"
-        response = requests.get(api_url, timeout=self.remote_api_timeout)
+        api_url = f"{self.remote_api_scheme}://{worker_ip}:{self.remote_api_port}" f"/containers/{container_id}/json"
+        response = requests.get(api_url, timeout=self.remote_api_timeout, **self._remote_api_requests_kwargs())
         response.raise_for_status()
         container_data = response.json()
         return Container.from_id(container_data, worker_ip)

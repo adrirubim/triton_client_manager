@@ -151,8 +151,7 @@ class OpenstackAuth:
         """Get SSL verification parameter for requests"""
         if isinstance(self.verify_ssl, str):
             if not os.path.exists(self.verify_ssl):
-                logger.warning("Certificate file not found: %s", self.verify_ssl)
-                return False
+                raise FileNotFoundError(f"Certificate file not found: {self.verify_ssl}")
         return self.verify_ssl
 
     def _parse_token_data(self, token_data: dict):

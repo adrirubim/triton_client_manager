@@ -107,6 +107,27 @@ class DockerConfig(BaseModel):
     registry_address: str
     remote_api_timeout: PositiveInt
     remote_api_port: PositiveInt
+    remote_api_scheme: str = Field(
+        default="http",
+        description="Scheme for Docker Remote API HTTP calls (http|https). "
+        "In staging/production this should be https with TLS verification.",
+    )
+    remote_api_tls_verify: bool = Field(
+        default=True,
+        description="Verify TLS certificates for Docker Remote API (when using https).",
+    )
+    remote_api_ca_cert_path: Optional[str] = Field(
+        default=None,
+        description="CA cert path for Docker Remote API TLS verification (optional).",
+    )
+    remote_api_client_cert_path: Optional[str] = Field(
+        default=None,
+        description="Client certificate path for Docker Remote API mTLS (optional).",
+    )
+    remote_api_client_key_path: Optional[str] = Field(
+        default=None,
+        description="Client private key path for Docker Remote API mTLS (optional).",
+    )
 
     model_config = ConfigDict(extra="forbid")
 

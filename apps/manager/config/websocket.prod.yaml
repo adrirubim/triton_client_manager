@@ -1,0 +1,30 @@
+host: "0.0.0.0"
+port: 8000
+valid_types:
+  - "auth"
+  - "info"
+  - "management"
+  - "inference"
+max_message_bytes: 65536
+
+# Producción/staging: configuración estricta (token requerido + verificación).
+auth:
+  mode: "strict"
+  require_token: true
+  required_claims: []
+  issuer: "CHANGE_ME_ISSUER"
+  audience: "CHANGE_ME_AUDIENCE"
+  leeway_seconds: 60
+  # Proporciona UNA de las dos opciones:
+  # - jwks_url: URL del JWKS (recomendado)
+  # - public_key_pem: clave pública PEM
+  jwks_url: "CHANGE_ME_JWKS_URL"
+  public_key_pem:
+  algorithms:
+    - "RS256"
+
+# Rate limiting recomendado en entornos compartidos (ajústalo).
+rate_limits:
+  messages_per_second_per_client: 20
+  auth_failures_per_minute_per_client: 10
+
