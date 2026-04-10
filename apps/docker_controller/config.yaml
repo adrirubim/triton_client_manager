@@ -1,5 +1,22 @@
-gitlab_url: https://registry.example.com
-project_id: 123
+# Provider de origen para sincronizar imágenes hacia el registry local.
+# - ghcr: GitHub Container Registry (recomendado para proyecto personal)
+# - gitlab: GitLab Container Registry (legacy/temporal)
+provider: ghcr
+
+# --- GHCR (provider=ghcr) ---
+# Owner (usuario u organización) en GitHub.
+ghcr_owner: CHANGE_ME_GHCR_OWNER
+# Usuario para docker login contra ghcr.io (si no se setea, se toma REGISTRY_USERNAME).
+# registry_username: CHANGE_ME_GHCR_USERNAME
+# Lista explícita de imágenes remotas (sin tag). Se usa remote_default_tag si no especificás tag.
+remote_images:
+  - triton-client-manager
+# Tag por defecto para provider=ghcr (lo habitual es "latest").
+remote_default_tag: latest
+
+# --- GitLab (provider=gitlab) ---
+# gitlab_url: https://gitlab.example.com
+# project_id: 123
 
 project: example_project
 local_registry: localhost:5000
@@ -10,3 +27,20 @@ local_registry: localhost:5000
 # IMPORTANT: Using plain HTTP is intended for localhost/dev only.
 local_registry_scheme: http
 # token and token_name are injected from REGISTRY_TOKEN / REGISTRY_TOKEN_NAME env vars
+
+# --- Supply-chain guardrails (REQUIRED) ---
+# To avoid syncing unintended images, define an allowlist.
+# You can match either by image name (the last path component of the GitLab registry location),
+# and/or by regex against the full GitLab location.
+allowed_images:
+  - triton-client-manager
+  - worker
+# allowed_image_regex:
+#   - "^registry\\.example\\.com:5050/.*/triton-client-manager$"
+
+# If you point local_registry to a non-local host, you must opt-in explicitly and use TLS.
+allow_nonlocal_registry: false
+
+# --- GitLab pagination + tag selection (solo provider=gitlab) ---
+gitlab_per_page: 100
+tag_selection_strategy: updated_at
