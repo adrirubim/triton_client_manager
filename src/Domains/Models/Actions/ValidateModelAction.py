@@ -9,7 +9,7 @@ from typing import Final, List, Optional, Tuple
 import numpy as np
 import requests
 
-from sdk.src.tcm_client.sdk import AuthContext, InferenceInput, TcmClient
+from tcm_client.sdk import AuthContext, InferenceInput, TcmClient
 
 # Triton is exposed on host port 8001 by infra/triton/docker-compose.yml.
 TRITON_BASE_URL: Final[str] = "http://localhost:8001"
