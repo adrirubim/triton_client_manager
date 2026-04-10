@@ -318,7 +318,37 @@ class TcmClient:
                     type=raw.get("type", ""), payload=raw.get("payload", {})
                 )
 
-        return asyncio.run(_run())
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            return asyncio.run(_run())
+
+        raise RuntimeError(
+            "TcmClient.infer() no puede ejecutarse dentro de un event loop activo. "
+            "Usa await TcmClient.infer_async(...) o utiliza TcmWebSocketClient directamente."
+        )
+
+    async def infer_async(
+        self,
+        vm_id: str,
+        container_id: str,
+        model_name: str,
+        inputs: Sequence[InferenceInput],
+        *,
+        vm_ip: Optional[str] = None,
+        allow_transient: bool = False,
+    ) -> InferenceResponse:
+        async with TcmWebSocketClient(self._uri, self._auth_ctx) as client:
+            await client.auth()
+            raw = await client.inference_http(
+                vm_id=vm_id,
+                vm_ip=vm_ip,
+                container_id=container_id,
+                model_name=model_name,
+                inputs=inputs,
+                allow_transient=allow_transient,
+            )
+            return InferenceResponse(type=raw.get("type", ""), payload=raw.get("payload", {}))
 
     def run_inference(
         self,
