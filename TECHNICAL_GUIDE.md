@@ -74,6 +74,16 @@ Outside development (`TCM_ENV != "development"`), the server refuses to start if
 - `auth.mode == "strict"` but missing `jwks_url`/`public_key_pem` → **fails fast** (`SecurityError`)
 - HS* algorithms are allowed only in development and must be explicitly configured
 
+### Configuración WebSocket: dev vs staging/producción
+
+En `apps/manager/config/` existen configuraciones separadas para minimizar errores humanos:
+
+- `websocket.dev.yaml`: defaults cómodos para local (**inseguro para prod**).
+- `websocket.prod.yaml`: plantilla estricta para staging/producción (token requerido + verificación).
+- `websocket.yaml`: se mantiene por compatibilidad, equivalente al dev default.
+
+**Recomendación**: en staging/producción, despliega usando `websocket.prod.yaml` (o su overlay equivalente) y completa `auth.jwks_url`/`auth.public_key_pem` + `issuer/audience`.
+
 ### Path Traversal protection (model repository)
 
 When scaffolding models into the local Triton model repository, the domain layer applies two defenses:
@@ -209,6 +219,26 @@ Defined in `apps/manager/utils/metrics.py` (selected highlights):
 ---
 
 ## Deployment Guardrails
+
+### Docker Remote API (seguridad mínima)
+
+El manager interactúa con workers vía Docker Remote API:
+
+- Llamadas HTTP para inventario (contenedores/puertos).
+- Docker SDK para crear/gestionar contenedores.
+
+**Recomendación para staging/producción**:
+- No exponer el Docker daemon públicamente.
+- Usar red privada + firewall/allowlist de IPs.
+- Usar **TLS** (idealmente mTLS) y no permitir `http`.
+
+Configuración en `apps/manager/config/docker.yaml`:
+- `remote_api_scheme: https`
+- `remote_api_tls_verify: true`
+- (opcional) `remote_api_ca_cert_path`
+- (opcional, recomendado) `remote_api_client_cert_path` + `remote_api_client_key_path`
+
+Guardrail runtime: en `TCM_ENV=staging|production` el servicio **rechaza** arrancar si `remote_api_scheme != https` o si `remote_api_tls_verify=false`.
 
 ### Reference Triton stack
 

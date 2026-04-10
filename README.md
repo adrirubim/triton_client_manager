@@ -227,7 +227,9 @@ Canonical setup and advanced options: [TECHNICAL_GUIDE.md](TECHNICAL_GUIDE.md).
 
 - Ensure `config/*.yaml` exists inside `apps/manager/config/`:
   - `jobs.yaml`
-  - `websocket.yaml`
+  - `websocket.yaml` (compat/dev; recomendado: `websocket.dev.yaml` o `websocket.prod.yaml`)
+  - `websocket.dev.yaml` (dev/local)
+  - `websocket.prod.yaml` (staging/production)
   - `openstack.yaml`
   - `docker.yaml`
   - `triton.yaml`
@@ -258,6 +260,19 @@ python dev_server.py
 cd apps/manager
 source ../.venv/bin/activate
 python client_manager.py
+```
+
+### Image tag selection (GHCR)
+
+Some deployment examples reference the GHCR image. You can control which tag to deploy with:
+
+- `TCM_IMAGE_TAG` (for `docker-compose.multi-node.yml`)
+
+Example:
+
+```bash
+export TCM_IMAGE_TAG=latest
+docker compose -f docker-compose.multi-node.yml up -d
 ```
 
 Startup sequence:
@@ -564,7 +579,8 @@ From the repository root:
 
 ```bash
 cd infra/monitoring
-docker compose up -d
+# Local dev:
+docker compose --env-file .env -f docker-compose.yml -f docker-compose.dev.yml up -d
 ```
 
 Then:
