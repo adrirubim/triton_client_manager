@@ -16,8 +16,8 @@ spec:
     spec:
       containers:
         - name: manager
-          # NOTE: Replace <version> with a concrete image tag.
-          image: ghcr.io/triton-client-manager/triton-client-manager:<version>
+          # NOTE: Replace TCM_IMAGE_TAG with a concrete image tag at deploy time.
+          image: ghcr.io/triton-client-manager/triton-client-manager:${TCM_IMAGE_TAG}
           imagePullPolicy: IfNotPresent
           env:
             - name: TCM_ENV

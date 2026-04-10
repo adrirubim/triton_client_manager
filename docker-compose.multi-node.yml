@@ -2,8 +2,7 @@ version: "3.9"
 
 services:
   tcm-manager-1:
-    # NOTE: Replace <version> with a concrete image tag.
-    image: ghcr.io/triton-client-manager/triton-client-manager:<version>
+    image: ghcr.io/triton-client-manager/triton-client-manager:${TCM_IMAGE_TAG:-latest}
     container_name: tcm-manager-1
     environment:
       - TCM_ENV=production
@@ -11,8 +10,7 @@ services:
       - "8001:8000"
 
   tcm-manager-2:
-    # NOTE: Replace <version> with a concrete image tag.
-    image: ghcr.io/triton-client-manager/triton-client-manager:<version>
+    image: ghcr.io/triton-client-manager/triton-client-manager:${TCM_IMAGE_TAG:-latest}
     container_name: tcm-manager-2
     environment:
       - TCM_ENV=production

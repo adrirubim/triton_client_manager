@@ -20,12 +20,11 @@ services:
     restart: unless-stopped
     depends_on:
       - prometheus
-    # NOTE: These credentials are for **local development only**.
-    # For any shared/staging/production environment, override them via
-    # environment variables or secrets and never use admin/admin.
+    # NOTE: Do NOT set insecure defaults here.
+    # For local development, use `docker-compose.dev.yml` (see alongside).
     environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER:?set GF_SECURITY_ADMIN_USER}
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:?set GF_SECURITY_ADMIN_PASSWORD}
     ports:
       - "3000:3000"
     extra_hosts:
