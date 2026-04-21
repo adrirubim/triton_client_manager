@@ -1,7 +1,7 @@
 """
 Regression tests for dependency injection, deletion payload normalization,
 auth contract, and inference example alignment.
-Run: cd apps/manager && python -m unittest tests.test_regression -v
+Run: cd apps/manager && python -m unittest discover -s tests -p "test_regression.py" -v
 """
 
 import json

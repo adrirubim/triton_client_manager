@@ -7,8 +7,9 @@
 > A modern, enterprise-grade orchestration service for AI inference that coordinates OpenStack VMs, Docker containers, and NVIDIA Triton Inference Server via WebSockets. It provides multi-tenant scheduling (DRR), operational guardrails, and production-grade observability.
 
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=flat&logo=python&logoColor=white)](https://www.python.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.135.3-009688?style=flat&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![Uvicorn](https://img.shields.io/badge/Uvicorn-0.30.0-499848?style=flat)](https://www.uvicorn.org/)
+[![Python (Docker image)](https://img.shields.io/badge/Python_(Docker)-3.13-3776AB?style=flat&logo=python&logoColor=white)](https://hub.docker.com/_/python)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.136.0-009688?style=flat&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Uvicorn](https://img.shields.io/badge/Uvicorn-0.44.0-499848?style=flat)](https://www.uvicorn.org/)
 [![Docker](https://img.shields.io/badge/Docker-24+-2496ED?style=flat&logo=docker&logoColor=white)](https://www.docker.com/)
 [![Triton Client](https://img.shields.io/badge/Triton_Client-2.67.0-76B900?style=flat)](https://github.com/triton-inference-server/client)
 [![Tests](https://img.shields.io/github/actions/workflow/status/adrirubim/triton_client_manager/tests.yml?branch=main&label=Tests&style=flat&color=brightgreen)](https://github.com/adrirubim/triton_client_manager/actions/workflows/tests.yml)
@@ -100,6 +101,7 @@ The system exposes inference endpoints (HTTP and gRPC) and manages per-user job 
 ### Key Highlights
 
 - **Modern stack:** Python 3.10+ (validated in CI on 3.12), FastAPI, uvicorn, PyYAML, Triton client
+- **Container runtime:** `Dockerfile.manager` uses `python:3.13-slim` (CI still validates the codebase on Python 3.12)
 - **OpenStack integration:** VM lifecycle, application credentials, region-aware service catalog
 - **Docker integration:** Container management for Triton workers
 - **Triton integration:** HTTP/gRPC inference, health checks, routing by `vm_id` / `container_id`
@@ -250,7 +252,7 @@ Runs only `JobThread` + `WebSocketThread` with mocked OpenStack/Docker/Triton ba
 
 ```bash
 cd apps/manager
-source ../.venv/bin/activate
+source ../../.venv/bin/activate
 python dev_server.py
 ```
 
@@ -258,7 +260,7 @@ python dev_server.py
 
 ```bash
 cd apps/manager
-source ../.venv/bin/activate
+source ../../.venv/bin/activate
 python client_manager.py
 ```
 
@@ -337,7 +339,7 @@ cd apps/manager
 python -m py_compile client_manager.py
 python -m compileall -q classes utils
 PYTHONPATH=. python tests/smoke_runtime.py --with-ws-client
-PYTHONPATH=. python -m unittest tests.test_regression -v
+PYTHONPATH=. python -m unittest discover -s tests -p "test_regression.py" -v
 PYTHONPATH=. python -m pytest tests/ -v
 ```
 
@@ -360,7 +362,7 @@ You can mirror this flow in workflows such as [tests.yml](.github/workflows/test
 
 ```bash
 cd apps/manager
-source ../.venv/bin/activate
+source ../../.venv/bin/activate
 python tests/smoke_runtime.py
 ```
 
@@ -373,8 +375,8 @@ python tests/smoke_runtime.py
 
 ```bash
 cd apps/manager
-source ../.venv/bin/activate
-python -m unittest tests.test_regression -v
+source ../../.venv/bin/activate
+python -m unittest discover -s tests -p "test_regression.py" -v
 ```
 
 ### WebSocket Integration Tests
@@ -384,7 +386,7 @@ python -m unittest tests.test_regression -v
 
 ```bash
 cd apps/manager
-source ../.venv/bin/activate
+source ../../.venv/bin/activate
 python -m pytest tests/test_integration_ws.py -v
 ```
 
@@ -396,7 +398,7 @@ For a full local run that matches CI:
 
 ```bash
 cd apps/manager
-source ../.venv/bin/activate
+source ../../.venv/bin/activate
 python -m pytest tests/ -v
 ```
 
@@ -500,11 +502,11 @@ For local development and tests:
 cd apps/manager
 
 # Dev server (no external services, recommended for local work)
-source ../.venv/bin/activate
+source ../../.venv/bin/activate
 python dev_server.py
 
 # Full manager (requires OpenStack/Docker/Triton)
-source ../.venv/bin/activate
+source ../../.venv/bin/activate
 python client_manager.py
 ```
 
@@ -512,9 +514,9 @@ python client_manager.py
 
 ```bash
 cd apps/manager
-source ../.venv/bin/activate
+source ../../.venv/bin/activate
 python tests/smoke_runtime.py
-python -m unittest tests.test_regression -v
+python -m unittest discover -s tests -p "test_regression.py" -v
 ```
 
 ### Official SDKs (Python)
@@ -568,7 +570,7 @@ details, see [TECHNICAL_GUIDE](TECHNICAL_GUIDE.md).
 
 ```bash
 cd apps/manager
-source ../.venv/bin/activate
+source ../../.venv/bin/activate
 python -m py_compile client_manager.py
 python -m compileall -q classes utils
 ```
@@ -605,9 +607,9 @@ Equivalent manual commands:
 
 ```bash
 cd apps/manager
-source ../.venv/bin/activate
+source ../../.venv/bin/activate
 python tests/smoke_runtime.py --with-ws-client
-python -m unittest tests.test_regression -v
+python -m unittest discover -s tests -p "test_regression.py" -v
 python -m pytest tests/test_integration_ws.py -v  # optional but recommended
 python -m py_compile client_manager.py
 python -m compileall -q classes utils

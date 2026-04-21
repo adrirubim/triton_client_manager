@@ -11,7 +11,7 @@
 Select what you ran:
 
 - [ ] Smoke runtime (`python tests/smoke_runtime.py`)
-- [ ] Regression (`python -m unittest tests.test_regression -v`)
+- [ ] Regression (`python -m unittest discover -s tests -p "test_regression.py" -v`)
 - [ ] Pytest (`python -m pytest tests/ -v`)
 - [ ] Lint/format (`ruff check .` and `black --check .`)
 

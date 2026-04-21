@@ -29,4 +29,4 @@ echo "[setup] Dependencies installed."
 echo "[setup] Running smoke test..."
 cd "$MANAGER"
 PYTHONPATH=. "$ROOT/.venv/bin/python" tests/smoke_runtime.py --with-ws-client
-echo "[setup] ✓ Setup complete. Run: cd apps/manager && source ../.venv/bin/activate && python client_manager.py"
+echo "[setup] ✓ Setup complete. Run: cd apps/manager && source ../../.venv/bin/activate && python client_manager.py"

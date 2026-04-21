@@ -6,7 +6,7 @@ Exact versions used in this project (reference for development and CI). Update w
 
 | Layer | Component | Version | Notes |
 |------|-----------|---------|-------|
-| Runtime | Python | **3.12** (recommended) | CI validates 3.12; project supports 3.10–3.12 |
+| Runtime | Python | **3.12** (recommended) | CI validates 3.12; `Dockerfile.manager` uses Python 3.13 |
 | Image | Manager base image | `python:3.13-slim` | `Dockerfile.manager` |
 | Deployment | Triton Inference Server image | `nvcr.io/nvidia/tritonserver:26.03-py3` | Reference compose under `infra/triton/` |
 | Manager | fastapi | 0.136.0 | `apps/manager/requirements.txt` |
@@ -23,7 +23,7 @@ Concrete versions captured from the pinned requirements for the manager runtime 
 
 | Component | Version | Notes |
 |----------|---------|-------|
-| **Python** | **3.12** (recommended) | CI validates 3.12; project supports 3.10–3.12 |
+| **Python** | **3.12** (recommended) | CI validates 3.12; `Dockerfile.manager` uses Python 3.13 |
 
 ### Triton (reference deployment)
 

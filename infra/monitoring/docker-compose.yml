@@ -1,6 +1,6 @@
 services:
   prometheus:
-    # NOTE: Replace <version> with a concrete image tag.
+    # Pinned to a concrete image tag for reproducibility.
     image: prom/prometheus:v3.10.0
     container_name: tcm-prometheus
     restart: unless-stopped
@@ -12,7 +12,7 @@ services:
       - "host.docker.internal:host-gateway"
 
   grafana:
-    # NOTE: Replace <version> with a concrete image tag.
+    # Pinned to a concrete image tag for reproducibility.
     image: grafana/grafana:13.0.1
     container_name: tcm-grafana
     restart: unless-stopped

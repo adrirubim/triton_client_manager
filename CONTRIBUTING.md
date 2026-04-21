@@ -24,7 +24,7 @@ Runtime validation with mocks (JobThread, WebSocket, auth, info):
 
 ```bash
 cd apps/manager
-source ../.venv/bin/activate
+source ../../.venv/bin/activate
 python tests/smoke_runtime.py
 ```
 
@@ -34,15 +34,15 @@ Unit tests for DI, deletion, auth, inference, and config:
 
 ```bash
 cd apps/manager
-source ../.venv/bin/activate
-python -m unittest tests.test_regression -v
+source ../../.venv/bin/activate
+python -m unittest discover -s tests -p "test_regression.py" -v
 ```
 
 ### 3. Full test suite (pytest)
 
 ```bash
 cd apps/manager
-source ../.venv/bin/activate
+source ../../.venv/bin/activate
 python -m pytest tests/ -v
 ```
 
@@ -53,7 +53,7 @@ The server is started automatically by a session-scoped fixture:
 
 ```bash
 cd apps/manager
-source ../.venv/bin/activate
+source ../../.venv/bin/activate
 python -m pytest tests/test_integration_ws.py -v
 ```
 
@@ -63,7 +63,7 @@ Alternative: `python tests/smoke_runtime.py --with-ws-client` (standalone, no py
 
 ```bash
 cd apps/manager
-source ../.venv/bin/activate
+source ../../.venv/bin/activate
 python -m py_compile client_manager.py
 python -m compileall -q classes utils
 ```
@@ -87,7 +87,7 @@ To run locally:
 ```bash
 cd apps/manager
 export TCM_RUN_REAL_BACKENDS=1
-source ../.venv/bin/activate
+source ../../.venv/bin/activate
 python -m pytest tests/test_integration_backends.py -v
 ```
 
@@ -116,7 +116,7 @@ Before opening a pull request, run the same linters that CI uses:
 
 ```bash
 cd apps/manager
-source ../.venv/bin/activate
+source ../../.venv/bin/activate
 ruff check .
 black .
 ```
