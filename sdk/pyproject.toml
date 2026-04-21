@@ -22,10 +22,10 @@ classifiers = [
 ]
 
 dependencies = [
-  "websockets>=12,<13",
-  "numpy>=1.26",
+  "websockets>=16,<17",
+  "numpy>=2.0",
   "pydantic>=2.0",
-  "onnx>=1.14",
+  "onnx>=1.21.0",
 ]
 
 [project.urls]
