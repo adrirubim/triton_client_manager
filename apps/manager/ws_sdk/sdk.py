@@ -11,16 +11,7 @@ To regenerate:
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-
-# Make `tcm_client` importable from the repo checkout without installation.
-# This file lives at apps/manager/ws_sdk/sdk.py -> repo root is parents[3].
-_repo_root = Path(__file__).resolve().parents[3]
-_sdk_src = _repo_root / "sdk" / "src"
-sys.path.insert(0, str(_sdk_src))
-
-from tcm_client.sdk import (  # noqa: E402
+from tcm_client.sdk import (
     AuthContext,
     TcmWebSocketClient,
     quickstart_queue_stats,

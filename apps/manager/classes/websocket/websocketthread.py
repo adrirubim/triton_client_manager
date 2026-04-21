@@ -23,6 +23,7 @@ from utils.metrics import (
     generate_metrics_response,
     observe_ws_message,
 )
+from utils.stream_cancel import cancel as cancel_client
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +74,7 @@ class WebSocketThread(threading.Thread):
         on_disconnect: Optional[Callable[[str], None]] = None,
         max_message_bytes: int = 64 * 1024,
         get_queue_stats: Optional[Callable[[], dict]] = None,
+        readiness_probe: Optional[Callable[[], tuple[bool, dict]]] = None,
     ):
         """
         Initialize WebSocket server.
@@ -95,6 +97,7 @@ class WebSocketThread(threading.Thread):
         self.on_disconnect = on_disconnect
         self.max_message_bytes = max_message_bytes
         self.get_queue_stats = get_queue_stats
+        self.readiness_probe = readiness_probe
 
         # Auth / rate limiting configuration (optional, from websocket.yaml).
         self.auth_config: Dict = {}
@@ -133,8 +136,19 @@ class WebSocketThread(threading.Thread):
 
         @self.app.get("/ready")
         async def ready():
-            """Readiness probe (server ready to accept connections)."""
-            return {"status": "ready"}
+            """Readiness probe (server ready to accept connections AND core deps healthy)."""
+            if self.readiness_probe is None:
+                return {"status": "ready"}
+            try:
+                ok, details = self.readiness_probe()
+            except Exception as exc:  # noqa: BLE001
+                return JSONResponse(
+                    status_code=503,
+                    content={"status": "not_ready", "reason": "readiness_probe_failed", "detail": str(exc)},
+                )
+            if ok:
+                return {"status": "ready", **(details or {})}
+            return JSONResponse(status_code=503, content={"status": "not_ready", **(details or {})})
 
         @self.app.get("/metrics")
         async def metrics(request: Request):
@@ -463,6 +477,21 @@ class WebSocketThread(threading.Thread):
 
             # ========== SUBSEQUENT MESSAGES ==========
             while True:
+                # Phase 5 shutdown guard: stop accepting new work during draining.
+                if getattr(self, "_stopping", False) or self._stop_event.is_set():
+                    await websocket.send_text(
+                        _json_dumps(
+                            {
+                                "type": "error",
+                                "payload": {
+                                    "code": "SYSTEM_SHUTDOWN",
+                                    "message": "Server is shutting down; request rejected.",
+                                },
+                            }
+                        )
+                    )
+                    await websocket.close(code=1012)
+                    break
                 raw_msg = await websocket.receive_text()
 
                 if len(raw_msg.encode("utf-8")) > self.max_message_bytes:
@@ -617,6 +646,9 @@ class WebSocketThread(threading.Thread):
                     self.clients.pop(client_id, None)
                     self.client_auth.pop(client_id, None)
 
+                # Abort any in-flight expensive work for this client immediately.
+                cancel_client(client_id)
+
                 # Memory hygiene: clear rate-limit state for this client ID.
                 with self._rate_lock:
                     self._msg_timestamps.pop(client_id, None)
@@ -655,6 +687,8 @@ class WebSocketThread(threading.Thread):
                     "job_type": "ws_send",
                 },
             )
+            # Proactively cancel in-flight work (e.g. streaming inference) for this client.
+            cancel_client(client_id)
             return False
 
         if not self.loop:
@@ -666,6 +700,7 @@ class WebSocketThread(threading.Thread):
                     "job_type": "ws_send",
                 },
             )
+            cancel_client(client_id)
             return False
 
         try:
@@ -690,6 +725,15 @@ class WebSocketThread(threading.Thread):
                             "job_type": "ws_send",
                         },
                     )
+                    # If async send fails, assume the connection is unhealthy and
+                    # force future sends to fail fast, triggering cancellation.
+                    try:
+                        with self.clients_lock:
+                            self.clients.pop(client_id, None)
+                            self.client_auth.pop(client_id, None)
+                    except Exception:
+                        pass
+                    cancel_client(client_id)
 
             future.add_done_callback(_done)
             return True

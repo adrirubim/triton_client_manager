@@ -16,6 +16,10 @@ class TritonServer:
     outputs: list = field(default_factory=list)
     status: str = "ready"
     protocol: Optional[Literal["http", "grpc"]] = None
+    # Timeout governance (copied from triton.yaml at creation time when available).
+    # Note: gRPC clients rely on per-call `client_timeout` rather than client-level timeouts.
+    connection_timeout: int = 0
+    network_timeout: int = 0
     consecutive_health_failures: int = 0
     last_healthy_ts: float = 0.0
     circuit_open_until_ts: float = 0.0

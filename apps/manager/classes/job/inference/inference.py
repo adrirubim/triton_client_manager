@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Callable
 from classes.job.joberrors import JobInferenceMissingField
 from classes.triton import TritonInfer
 from classes.triton.inference_orchestrator import TritonInference
-from classes.triton.tritonerrors import TritonInferenceFailed
+from classes.triton.tritonerrors import TritonError, TritonInferenceFailed
 from utils.metrics import observe_inference_latency
 
 from .handlers.grpc import JobInferenceGrpc
@@ -55,14 +55,21 @@ class JobInference:
         if self._http is not None and self._grpc is not None:
             return
 
-        if not hasattr(self.triton, "triton_infer") or not isinstance(self.triton.triton_infer, TritonInfer):
+        # NOTE: don't use isinstance() here.
+        # In this repo we sometimes import `TritonInfer` through compatibility aliases (`classes.*`)
+        # which can result in multiple class identities referring to the same implementation.
+        infer_obj = getattr(self.triton, "triton_infer", None)
+        if infer_obj is None:
             raise RuntimeError("TritonThread.triton_infer is not initialized")
+        # Minimal structural check to fail fast on mis-wiring.
+        if not callable(getattr(infer_obj, "decode_response", None)):
+            raise RuntimeError("TritonThread.triton_infer is invalid (missing decode_response)")
 
         # Build orchestration layer and handlers (include circuit breaker governance if available)
         cb_fail = getattr(self.triton, "circuit_breaker_failure_threshold", 3)
         cb_open = getattr(self.triton, "circuit_breaker_open_seconds", 30)
         self._triton_inference = TritonInference(
-            self.triton.triton_infer,
+            infer_obj,
             cb_failure_threshold=cb_fail,
             cb_open_seconds=cb_open,
         )
@@ -80,6 +87,10 @@ class JobInference:
 
         msg_uuid: str = msg.get("uuid", "")
         payload: dict = msg.get("payload", {}) or {}
+        # Internal-only: attach auth context so lower layers can enrich metrics safely.
+        # This is not part of the external SDK envelope returned to clients.
+        payload["_auth"] = (msg.get("_auth") or {}) or {}
+        tenant_id = str(((msg.get("_auth") or {}) or {}).get("tenant_id") or "unknown")
 
         if not msg_uuid:
             raise JobInferenceMissingField("uuid")
@@ -96,10 +107,12 @@ class JobInference:
             return
 
         # Helper used by gRPC handler to stream chunks
-        def send(status: str, data=None, model_name: str | None = None):
-            self.websocket(
+        def send(status: str, data=None, model_name: str | None = None) -> bool:
+            return bool(
+                self.websocket(
                 msg_uuid,
                 self._make_payload(msg_uuid, status, model_name, data),
+            )
             )
 
         start = time.perf_counter()
@@ -129,27 +142,42 @@ class JobInference:
                 msg_uuid,
                 self._make_payload(msg_uuid, "FAILED", None, str(e)),
             )
-        except TritonInferenceFailed as e:
-            logger.warning("Triton inference failed: %s", e)
-            # Graceful degradation: provide retry hint when circuit breaker is open.
-            msg = str(e)
-            data: object = msg
-            if "CIRCUIT_OPEN: retry_after=" in msg:
+        except ValueError as e:
+            # Validation errors (missing fields, unknown container, etc.) are expected in dev/stress runs.
+            # Avoid stack traces: they add overhead under load and can starve the executor.
+            self.websocket(
+                msg_uuid,
+                self._make_payload(msg_uuid, "FAILED", None, str(e)),
+            )
+        except TritonError as e:
+            # Stable, typed error contract for all Triton-facing errors.
+            # Never rely on string parsing for downstream SDK behavior.
+            retry_after = getattr(e, "retry_after_seconds", None)
+            data = {
+                "code": getattr(e, "code", "TRITON_ERROR"),
+                "message": str(e),
+                "retriable": bool(getattr(e, "retriable", False)),
+            }
+            if retry_after is not None:
                 try:
-                    retry_after_s = int(msg.split("retry_after=")[1].split("s")[0])
+                    data["retry_after_seconds"] = int(retry_after)
                 except Exception:
-                    retry_after_s = 5
-                data = {
-                    "code": "DEGRADED_CIRCUIT_OPEN",
-                    "message": msg,
-                    "retry_after_seconds": retry_after_s,
-                }
+                    # Keep as-is if it can't be coerced; still present.
+                    data["retry_after_seconds"] = retry_after
+
+            logger.warning(
+                "Triton inference error (code=%s retriable=%s tenant=%s): %s",
+                data.get("code"),
+                data.get("retriable"),
+                tenant_id,
+                str(e),
+            )
             self.websocket(
                 msg_uuid,
                 self._make_payload(
                     msg_uuid,
                     "FAILED",
-                    e.model_name if hasattr(e, "model_name") else None,
+                    getattr(e, "model_name", None),
                     data,
                 ),
             )
@@ -161,7 +189,7 @@ class JobInference:
             )
         finally:
             elapsed = time.perf_counter() - start
-            observe_inference_latency(model_name_for_metrics, elapsed)
+            observe_inference_latency(model_name_for_metrics, elapsed, tenant_id=tenant_id)
 
     # -------------------------------------------- #
     #              WEBSOCKET HELPERS                #

@@ -10,16 +10,6 @@ from yaml import safe_load
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-
-def _ensure_repo_on_syspath() -> None:
-    repo_str = str(REPO_ROOT)
-    if repo_str not in sys.path:
-        sys.path.insert(0, repo_str)
-
-
-# Ensure `src/` is importable for CLI actions (no inline imports).
-_ensure_repo_on_syspath()
-
 from apps.manager.config_schema import (  # noqa: E402
     DockerConfig,
     JobsConfig,

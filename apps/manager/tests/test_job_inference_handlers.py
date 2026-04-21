@@ -61,17 +61,6 @@ def test_http_handler_happy_and_errors():
     triton_infer = MagicMock()
     triton_infer.infer.return_value = {"outputs": [b"ok"]}
 
-    # Use a fake static decode_response
-    def fake_decode(resp):
-        assert resp == {"outputs": [b"ok"]}
-        return {"decoded": True}
-
-    # Patch the static method inside the class
-    from classes.triton import infer as triton_infer_module
-
-    old_decode = triton_infer_module.TritonInfer.decode_response
-    triton_infer_module.TritonInfer.decode_response = staticmethod(fake_decode)
-
     triton = MagicMock()
     server = MagicMock()
     triton.get_server.return_value = server
@@ -81,9 +70,18 @@ def test_http_handler_happy_and_errors():
 
     def send(status, data=None, model_name=None):
         sent.append((status, data, model_name))
+        return True
+        return True
+        return True
+        return True
 
-    decoded = handler.handle("uuid", _basic_payload(), send)
-    assert decoded == {"decoded": True}
+    from classes.triton.infer import TritonInfer
+
+    # Orchestrator calls TritonInfer.decode_response(result). Patch it to accept our fake result dict.
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(TritonInfer, "decode_response", staticmethod(lambda resp: {"decoded": True}))
+        decoded = handler.handle("uuid", _basic_payload(), send)
+        assert decoded == {"decoded": True}
     triton_infer.infer.assert_called_once()
     args, kwargs = triton_infer.infer.call_args
     assert args[0] is server.client
@@ -100,9 +98,6 @@ def test_http_handler_happy_and_errors():
     handler_missing = JobInferenceHttp(docker, triton_infer, triton)
     with pytest.raises(TritonInferenceFailed):
         handler_missing.handle("uuid", _basic_payload(), send)
-
-    # Restaurar decode_response
-    triton_infer_module.TritonInfer.decode_response = old_decode
 
 
 def test_grpc_handler_streams_start_ongoing_and_errors():
@@ -122,8 +117,9 @@ def test_grpc_handler_streams_start_ongoing_and_errors():
 
     def send(status, data=None, model_name=None):
         sent.append((status, data, model_name))
+        return True
 
-    def fake_stream(client, model_name, inputs, on_chunk, output_name):
+    def fake_stream(client, model_name, inputs, on_chunk, output_name, **_kwargs):
         on_chunk({"chunk": 1})
         on_chunk({"chunk": 2})
 

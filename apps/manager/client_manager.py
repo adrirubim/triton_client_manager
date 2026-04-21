@@ -1,6 +1,8 @@
 import logging
 import os
+import signal
 import time
+from pathlib import Path
 
 from yaml import safe_load
 
@@ -12,7 +14,7 @@ from tcm.triton import TritonThread
 from tcm.websocket import WebSocketThread
 from utils.config_env import overlay_openstack_config
 from utils.logging_config import configure_logging
-from utils.metrics import UNSAFE_CONFIG_STARTUPS_TOTAL
+from utils.metrics import UNSAFE_CONFIG_STARTUPS_TOTAL, configure_metrics
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +26,7 @@ logger = logging.getLogger(__name__)
 class ClientManager:
     def __init__(self):
         self.running = True
+        self._stopping = False
 
         # --- Setup ---
         self.config()
@@ -31,16 +34,36 @@ class ClientManager:
 
     # --- Init ----
     def config(self):
-        with open("config/jobs.yaml", encoding="utf-8") as f:
-            raw_jobs = safe_load(f)
-        with open("config/docker.yaml", encoding="utf-8") as f:
-            raw_docker = safe_load(f)
-        with open("config/openstack.yaml", encoding="utf-8") as f:
-            self.config_openstack = safe_load(f)
-        with open("config/websocket.yaml", encoding="utf-8") as f:
-            raw_websocket = safe_load(f)
-        with open("config/triton.yaml", encoding="utf-8") as f:
-            raw_triton = safe_load(f)
+        base_dir = Path(__file__).resolve().parent
+        cfg_dir = base_dir / "config"
+        env = (os.getenv("TCM_ENV", "development") or "development").lower()
+
+        def _read_yaml(path: Path):
+            with path.open(encoding="utf-8") as f:
+                return safe_load(f)
+
+        def _load_config_yaml(name: str, *, allow_example_in_dev: bool = False):
+            """
+            Load a YAML config from apps/manager/config.
+
+            In development, some deployments keep only `*.yaml.example` for secrets/credentials.
+            We allow a controlled fallback to the example file to keep local workflows usable.
+            """
+            primary = cfg_dir / f"{name}.yaml"
+            if primary.exists():
+                return _read_yaml(primary)
+            if allow_example_in_dev and env == "development":
+                example = cfg_dir / f"{name}.yaml.example"
+                if example.exists():
+                    logger.warning("[ClientManager] Using example config fallback: %s", str(example))
+                    return _read_yaml(example)
+            raise FileNotFoundError(str(primary))
+
+        raw_jobs = _load_config_yaml("jobs")
+        raw_docker = _load_config_yaml("docker")
+        self.config_openstack = _load_config_yaml("openstack", allow_example_in_dev=True)
+        raw_websocket = _load_config_yaml("websocket")
+        raw_triton = _load_config_yaml("triton")
 
         try:
             jobs_cfg = JobsConfig(**(raw_jobs or {}))
@@ -56,6 +79,9 @@ class ClientManager:
         self.config_docker = docker_cfg.dict()
         self.config_websocket = websocket_cfg.dict()
         self.config_triton = triton_cfg.dict()
+
+        # Observability cardinality control (Phase 5)
+        configure_metrics(enable_per_model_metrics=bool(getattr(triton_cfg, "enable_per_model_metrics", True)))
 
         # Apply environment variable overlays for secrets/runtime overrides.
         # This keeps YAML files free of real secrets and enables environment-specific deployments.
@@ -145,7 +171,39 @@ class ClientManager:
     def setup(self):
         self.job = JobThread(**self.config_job)
         self.docker = DockerThread(self.config_docker)
-        self.openstack = OpenstackThread(**self.config_openstack)
+        env = (os.getenv("TCM_ENV", "development") or "development").lower()
+        disable_openstack = str(os.getenv("TCM_DISABLE_OPENSTACK", "") or "").strip().lower() in {"1", "true", "yes", "on"}
+
+        class _NullOpenstackThread:
+            """
+            Development-only stub used when OpenStack is intentionally disabled.
+            Provides the minimal surface area required by JobThread wiring.
+            """
+
+            def __init__(self):
+                self.websocket = None
+                self.dict_vms = {}
+
+            def start(self):
+                return None
+
+            def wait_until_ready(self, timeout=30):
+                return True
+
+            def stop(self):
+                return None
+
+            def create_vm(self, *_args, **_kwargs):
+                raise RuntimeError("OpenStack is disabled (TCM_DISABLE_OPENSTACK=1)")
+
+            def delete_vm(self, *_args, **_kwargs):
+                raise RuntimeError("OpenStack is disabled (TCM_DISABLE_OPENSTACK=1)")
+
+        if disable_openstack and env == "development":
+            logger.warning("[ClientManager] OpenStack disabled via TCM_DISABLE_OPENSTACK=1 (development)")
+            self.openstack = _NullOpenstackThread()
+        else:
+            self.openstack = OpenstackThread(**self.config_openstack)
         self.triton = TritonThread(self.config_triton)
         # WebSocket server configuration (auth/rate limits are optional keys).
         ws_cfg = dict(self.config_websocket)
@@ -156,6 +214,7 @@ class ClientManager:
             **ws_cfg,
             on_message=self.job.on_message,
             get_queue_stats=self.job.get_queue_stats,
+            readiness_probe=self.triton.readiness,
         )
         if auth_cfg or rate_cfg:
             self.websocket.set_auth_and_rate_limits(
@@ -211,7 +270,74 @@ class ClientManager:
         logger.info("[ClientManager] ✓ All threads started successfully")
 
     def stop(self):
+        if self._stopping:
+            return
+        # Phase 5: graceful stop
         self.running = False
+        self._stopping = True
+        start = time.monotonic()
+        deadline_s = 2.0
+
+        def _remaining() -> float:
+            return deadline_s - (time.monotonic() - start)
+
+        def _force_shutdown() -> None:
+            # Hard deadline exceeded: force-cancel streams and close clients immediately.
+            try:
+                from utils.stream_cancel import cancel_all as cancel_all_streams
+
+                cancel_all_streams()
+            except Exception:
+                pass
+            try:
+                self.websocket.stop()
+            except Exception:
+                pass
+            # Best-effort: stop remaining threads without waiting.
+            for t in ("job", "docker", "triton", "openstack"):
+                try:
+                    getattr(self, t).stop()
+                except Exception:
+                    pass
+
+        # Stop accepting new websocket requests as early as possible.
+        try:
+            setattr(self.websocket, "_stopping", True)
+        except Exception:
+            pass
+
+        # Drain queued requests with explicit NACK so callers don't hang.
+        if hasattr(self.job, "drain_and_nack"):
+            def _drain():
+                try:
+                    self.job.drain_and_nack(reason="SYSTEM_SHUTDOWN")
+                except Exception:
+                    pass
+
+            try:
+                import threading
+
+                th = threading.Thread(target=_drain, name="drain_and_nack", daemon=True)
+                th.start()
+                th.join(timeout=max(0.0, _remaining()))
+            except Exception:
+                # If we can't join/timer, fall back to best-effort direct call.
+                _drain()
+
+        if _remaining() <= 0:
+            _force_shutdown()
+            return
+
+        # Small grace window for active streams to finish or be aborted.
+        rem = _remaining()
+        if rem <= 0:
+            _force_shutdown()
+            return
+        time.sleep(min(0.5, rem))
+        if _remaining() <= 0:
+            _force_shutdown()
+            return
+
         self.job.stop()
         self.docker.stop()
         self.triton.stop()
@@ -224,6 +350,23 @@ def main():
     # Configure structured logging once at process start
     configure_logging()
     client = ClientManager()
+
+    def _handle_termination(signum, _frame):
+        try:
+            logger.info("[ClientManager] Received signal %s; stopping...", signum)
+        except Exception:
+            pass
+        try:
+            client.stop()
+        except Exception:
+            pass
+
+    # Ensure Kubernetes/OS termination triggers a clean stop.
+    try:
+        signal.signal(signal.SIGTERM, _handle_termination)
+    except Exception:
+        pass
+
     try:
         while client.running:
             time.sleep(1)

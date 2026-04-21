@@ -22,6 +22,25 @@ except ModuleNotFoundError:  # pragma: no cover
     set_model_analysis_issue_emitter = None  # type: ignore[assignment]
 
 registry = CollectorRegistry()
+_enable_per_model_metrics: bool = True
+
+
+def configure_metrics(*, enable_per_model_metrics: bool = True) -> None:
+    """
+    Configure global metrics behavior.
+
+    This avoids Prometheus cardinality explosions in environments with thousands
+    of models (high churn). When disabled, per-model labels collapse into a
+    single stable label.
+    """
+    global _enable_per_model_metrics
+    _enable_per_model_metrics = bool(enable_per_model_metrics)
+
+
+def _model_label(model_name: str) -> str:
+    if not _enable_per_model_metrics:
+        return "generic_model"
+    return str(model_name or "unknown")
 
 # WebSocket-level metrics
 WS_CONNECTIONS_TOTAL = Counter(
@@ -100,7 +119,15 @@ JOB_PROCESSING_SECONDS = Histogram(
 INFERENCE_LATENCY_SECONDS = Histogram(
     "tcm_inference_latency_seconds",
     "Latency of inference requests by model",
-    ["model"],
+    ["model", "tenant_id"],
+    registry=registry,
+)
+
+# Golden signals: end-to-end inference duration by model/protocol/status.
+INFERENCE_DURATION_SECONDS = Histogram(
+    "tcm_inference_duration_seconds",
+    "End-to-end inference duration in seconds, labeled by model/protocol/status",
+    ["model", "protocol", "status", "code", "tenant_id"],
     registry=registry,
 )
 
@@ -125,6 +152,22 @@ GRPC_STREAM_FAILURES_TOTAL = Counter(
     "tcm_grpc_stream_failures_total",
     "Total gRPC streaming failures observed in TritonInfer.stream",
     ["reason"],
+    registry=registry,
+)
+
+# Inference error classification (stable codes from tritonerrors.py)
+INFERENCE_ERRORS_TOTAL = Counter(
+    "tcm_inference_errors_total",
+    "Total inference errors observed, classified by stable error code",
+    ["model", "code", "retriable", "protocol", "tenant_id"],
+    registry=registry,
+)
+
+# Circuit breaker events
+CIRCUIT_BREAKER_OPENS_TOTAL = Counter(
+    "tcm_circuit_breaker_opens_total",
+    "Total circuit breaker open events by model and reason",
+    ["model", "code"],
     registry=registry,
 )
 
@@ -223,9 +266,27 @@ def observe_job_processing(job_type: str, duration_seconds: float) -> None:
     JOB_PROCESSING_SECONDS.labels(type=job_type).observe(duration_seconds)
 
 
-def observe_inference_latency(model_name: str, duration_seconds: float) -> None:
+def observe_inference_latency(model_name: str, duration_seconds: float, *, tenant_id: str = "unknown") -> None:
     """Observe inference latency for a given model."""
-    INFERENCE_LATENCY_SECONDS.labels(model=model_name).observe(duration_seconds)
+    INFERENCE_LATENCY_SECONDS.labels(model=_model_label(model_name), tenant_id=str(tenant_id or "unknown")).observe(float(duration_seconds))
+
+
+def observe_inference_duration(
+    model_name: str,
+    protocol: str,
+    status: str,
+    duration_seconds: float,
+    *,
+    code: str = "OK",
+    tenant_id: str = "unknown",
+) -> None:
+    INFERENCE_DURATION_SECONDS.labels(
+        model=_model_label(model_name),
+        protocol=str(protocol or "unknown"),
+        status=str(status or "unknown"),
+        code=str(code or "UNKNOWN"),
+        tenant_id=str(tenant_id or "unknown"),
+    ).observe(float(duration_seconds))
 
 
 def observe_backend_error(backend: str) -> None:
@@ -239,6 +300,27 @@ def observe_model_analysis_issue(code: str) -> None:
 
 def observe_grpc_stream_failure(reason: str) -> None:
     GRPC_STREAM_FAILURES_TOTAL.labels(reason=reason).inc()
+
+
+def observe_inference_error(
+    model_name: str,
+    code: str,
+    *,
+    retriable: bool,
+    protocol: str = "unknown",
+    tenant_id: str = "unknown",
+) -> None:
+    INFERENCE_ERRORS_TOTAL.labels(
+        model=_model_label(model_name),
+        code=str(code or "UNKNOWN"),
+        retriable="true" if bool(retriable) else "false",
+        protocol=str(protocol or "unknown"),
+        tenant_id=str(tenant_id or "unknown"),
+    ).inc()
+
+
+def observe_circuit_open(model_name: str, code: str) -> None:
+    CIRCUIT_BREAKER_OPENS_TOTAL.labels(model=str(model_name or "unknown"), code=str(code or "UNKNOWN")).inc()
 
 
 def observe_qos_slot_consumed(tenant_id: str, job_type: str) -> None:

@@ -21,23 +21,15 @@ from __future__ import annotations
 
 import logging
 import os
-import sys
 import time
 from dataclasses import dataclass
 
-# Bootstrapping: ensure repo root is importable before importing project modules.
-# This makes `python apps/manager/dev_server.py` work from any CWD.
-_here = os.path.dirname(os.path.abspath(__file__))
-_repo_root = os.path.abspath(os.path.join(_here, "..", ".."))
-if _repo_root not in sys.path:
-    sys.path.insert(0, _repo_root)
-
 from yaml import safe_load  # noqa: E402
 
-from classes.job import JobThread  # noqa: E402
-from classes.triton import TritonInfer  # noqa: E402
-from classes.websocket import WebSocketThread  # noqa: E402
-from utils.logging_config import configure_logging  # noqa: E402
+from apps.manager.classes.job import JobThread  # noqa: E402
+from apps.manager.classes.triton import TritonInfer  # noqa: E402
+from apps.manager.classes.websocket import WebSocketThread  # noqa: E402
+from apps.manager.utils.logging_config import configure_logging  # noqa: E402
 
 logger = logging.getLogger(__name__)
 

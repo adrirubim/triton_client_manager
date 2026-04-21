@@ -1,5 +1,6 @@
 import logging
 import threading
+import time
 
 import tritonclient.grpc as grpcclient
 import tritonclient.http as httpclient
@@ -7,7 +8,7 @@ import tritonclient.http as httpclient
 from utils.metrics import observe_grpc_stream_failure
 
 from .constants import TYPE_MAP
-from .tritonerrors import TritonInferenceFailed
+from .tritonerrors import TritonError, TritonInferenceFailed, TritonShapeMismatchError
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +74,30 @@ class TritonInfer:
             return np.asarray(value, dtype=np_dtype) if np_dtype is not None else np.asarray(value)
         return np.asarray([value], dtype=np_dtype) if np_dtype is not None else np.asarray([value])
 
+    @staticmethod
+    def _validate_shape(name: str, expected_shape: list[int], data) -> None:
+        """
+        Validate that the numpy payload matches the declared Triton dims.
+
+        This is a strict guardrail: mismatched shapes become hard errors BEFORE
+        we hit Triton, because Triton errors are slower and harder to debug.
+        """
+        np = TritonInfer._np()
+        if not isinstance(expected_shape, list) or any(not isinstance(d, int) for d in expected_shape):
+            raise TritonShapeMismatchError("unknown", f"Invalid dims for input {name!r}: expected list[int], got {expected_shape!r}")
+        if not isinstance(data, np.ndarray):
+            raise TritonShapeMismatchError(
+                "unknown",
+                f"Invalid numpy payload for input {name!r}: expected np.ndarray, got {type(data)!r}",
+            )
+
+        # Strict: do not allow implicit reshapes. Caller must supply consistent dims/value.
+        if tuple(data.shape) != tuple(expected_shape):
+            raise TritonShapeMismatchError(
+                "unknown",
+                f"Input shape mismatch for {name!r}: dims={expected_shape} vs value.shape={list(data.shape)}",
+            )
+
     # -------------------------------------------- #
     #               INPUT BUILDERS                  #
     # -------------------------------------------- #
@@ -90,6 +115,7 @@ class TritonInfer:
             infer_input = grpcclient.InferInput(inp["name"], shape, datatype)
 
             data = TritonInfer._to_numpy(datatype, value)
+            TritonInfer._validate_shape(inp["name"], shape, data)
 
             infer_input.set_data_from_numpy(data)
             grpc_inputs.append(infer_input)
@@ -110,6 +136,7 @@ class TritonInfer:
             infer_input = httpclient.InferInput(inp["name"], shape, datatype)
 
             data = TritonInfer._to_numpy(datatype, value)
+            TritonInfer._validate_shape(inp["name"], shape, data)
 
             infer_input.set_data_from_numpy(data)
             http_inputs.append(infer_input)
@@ -156,6 +183,7 @@ class TritonInfer:
         on_chunk: callable,
         output_name: str = "output",
         timeout: int = STREAM_TIMEOUT,
+        cancel_event: threading.Event | None = None,
     ) -> None:
         """
         Stream LLM inference via gRPC. Blocks until the stream ends or times out.
@@ -200,10 +228,18 @@ class TritonInfer:
             started = True
             grpc_client.async_stream_infer(model_name=model_name, inputs=grpc_inputs)
 
-            if not done.wait(timeout=timeout):
-                observe_grpc_stream_failure("timeout")
-                raise TritonInferenceFailed(model_name, f"Stream timed out after {timeout}s")
-        except TritonInferenceFailed:
+            deadline = time.time() + float(timeout)
+            # Poll in small increments so we can react to cancellation signals quickly.
+            while not done.is_set():
+                if cancel_event is not None and cancel_event.is_set():
+                    observe_grpc_stream_failure("client_cancel")
+                    raise TritonInferenceFailed(model_name, "Stream aborted: client disconnected")
+                remaining = deadline - time.time()
+                if remaining <= 0:
+                    observe_grpc_stream_failure("timeout")
+                    raise TritonInferenceFailed(model_name, f"Stream timed out after {timeout}s")
+                done.wait(timeout=min(0.05, remaining))
+        except TritonError:
             raise
         except Exception as e:
             raise TritonInferenceFailed(model_name, str(e))
@@ -230,5 +266,7 @@ class TritonInfer:
         try:
             http_inputs = self._build_http_inputs(inputs)
             return http_client.infer(model_name=model_name, inputs=http_inputs, timeout=timeout)
+        except TritonError:
+            raise
         except Exception as e:
             raise TritonInferenceFailed(model_name, str(e))

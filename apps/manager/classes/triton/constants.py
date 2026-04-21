@@ -21,5 +21,4 @@ TYPE_MAP = {
     "TYPE_FP16": "FP16",
     "TYPE_FP32": "FP32",
     "TYPE_FP64": "FP64",
-    "TYPE_BF16": "BF16",
 }

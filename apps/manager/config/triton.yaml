@@ -3,6 +3,21 @@ health_check_timeout: 5   # per-server HTTP ping timeout
 stream_timeout: 120       # gRPC stream hard timeout (used by TritonInfer.stream)
 http_infer_timeout: 30    # HTTP inference timeout (used by TritonInfer.infer)
 
+# End-to-end client timeouts (applied to every HTTP InferenceServerClient instantiation).
+# These MUST be set so transient clients can't hang indefinitely on connect/IO.
+connection_timeout: 5     # TCP connect timeout (seconds)
+network_timeout: 30       # IO / response timeout (seconds)
+
+# Inference admission control (SRE hardening):
+# Reject requests whose estimated decoded tensor payload exceeds this many MB.
+# 0 disables the check.
+max_request_payload_mb: 0
+
+# Metrics cardinality control:
+# - true: per-model time series (higher cardinality)
+# - false: collapse model label to "generic_model"
+enable_per_model_metrics: true
+
 # Auto-healing / stale eviction governance (Phase 8.5)
 health_failure_evict_threshold: 3
 stale_evict_seconds: 300

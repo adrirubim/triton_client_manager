@@ -8,7 +8,7 @@ from classes.triton.inference_orchestrator import TritonInference, TritonRequest
 from classes.triton.info.data.server import TritonServer
 from classes.triton.tritonerrors import TritonInferenceFailed
 
-from .base import check_instance, normalize_inference_payload, validate_fields
+from .base import check_instance, enforce_payload_budget, normalize_inference_payload, validate_fields
 
 if TYPE_CHECKING:
     from classes.docker import DockerThread
@@ -38,16 +38,15 @@ class JobInferenceHttp:
         logger.info(" Running HTTP inference...")
 
         payload = normalize_inference_payload(payload, self.docker)
+        tenant_id = str(((payload.get("_auth") or {}) or {}).get("tenant_id") or "unknown")
 
-        # Pipeline path (multi-model, sequential, HTTP only)
+        # Multi-model inference sequence (sequential, HTTP only). External contract keeps `pipeline`.
         steps_cfg = payload.get("pipeline")
         if isinstance(steps_cfg, list) and len(steps_cfg) > 0:
             vm_ip = payload.get("vm_ip")
             container_id = payload.get("container_id")
             if not vm_ip or not container_id:
                 raise TritonInferenceFailed("pipeline", "Missing 'vm_ip' or 'container_id' for pipeline")
-
-            check_instance(self.docker, vm_ip, container_id)
 
             if not self.triton:
                 raise TritonInferenceFailed("pipeline", "No TritonThread available")
@@ -56,7 +55,7 @@ class JobInferenceHttp:
             if not server:
                 raise TritonInferenceFailed("pipeline", "No active Triton session for this instance")
 
-            steps: list[TritonRequest] = []
+            inference_sequence: list[TritonRequest] = []
             for step in steps_cfg:
                 if isinstance(step, dict) and "inputs" in step:
                     step["inputs"] = (
@@ -71,59 +70,96 @@ class JobInferenceHttp:
                         .get("request", {})
                         .get("inputs", step.get("inputs"))
                     )
-                steps.append(
+                inference_sequence.append(
                     TritonRequest(
                         name=step.get("name"),
                         model_name=step.get("model_name"),
                         inputs=step.get("inputs") or [],
                         protocol=(step.get("protocol") or "http"),
+                        tenant_id=tenant_id,
                     )
                 )
 
-            pipeline_request = TritonRequest(pipeline=steps)
-            decoded = self.triton_inference.handle(server, pipeline_request)
+            # Admission control: enforce payload budget per step.
+            max_mb = int(getattr(self.triton, "max_request_payload_mb", 0) or 0)
+            for step in inference_sequence:
+                enforce_payload_budget(step.model_name or "unknown", step.inputs or [], max_request_payload_mb=max_mb)
 
-            logger.info(" ✓ HTTP pipeline inference complete for %d steps", len(steps))
+            # Validate instance after budget enforcement so stress tests can
+            # validate 413 behavior without requiring a populated Docker cache.
+            check_instance(self.docker, vm_ip, container_id)
+
+            sequence_request = TritonRequest(pipeline=inference_sequence, tenant_id=tenant_id)
+            decoded = self.triton_inference.handle(server, sequence_request)
+
+            logger.info(" ✓ HTTP inference sequence complete for %d steps", len(inference_sequence))
             return decoded
 
         # Single-model path
         vm_ip, container_id, model_name, inputs = validate_fields(payload)
         allow_transient = bool(payload.get("request", {}).get("allow_transient"))
-        if not allow_transient:
-            check_instance(self.docker, vm_ip, container_id)
 
         if not self.triton:
             raise TritonInferenceFailed(model_name, "No TritonThread available")
 
         server = self.triton.get_server(vm_ip, container_id)
-        if not server:
+        transient_server: TritonServer | None = None
+        try:
+            enforce_payload_budget(
+                model_name,
+                inputs,
+                max_request_payload_mb=int(getattr(self.triton, "max_request_payload_mb", 0) or 0),
+            )
             if not allow_transient:
-                raise TritonInferenceFailed(model_name, "No active Triton session for this instance")
+                # Validate after budget enforcement so 413 can be tested without Docker state.
+                check_instance(self.docker, vm_ip, container_id)
+            if not server:
+                if not allow_transient:
+                    raise TritonInferenceFailed(model_name, "No active Triton session for this instance")
 
-            # Local-dev friendliness (explicit opt-in): allow inference without a prior
-            # management "creation" flow by creating a transient TritonServer client.
-            try:
-                client = httpclient.InferenceServerClient(url=f"{vm_ip}:{HTTP_PORT}")
-                server = TritonServer(
-                    vm_id="",
-                    vm_ip=vm_ip,
-                    container_id=container_id,
-                    client=client,
-                    model_name=model_name,
-                    status="ready",
-                )
-            except Exception as exc:
-                raise TritonInferenceFailed(
-                    model_name,
-                    f"Failed to create transient Triton HTTP client: {exc}",
-                )
+                # Local-dev friendliness (explicit opt-in): allow inference without a prior
+                # management "creation" flow by creating a transient TritonServer client.
+                try:
+                    connection_timeout = int(getattr(self.triton, "connection_timeout", 5))
+                    network_timeout = int(getattr(self.triton, "network_timeout", 30))
+                    client = httpclient.InferenceServerClient(
+                        url=f"{vm_ip}:{HTTP_PORT}",
+                        connection_timeout=connection_timeout,
+                        network_timeout=network_timeout,
+                    )
+                    transient_server = TritonServer(
+                        vm_id="",
+                        vm_ip=vm_ip,
+                        container_id=container_id,
+                        client=client,
+                        model_name=model_name,
+                        status="ready",
+                        protocol="http",
+                        connection_timeout=connection_timeout,
+                        network_timeout=network_timeout,
+                    )
+                    server = transient_server
+                except Exception as exc:
+                    raise TritonInferenceFailed(
+                        model_name,
+                        f"Failed to create transient Triton HTTP client: {exc}",
+                    )
 
-        request = TritonRequest(
-            model_name=model_name,
-            inputs=inputs,
-            protocol="http",
-        )
-        decoded = self.triton_inference.handle(server, request)
+            request = TritonRequest(
+                model_name=model_name,
+                inputs=inputs,
+                protocol="http",
+                timeout=int(getattr(self.triton, "http_infer_timeout", 30)),
+                tenant_id=tenant_id,
+            )
+            decoded = self.triton_inference.handle(server, request)
 
-        logger.info(" ✓ HTTP inference complete for model '%s'", model_name)
-        return decoded  # returned to handle_inference → sent as COMPLETED data
+            logger.info(" ✓ HTTP inference complete for model '%s'", model_name)
+            return decoded  # returned to handle_inference → sent as COMPLETED data
+        finally:
+            # Explicitly close transient client to avoid connection leaks.
+            if transient_server is not None:
+                try:
+                    transient_server.close()
+                except Exception:
+                    pass

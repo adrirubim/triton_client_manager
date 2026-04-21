@@ -139,6 +139,25 @@ class TritonConfig(BaseModel):
     health_check_timeout: PositiveInt
     stream_timeout: PositiveInt
     http_infer_timeout: PositiveInt
+    connection_timeout: PositiveInt = Field(
+        default=5,
+        description="HTTP client TCP connect timeout in seconds (applies to ALL HTTP Triton clients, including transient)",
+    )
+    network_timeout: PositiveInt = Field(
+        default=30,
+        description="HTTP client network/IO timeout in seconds (applies to ALL HTTP Triton clients, including transient)",
+    )
+
+    max_request_payload_mb: int = Field(
+        default=0,
+        ge=0,
+        description="Reject inference requests whose estimated decoded tensor payload exceeds this many MB (0 disables).",
+    )
+
+    enable_per_model_metrics: bool = Field(
+        default=True,
+        description="If false, aggregate inference metrics under a generic model label to prevent cardinality explosion.",
+    )
 
     # Auto-healing / stale eviction governance (Phase 8.5+)
     health_failure_evict_threshold: PositiveInt = Field(

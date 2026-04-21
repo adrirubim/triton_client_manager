@@ -29,6 +29,8 @@ class TritonCreation:
         self.client_request_timeout = config.get("client_request_timeout", 10)
         self.server_ready_timeout = config.get("server_ready_timeout", 60)
         self.model_ready_timeout = config.get("model_ready_timeout", 120)
+        self.connection_timeout = int(config.get("connection_timeout", config.get("health_check_timeout", 5)))
+        self.network_timeout = int(config.get("network_timeout", config.get("http_infer_timeout", 30)))
 
     @staticmethod
     def _json_dumps(obj) -> str:
@@ -79,7 +81,11 @@ class TritonCreation:
             protocol = "grpc"
         else:
             httpclient = self._httpclient()
-            client = httpclient.InferenceServerClient(url=f"{vm_ip}:{HTTP_PORT}")
+            client = httpclient.InferenceServerClient(
+                url=f"{vm_ip}:{HTTP_PORT}",
+                connection_timeout=self.connection_timeout,
+                network_timeout=self.network_timeout,
+            )
             protocol = "http"
 
         # --- Wait server ready ---
@@ -98,8 +104,8 @@ class TritonCreation:
                 config=config_json,
                 client_timeout=self.client_request_timeout,
             )
-        except Exception:
-            raise TritonModelLoadFailed(model_name, "Load request failed")
+        except Exception as exc:
+            raise TritonModelLoadFailed(model_name, f"Load request failed: {exc}")
 
         # --- Wait for model to be loaded ---
         start = time.time()
@@ -121,6 +127,8 @@ class TritonCreation:
             inputs=inputs,
             outputs=outputs,
             protocol=protocol,
+            connection_timeout=int(self.connection_timeout) if protocol == "http" else 0,
+            network_timeout=int(self.network_timeout) if protocol == "http" else 0,
         )
 
         logger.info(f" Server ({vm_ip}, {container_id[:12]}) ready — model='{model_name}'")

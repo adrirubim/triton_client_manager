@@ -270,6 +270,54 @@ class JobThread(threading.Thread):
         self.executor_management.shutdown(wait=True)
         self.executor_inference.shutdown(wait=True)
 
+    def drain_and_nack(self, *, reason: str = "SYSTEM_SHUTDOWN") -> None:
+        """
+        Drain all pending per-user queues and NACK messages explicitly.
+
+        Day-2 requirement: during shutdown we must not silently drop queued
+        requests. This method does not block on executors; it only drains
+        messages that are not yet running.
+        """
+        if not self.websocket:
+            return
+        # Snapshot queue dicts under lock; then drain each queue without holding the global lock.
+        with self.queue_lock:
+            snapshots = {
+                "info": list(self.info_queues.values()),
+                "management": list(self.management_queues.values()),
+                "inference": list(self.inference_queues.values()),
+            }
+
+        for job_type, queues in snapshots.items():
+            for q in queues:
+                while True:
+                    try:
+                        msg = q.get_nowait()
+                    except Empty:
+                        break
+                    except Exception:
+                        break
+                    if not isinstance(msg, dict):
+                        continue
+                    msg_uuid = msg.get("uuid")
+                    if not msg_uuid:
+                        continue
+                    try:
+                        self.websocket(
+                            msg_uuid,
+                            {
+                                "type": "error",
+                                "payload": {
+                                    "code": str(reason),
+                                    "message": "Request dropped: system is shutting down.",
+                                    "dropped_type": job_type,
+                                },
+                            },
+                        )
+                    except Exception:
+                        # Best-effort only; shutdown should proceed.
+                        pass
+
     # --------------- Request Handler ---------------
     def on_message(self, client_id: str, msg: dict):
         """

@@ -5,7 +5,7 @@ import pytest
 
 from classes.triton.infer import TritonInfer
 from classes.triton.inference_orchestrator import TritonInference, TritonRequest
-from classes.triton.tritonerrors import TritonInferenceFailed
+from classes.triton.tritonerrors import TritonInferenceFailed, TritonTimeoutError
 
 
 def test_build_grpc_and_http_inputs_bytes_and_numeric():
@@ -265,7 +265,8 @@ def test_triton_inference_pipeline_and_retries():
     def _fail_once(*_args, **_kwargs):
         if not hasattr(_fail_once, "called"):
             _fail_once.called = True  # type: ignore[attr-defined]
-            raise TritonInferenceFailed("m-retry", "boom")
+            # Retries apply only to retriable error classes (timeouts/network/overload).
+            raise TritonTimeoutError("m-retry", "boom")
         return result1
 
     failing_runner.infer.side_effect = _fail_once

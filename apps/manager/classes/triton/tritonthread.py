@@ -6,6 +6,7 @@ from typing import Callable, Optional
 
 from utils.metrics import observe_backend_error
 
+from .infer import TritonInfer
 from .creation.creation import TritonCreation
 from .deletion.deletion import TritonDeletion
 from .info.data.server import TritonServer
@@ -30,9 +31,27 @@ class TritonThread(threading.Thread):
         self._ready_event = threading.Event()
         # Re-entrant because `load()` may call helpers that snapshot/persist state.
         self._data_lock = threading.RLock()
+        self._readiness_lock = threading.Lock()
+        # (ts, ok, payload)
+        self._cached_readiness: tuple[float, bool, dict] = (0.0, True, {})
 
         # --- Loop ---
         self.refresh_time = config["refresh_time"]
+        # --- Timeouts (applied to all transient/persistent clients) ---
+        self.connection_timeout = int(config.get("connection_timeout", config.get("health_check_timeout", 5)))
+        self.network_timeout = int(config.get("network_timeout", config.get("http_infer_timeout", 30)))
+        self.http_infer_timeout = int(config.get("http_infer_timeout", 30))
+        self.stream_timeout = int(config.get("stream_timeout", 120))
+        # Admission control: protect the manager process from OOM due to oversized payloads.
+        self.max_request_payload_mb = int(config.get("max_request_payload_mb", 0) or 0)
+        # Optional env override to make load/chaos tests reproducible without editing YAML.
+        # Example: TCM_MAX_REQUEST_PAYLOAD_MB=1 enables 413 admission control checks.
+        try:
+            env_mb = str(__import__("os").getenv("TCM_MAX_REQUEST_PAYLOAD_MB", "") or "").strip()
+            if env_mb:
+                self.max_request_payload_mb = int(env_mb)
+        except Exception:
+            pass
         self._health_failure_evict_threshold = int(config.get("health_failure_evict_threshold", 3))
         self._stale_evict_seconds = int(config.get("stale_evict_seconds", int(self.refresh_time) * 10))
         self._active_heal_restart_threshold = int(config.get("active_heal_restart_threshold", 2))
@@ -50,8 +69,15 @@ class TritonThread(threading.Thread):
         # --- Data ---
         self.dict_servers: dict[tuple, TritonServer] = {}  # {(vm_id, container_id): TritonServer}
 
+        # --- Inference runner (required by JobInference to build TritonInference) ---
+        self.triton_infer: TritonInfer = TritonInfer()
+
         # --- Handlers ---
-        self.triton_info = TritonInfo(timeout=config["health_check_timeout"])
+        self.triton_info = TritonInfo(
+            timeout=config["health_check_timeout"],
+            connection_timeout=self.connection_timeout,
+            network_timeout=self.network_timeout,
+        )
         self.triton_creation = TritonCreation(config)
         self.triton_deletion = TritonDeletion()
 
@@ -132,6 +158,7 @@ class TritonThread(threading.Thread):
             return
 
         recovered: dict[tuple, TritonServer] = {}
+        active_ips: set[str] = set()
 
         for line in raw:
             line = (line or "").strip()
@@ -153,6 +180,7 @@ class TritonThread(threading.Thread):
             last_healthy_ts = float(rec.get("last_healthy_ts") or 0.0)
             if not (vm_id and vm_ip and container_id):
                 continue
+            active_ips.add(vm_ip)
 
             client = None
             try:
@@ -165,13 +193,17 @@ class TritonThread(threading.Thread):
                 else:
                     import tritonclient.http as httpclient
 
-                    client = httpclient.InferenceServerClient(url=f"{vm_ip}:{HTTP_PORT}")
+                    client = httpclient.InferenceServerClient(
+                        url=f"{vm_ip}:{HTTP_PORT}",
+                        connection_timeout=int(self.connection_timeout),
+                        network_timeout=int(self.network_timeout),
+                    )
                     protocol = "http"
             except Exception:
                 client = None
 
-            # Verify health via TritonInfo (HTTP ready checks)
-            healthy = self.triton_info.is_server_ready(vm_ip)
+            # Verify health via TritonInfo (protocol-aware ready checks)
+            healthy = self.triton_info.is_server_ready(vm_ip, protocol=str(protocol or "http"), timeout=int(self.connection_timeout))
             status = "ready" if healthy else "unhealthy"
             if healthy and model_name:
                 # Best-effort: mark unhealthy if model isn't ready
@@ -188,12 +220,16 @@ class TritonThread(threading.Thread):
                 outputs=outputs,
                 status=status,
                 protocol=protocol,
+                connection_timeout=int(self.connection_timeout) if protocol == "http" else 0,
+                network_timeout=int(self.network_timeout) if protocol == "http" else 0,
                 consecutive_health_failures=consecutive_health_failures,
                 last_healthy_ts=last_healthy_ts,
             )
 
         with self._data_lock:
             self.dict_servers = recovered
+        # Cleanup cached HTTP clients for removed servers.
+        self.triton_info.prune_clients(active_ips)
 
     def start(self):
         # Rehydrate before first health-check loop so dict_servers is populated after a crash.
@@ -242,13 +278,18 @@ class TritonThread(threading.Thread):
         # --- Copy ---
         with self._data_lock:
             servers = dict(self.dict_servers)
+        active_ips = {s.vm_ip for s in servers.values() if getattr(s, "vm_ip", None)}
 
         # --- Iter throght ---
         now = time.time()
         for (vm_id, container_id), server in servers.items():
             try:
                 # --- Check Health Server ---
-                healthy = self.triton_info.is_server_ready(server.vm_ip)
+                healthy = self.triton_info.is_server_ready(
+                    server.vm_ip,
+                    protocol=str(server.protocol or "http"),
+                    timeout=int(self.connection_timeout),
+                )
                 new_status = "ready" if healthy else "unhealthy"
 
                 # --- Change Healthy -> Unhealthy ---
@@ -282,6 +323,8 @@ class TritonThread(threading.Thread):
             except Exception as e:
                 observe_backend_error("triton")
                 logger.info(f" Health check failed for ({vm_id}, {container_id[:12]}): {e}")
+        # Cleanup cached HTTP clients for removed servers.
+        self.triton_info.prune_clients(active_ips)
 
     def _attempt_active_heal_restart(self, server: TritonServer) -> None:
         if not self.docker:
@@ -403,7 +446,7 @@ class TritonThread(threading.Thread):
 
         # --- Delete ---
         if server:
-            self.triton_deletion.handle(server.client, server.model_name)
+            self.triton_deletion.handle(server.client, server.model_name, timeout_seconds=int(self.connection_timeout))
             server.close()
         else:
             raise TritonMissingInstance(vm_id, container_id)
@@ -428,3 +471,50 @@ class TritonThread(threading.Thread):
                 if _container_id == container_id and server.vm_ip == vm_ip:
                     return server
         return None
+
+    def readiness(self) -> tuple[bool, dict]:
+        """
+        Readiness signal for the manager HTTP `/ready` endpoint.
+
+        - If no Triton servers are registered yet, the manager can still accept
+          management jobs, so we consider it ready.
+        - If servers exist, require at least one server to be reachable via
+          Triton HTTP readiness checks.
+        """
+        now = time.time()
+        with self._readiness_lock:
+            ts, ok, payload = self._cached_readiness
+            if (now - float(ts)) < 1.0:
+                return bool(ok), dict(payload or {})
+
+        with self._data_lock:
+            servers = list(self.dict_servers.values())
+        if not servers:
+            res = (True, {"triton": {"registered": 0, "healthy": 0}})
+            with self._readiness_lock:
+                self._cached_readiness = (now, bool(res[0]), dict(res[1] or {}))
+            return res
+        healthy = 0
+        healthy_by_protocol: dict[str, int] = {"http": 0, "grpc": 0}
+        for s in servers:
+            proto = str(s.protocol or "http").lower()
+            if self.triton_info.is_server_ready(
+                s.vm_ip,
+                protocol=proto,
+                timeout=int(self.connection_timeout),
+            ):
+                healthy += 1
+                healthy_by_protocol[proto] = int(healthy_by_protocol.get(proto, 0)) + 1
+        ok = healthy > 0
+        # Expose protocol breakdown to reduce false-negative debugging time.
+        payload = {
+            "triton": {
+                "registered": len(servers),
+                "healthy": healthy,
+                "healthy_http": int(healthy_by_protocol.get("http", 0)),
+                "healthy_grpc": int(healthy_by_protocol.get("grpc", 0)),
+            }
+        }
+        with self._readiness_lock:
+            self._cached_readiness = (now, bool(ok), dict(payload or {}))
+        return ok, payload

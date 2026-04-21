@@ -58,6 +58,16 @@ class DockerInfo:
         """
         images = {}
 
+        # Dev friendliness: allow disabling registry polling to avoid noisy connection errors
+        # when no local registry is running (default config uses http://localhost:5000).
+        try:
+            import os
+
+            if str(os.getenv("TCM_DISABLE_DOCKER_REGISTRY", "") or "").strip().lower() in {"1", "true", "yes", "on"}:
+                return {}
+        except Exception:
+            pass
+
         try:
             # Step 1: Get registry catalog
             registry_url = f"{self.registry_endpoint}/v2/_catalog"

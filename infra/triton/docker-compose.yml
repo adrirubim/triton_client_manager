@@ -11,7 +11,7 @@ services:
       --model-repository=/models
       --allow-http=true
       --allow-grpc=true
-      --model-control-mode=none
+      --model-control-mode=explicit
       --exit-on-error=false
       --strict-readiness=false
     volumes:

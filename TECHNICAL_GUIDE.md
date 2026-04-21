@@ -10,8 +10,11 @@ If this guide disagrees with the code, **the code wins**.
 - [Architecture](#architecture)
 - [Security](#security)
 - [Resilience](#resilience)
+- [Error Hierarchy (TritonError)](#error-hierarchy-tritonerror)
+- [Admission Control (Payload Budget / 413)](#admission-control-payload-budget--413)
 - [QoS & Fairness (DRR)](#qos--fairness-drr)
 - [Observability](#observability)
+- [SRE Validation Suite (Load/Chaos)](#sre-validation-suite-loadchaos)
 - [Deployment Guardrails](#deployment-guardrails)
 - [Key Files](#key-files)
 - [Authorship & Maintenance](#authorship--maintenance)
@@ -147,6 +150,91 @@ The Triton server registry is mirrored to a lightweight JSONL file:
 
 ---
 
+## Error Hierarchy (TritonError)
+
+**Source of truth**: `apps/manager/classes/triton/tritonerrors.py` and consumption in
+`apps/manager/classes/job/inference/inference.py`.
+
+The manager uses a **typed error hierarchy** for all Triton-facing failures. This
+keeps logs/metrics stable and allows clients to implement correct retry behavior
+without parsing free-form strings.
+
+### Base contract
+
+- **Base**: `TritonError`
+- **Axes**:
+  - `code` (stable string, e.g. `TRITON_TIMEOUT`)
+  - `retriable` (`true|false`)
+  - `reason` (human-readable)
+  - `model_name` (best-effort)
+
+### Retriable vs. fatal
+
+- **Retriable** (`RetriableError`): callers should retry with backoff/jitter.
+  - Examples:
+    - `TRITON_TIMEOUT` (`TritonTimeoutError`)
+    - `TRITON_NETWORK`
+    - `TRITON_OVERLOADED`
+    - `TRITON_CIRCUIT_OPEN` (includes `retry_after_seconds`)
+- **Fatal** (`FatalError`): do **not** retry; the request must be corrected or
+  a control-plane action must be taken.
+  - Examples:
+    - `TRITON_MODEL_MISSING`
+    - `TRITON_SHAPE_MISMATCH`
+    - `TRITON_INFERENCE_FAILED`
+
+### Client-facing behavior
+
+The WebSocket response envelope for inference always uses:
+
+- `type="inference"`
+- `payload.status in {"COMPLETED","FAILED"}`
+- `payload.data` may be a dict (typed Triton errors) or a string (validation errors).
+
+#### Handling `SYSTEM_SHUTDOWN`
+
+During shutdown draining, the manager emits an explicit error NACK with:
+
+- `type="error"`
+- `payload.code="SYSTEM_SHUTDOWN"`
+
+Clients must treat this as **non-retriable in the moment** (the manager is stopping)
+and reconnect only after readiness is restored.
+
+---
+
+## Admission Control (Payload Budget / 413)
+
+**Source of truth**:
+
+- Configuration: `apps/manager/config/triton.yaml` (field `max_request_payload_mb`)
+- Runtime enforcement: `apps/manager/classes/job/inference/handlers/base.py` (`enforce_payload_budget`)
+- Wiring: `apps/manager/classes/job/inference/handlers/http.py`
+
+The manager enforces an **estimated decoded payload budget** to protect itself from
+OOM or pathological inputs. The estimate is computed from `inputs[*].dims` and
+`inputs[*].type` (bytes-per-element), not from raw `value` contents.
+
+### Configuration
+
+- `max_request_payload_mb: 0` disables the budget (default for local/dev)
+- `max_request_payload_mb: N (>0)` enables budget enforcement
+- You can override at runtime with:
+  - `TCM_MAX_REQUEST_PAYLOAD_MB=<int>`
+
+### Error contract (`413 Payload Too Large`)
+
+When enabled and the estimate exceeds the limit, the request fails fast with:
+
+- `TRITON_INFERENCE_FAILED` containing a reason string that includes:
+  - `413 Payload Too Large: estimated_bytes=<...> limit_bytes=<...>`
+
+This triggers **before** contacting Triton and (as of v1.0.0‑ULTIMATE) before
+Docker instance validation, so it can be validated in dev environments where the
+Docker cache is intentionally empty.
+
+---
+
 ## QoS & Fairness (DRR)
 
 ### Priority ordering (prevent low-value blocking)
@@ -213,8 +301,52 @@ Defined in `apps/manager/utils/metrics.py` (selected highlights):
 - Rate limiting: `tcm_rate_limit_violations_total{scope}`, `tcm_unsafe_config_startups_total{reason}`
 - Queues/executors: `tcm_queue_*`, `tcm_executor_*`, `tcm_jobs_rejected_total{type}`
 - Inference: `tcm_inference_latency_seconds{model}`, `tcm_backend_errors_total{backend}`
+- Golden signals: `tcm_inference_duration_seconds{model,protocol,status,code,tenant_id}`
+- Error classification: `tcm_inference_errors_total{model,code,retriable,protocol,tenant_id}`
 - Model analysis: `tcm_model_analysis_issues_total{code}`
 - QoS/DRR: `tcm_qos_slots_consumed_total{tenant_id,job_type}`, `tcm_qos_deficit_spent_total{tenant_id,job_type}`
+
+### Readiness TTL cache (O(1) probe path)
+
+**Source of truth**: `apps/manager/classes/triton/tritonthread.py` (`TritonThread.readiness`).
+
+The `/ready` probe result is cached for **1 second**:
+
+- Reduces repeated downstream checks under load or Kubernetes probe storms
+- Makes readiness checks effectively **O(1)** per request within the TTL window
+- Preserves correctness: after TTL expires, readiness is recomputed from the current registry state
+
+---
+
+## SRE Validation Suite (Load/Chaos)
+
+The repository includes an operator-facing, CI-style test runner designed for WSL/dev
+and Day‑2 validation.
+
+### Single entrypoint runner
+
+- Script: `test_suite_master.sh` (repo root)
+- Modes:
+  - `bash ./test_suite_master.sh --unit` (pytest + targeted resilience unit tests)
+  - `bash ./test_suite_master.sh --stress` (PHASE 3 load + PHASE 4 chaos)
+  - `bash ./test_suite_master.sh --full` (all phases)
+
+### PHASE 3 — High-concurrency WS load
+
+- Tool: `apps/manager/devtools/qa_load_tester_ws.py`
+- Purpose:
+  - 1,000+ concurrent WS clients
+  - Verify admission control (`413 Payload Too Large`) when enabled
+  - Detect connect errors and inference timeouts
+
+### PHASE 4 — Chaos & shutdown draining
+
+- `/ready` storm / flapping backend:
+  - `apps/manager/devtools/qa_chaos_flapping_backend.py`
+- Shutdown draining (SIGTERM → `SYSTEM_SHUTDOWN` NACKs):
+  - `apps/manager/devtools/qa_shutdown_draining_sigterm.py`
+- Zombie Killer (optional, requires real gRPC streaming backend/model):
+  - `apps/manager/devtools/qa_chaos_zombie_killer.py`
 
 ---
 

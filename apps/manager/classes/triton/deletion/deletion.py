@@ -16,10 +16,18 @@ if TYPE_CHECKING:
 class TritonDeletion:
     """Handles unloading models from Triton."""
 
-    def handle(self, client: "HttpClient | GrpcClient", model_name: str) -> bool:
+    def handle(self, client: "HttpClient | GrpcClient", model_name: str, *, timeout_seconds: int | None = None) -> bool:
         try:
-            client.unload_model(model_name)
-            logger.info(" Unload request sent for model '{model_name}'")
+            # Under explicit model-control-mode, unload_model is the expected lifecycle action.
+            # Prefer using per-call timeouts when supported by the client implementation.
+            if timeout_seconds is None:
+                client.unload_model(model_name)
+            else:
+                try:
+                    client.unload_model(model_name, client_timeout=int(timeout_seconds))
+                except TypeError:
+                    client.unload_model(model_name)
+            logger.info(" Unload request sent for model '%s'", model_name)
             return True
         except Exception as e:
             logger.info(" Failed to unload model '%s': %s", model_name, e)

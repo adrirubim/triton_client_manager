@@ -75,8 +75,19 @@ class BoundedThreadPoolExecutor:
         with self._slots_lock:
             self._available_slots -= 1
 
-        # Submit to underlying executor
-        future = self.executor.submit(self._wrapper, fn, *args, **kwargs)
+        # Submit to underlying executor. If submission fails (e.g. shutdown race),
+        # rollback the acquired slot so capacity cannot drift permanently.
+        try:
+            future = self.executor.submit(self._wrapper, fn, *args, **kwargs)
+        except Exception:
+            with self._slots_lock:
+                self._available_slots += 1
+            try:
+                self.semaphore.release()
+            except Exception:
+                # Best-effort: never mask the original submission error.
+                pass
+            raise
 
         return future
 

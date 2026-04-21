@@ -20,7 +20,7 @@ def _list_repo_python_files(repo_root: Path) -> list[Path]:
         )
         rel_paths = [p.strip() for p in out.splitlines() if p.strip()]
         return [(repo_root / rel).resolve() for rel in rel_paths]
-    except (FileNotFoundError, subprocess.CalledProcessError):
+    except (FileNotFoundError, subprocess.CalledProcessError, OSError):
         excluded_dirs = {
             ".git",
             ".venv",
