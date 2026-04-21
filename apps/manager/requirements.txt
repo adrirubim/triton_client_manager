@@ -19,7 +19,7 @@ protobuf==6.33.5
 
 # MinIO / S3 / model tooling
 boto3==1.35.0
-safetensors==0.4.0
+safetensors==0.7.0
 pydantic==2.12.5
 Pillow==12.2.0
 
