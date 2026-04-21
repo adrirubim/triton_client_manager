@@ -7,7 +7,7 @@ Run: cd apps/manager && pytest tests/test_integration_ws.py -v
 import json
 
 import pytest
-from websockets.client import connect
+from websockets import connect
 
 
 @pytest.mark.asyncio

@@ -8,7 +8,7 @@ Usage:
 import asyncio
 import json
 
-from websockets.client import connect
+from websockets import connect
 
 
 async def test_client(
