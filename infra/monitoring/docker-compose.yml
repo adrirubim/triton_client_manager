@@ -1,9 +1,7 @@
-version: "3.9"
-
 services:
   prometheus:
     # NOTE: Replace <version> with a concrete image tag.
-    image: prom/prometheus:<version>
+    image: prom/prometheus:v3.10.0
     container_name: tcm-prometheus
     restart: unless-stopped
     volumes:
@@ -15,7 +13,7 @@ services:
 
   grafana:
     # NOTE: Replace <version> with a concrete image tag.
-    image: grafana/grafana:<version>
+    image: grafana/grafana:13.0.1
     container_name: tcm-grafana
     restart: unless-stopped
     depends_on:

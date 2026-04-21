@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   grafana:
     # Local-only convenience defaults (NO usar en staging/prod).
