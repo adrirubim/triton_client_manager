@@ -16,20 +16,20 @@ chmod +x "$ROOT_DIR/scripts/verify-repo-standard.sh"
 
 cd "$ROOT_DIR/apps/manager"
 
-PYTHON_BIN="${PYTHON_BIN:-python3.12}"
-PIP_BIN="${PIP_BIN:-pip}"
+PYTHON_BIN="${PYTHON_BIN:-python3}"
 
-# Prefer project venv if present, otherwise use system python (CI uses system python).
-if [[ -x "./.venv/bin/python" ]]; then
-  PYTHON_BIN="./.venv/bin/python"
-  PIP_BIN="./.venv/bin/pip"
+# Prefer repo-root venv if present; otherwise use system python.
+if [[ -x "$ROOT_DIR/.venv/bin/python" ]]; then
+  PYTHON_BIN="$ROOT_DIR/.venv/bin/python"
 fi
 
 echo "==> Install dependencies (apps/manager)"
 "$PYTHON_BIN" -m pip install --upgrade pip
-"$PIP_BIN" install -r requirements.txt
+"$PYTHON_BIN" -m pip install -r requirements.txt
+# SDK is part of CI parity for manager tests
+"$PYTHON_BIN" -m pip install -e ../../sdk
 if [[ "$CHECK_TESTS" == "1" ]]; then
-  "$PIP_BIN" install -r requirements-test.txt
+  "$PYTHON_BIN" -m pip install -r requirements-test.txt
 fi
 
 if [[ "$CHECK_LINT" == "1" ]]; then
