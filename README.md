@@ -6,8 +6,7 @@
 
 > A modern, enterprise-grade orchestration service for AI inference that coordinates OpenStack VMs, Docker containers, and NVIDIA Triton Inference Server via WebSockets. It provides multi-tenant scheduling (DRR), operational guardrails, and production-grade observability.
 
-[![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=flat&logo=python&logoColor=white)](https://www.python.org/)
-[![Python (Docker image)](https://img.shields.io/badge/Python_(Docker)-3.13-3776AB?style=flat&logo=python&logoColor=white)](https://hub.docker.com/_/python)
+[![Python](https://img.shields.io/badge/Python-3.13-3776AB?style=flat&logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.136.0-009688?style=flat&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![Uvicorn](https://img.shields.io/badge/Uvicorn-0.44.0-499848?style=flat)](https://www.uvicorn.org/)
 [![Docker](https://img.shields.io/badge/Docker-24+-2496ED?style=flat&logo=docker&logoColor=white)](https://www.docker.com/)
@@ -100,8 +99,8 @@ The system exposes inference endpoints (HTTP and gRPC) and manages per-user job 
 
 ### Key Highlights
 
-- **Modern stack:** Python 3.10+ (validated in CI on 3.12), FastAPI, uvicorn, PyYAML, Triton client
-- **Container runtime:** `Dockerfile.manager` uses `python:3.13-slim` (CI still validates the codebase on Python 3.12)
+- **Modern stack:** Python 3.10+ (validated in CI on 3.13), FastAPI, uvicorn, PyYAML, Triton client
+- **Container runtime:** `Dockerfile.manager` uses `python:3.13-slim`
 - **OpenStack integration:** VM lifecycle, application credentials, region-aware service catalog
 - **Docker integration:** Container management for Triton workers
 - **Triton integration:** HTTP/gRPC inference, health checks, routing by `vm_id` / `container_id`
@@ -165,7 +164,7 @@ The system exposes inference endpoints (HTTP and gRPC) and manages per-user job 
 
 ### Backend
 
-- **Language:** Python 3.10+ (CI validates on 3.12)
+- **Language:** Python 3.10+ (CI validates on 3.13)
 - **Framework:** FastAPI
 - **ASGI server:** uvicorn
 - **Configuration:** PyYAML
@@ -187,7 +186,7 @@ The system exposes inference endpoints (HTTP and gRPC) and manages per-user job 
 <a id="requirements"></a>
 ## 📦 Requirements
 
-- **Python** ≥ 3.10 (CI validates on 3.12)  
+- **Python** ≥ 3.10 (CI validates on 3.13)  
   Check: `python3 --version`
 - **Virtual environment** (mandatory on Ubuntu/WSL due to PEP 668)  
   Canonical setup: [TECHNICAL_GUIDE.md](TECHNICAL_GUIDE.md) (venv lives in repo root: `.venv/`)
