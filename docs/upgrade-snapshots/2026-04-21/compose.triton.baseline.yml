@@ -1,0 +1,35 @@
+name: triton
+services:
+  triton:
+    cpus: 2
+    command:
+      - tritonserver
+      - --model-repository=/models
+      - --allow-http=true
+      - --allow-grpc=true
+      - --model-control-mode=none
+      - --exit-on-error=false
+      - --strict-readiness=false
+    container_name: tcm-triton-ephemeral
+    image: nvcr.io/nvidia/tritonserver:26.03-py3
+    mem_limit: "4294967296"
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 8000
+        published: "8001"
+        protocol: tcp
+    restart: unless-stopped
+    shm_size: "2147483648"
+    volumes:
+      - type: bind
+        source: /var/www/triton_client_manager/infra/models
+        target: /models
+        read_only: true
+        bind:
+          create_host_path: true
+networks:
+  default:
+    name: triton_default
+
