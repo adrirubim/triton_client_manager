@@ -55,6 +55,10 @@ Concrete versions captured from the pinned requirements for the manager runtime 
 ## Local verification (CI parity)
 
 ```bash
-./scripts/dev-verify.sh
+# CI parity (recommended gate): deps + lint + compile + tests + security
+bash scripts/check.sh
+
+# Fast local path (assumes repo-root .venv already exists/active)
+bash scripts/dev-verify.sh
 ```
 

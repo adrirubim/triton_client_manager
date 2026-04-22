@@ -50,7 +50,7 @@ Use these `make` targets from the **repository root** as the single source of en
 
 | Command           | Purpose                                                           | Notes                                                                                 |
 | ----------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `make test`       | **Full validation** (pytest + smoke + SDK contract tests)        | Runs the full Python test suite under `apps/manager/`, including WebSocket SDK contracts. |
+| `make test`       | **Test suite (pytest)**                                           | Runs `pytest` under `apps/manager/`. For CI parity (lint/compile/security), use `scripts/check.sh`. |
 | `make demo`       | **Multi-replica scaling demo with NGINX**                        | Starts `docker-compose.multi-node.yml` (two manager replicas behind an NGINX LB).     |
 | `make monitor`    | **SRE observability stack (Prometheus/Grafana)**                 | Brings up the monitoring stack in `infra/monitoring/docker-compose.yml`.             |
 | `make k8s-deploy` | **Production-style Kubernetes deployment (Deployment + HPA etc.)** | Applies manifests from `infra/k8s/` and prepares the cluster for autoscaling validation. |
@@ -450,22 +450,19 @@ Prerequisite: complete the one-time setup in [TECHNICAL_GUIDE.md](TECHNICAL_GUID
 
 ### SRE validation runner (Day‑2, CI parity)
 
-For Day‑2 validation, use the repo-root runner:
+For Day‑2 validation (CI parity), use the repo-root runner that actually matches CI:
 
 ```bash
 cd /var/www/triton_client_manager
 
-# Fast: pytest only
-bash ./test_suite_master.sh --unit
+# Full CI parity: deps + lint + compile + tests + security
+bash scripts/check.sh
 
-# Runtime smoke: starts threads + validates WS handshake path
-bash ./test_suite_master.sh --smoke
-
-# Full CI parity (delegates to scripts/check.sh: lint + compile + tests + security)
-bash ./test_suite_master.sh --full
+# Fast local parity when you already have .venv created
+bash scripts/dev-verify.sh
 ```
 
-Implementation details and the exact commands are documented in [TECHNICAL_GUIDE.md](TECHNICAL_GUIDE.md).
+Implementation details and operational nuance are documented in [TECHNICAL_GUIDE.md](TECHNICAL_GUIDE.md).
 
 ---
 
@@ -545,7 +542,7 @@ This repository now represents the **v2.0.0-GOLDEN production line** for Triton 
 
 The v2.0.0‑GOLDEN release ships with operator-focused validation entrypoints.
 
-For reproducible commands, see `test_suite_master.sh` and the SRE Validation Suite section in
+For reproducible commands, see the SRE Validation Suite section in
 [TECHNICAL_GUIDE.md](TECHNICAL_GUIDE.md).
 
 ---

@@ -32,33 +32,35 @@ Production release focused on **Zero‑Copy Shared Memory orchestration** and da
 A 5-phase hardening release focused on forensic stability, correctness under load, and Day-2 operability.
 
 ### Features
-- Explicit, operator-friendly SRE validation entrypoint via `test_suite_master.sh` with phase-based execution (`--unit`, `--stress`, `--full`).
+- Operator-friendly SRE validation entrypoints via:
+  - `scripts/check.sh` (CI parity)
+  - `scripts/dev-verify.sh` (local fast path)
 - Development-safe runtime toggles to disable external dependencies when intentionally unavailable:
   - `TCM_DISABLE_OPENSTACK=1` (development stub)
   - `TCM_DISABLE_DOCKER_REGISTRY=1` (silences registry polling)
 - Payload admission control configurable via `max_request_payload_mb` and env override `TCM_MAX_REQUEST_PAYLOAD_MB`.
 
 ### Resilience/Hardening
-**Phase 1 — Structural Integrity**
+**Structural Integrity**
 - Stabilized internal import paths via compatibility aliases (`classes.*`, `utils.*`) to prevent `ModuleNotFoundError` across different execution contexts (repo root vs `apps/manager`).
 
-**Phase 2 — Resilience**
+**Resilience**
 - Readiness probe hardening with a 1-second TTL cache to reduce downstream fanout during probe storms and high-frequency health checks.
 - Improved crash-recovery behavior for Triton registry state rehydration and safer health governance.
 
-**Phase 3 — Protocol Precision**
+**Protocol Precision**
 - Typed Triton error hierarchy (`TritonError`) with explicit `code` and `retriable` semantics to avoid string-parsing contracts.
 - Robust inference handler initialization (structural validation instead of `isinstance`) to eliminate aliasing-related false negatives.
 - Fast-path handling for expected validation errors (`ValueError`) to prevent stacktrace overhead under load.
 
-**Phase 4 — SRE Hardening**
+**SRE Hardening**
 - gRPC channel hardening (keepalives, message sizing governance, compatibility fallbacks).
 - Graceful shutdown with a hard deadline:
   - drains queued work with explicit `SYSTEM_SHUTDOWN` NACKs
   - forces stream cancellation and closes connections on deadline breach
 - SIGTERM handling wired to a deterministic `ClientManager.stop()` path (Kubernetes-friendly).
 
-**Phase 5 — Day-2 Operations**
+**Day-2 Operations**
 - Operational “copy/paste” workflows validated on WSL: stable loopback networking defaults, deterministic runner phases, and failure diagnostics.
 
 ### Observability

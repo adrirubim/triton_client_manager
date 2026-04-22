@@ -414,18 +414,12 @@ for operator correlation. The exception string/stack trace is logged server-side
 This repository ships **operator-facing** validation entrypoints for Day‑2 confidence checks.
 In v2.0.0-GOLDEN the source of truth is the scripts that actually exist in the repo.
 
-### Single entrypoint runner (Day‑2 / CI parity)
+### Canonical validation entrypoints (Day‑2 / CI parity)
 
-- Script: `test_suite_master.sh` (repo root)
-- Modes:
-  - `bash ./test_suite_master.sh --unit` (fast: pytest only)
-  - `bash ./test_suite_master.sh --smoke` (runtime smoke + WS handshake path)
-  - `bash ./test_suite_master.sh --full` (CI parity: lint + compile + smoke + tests)
+There is no “phase runner” contract in v2.0.0-GOLDEN. The canonical entrypoints are:
 
-Implementation delegates to:
-
-- `scripts/check.sh` (CI parity: install deps + lint + compile + pytest + security)
-- `scripts/dev-verify.sh` (local gate assuming a pre-existing venv)
+- `scripts/check.sh` — **CI parity** (install deps + lint + compile + pytest + security)
+- `scripts/dev-verify.sh` — **local fast path** (assumes you already created/activated a repo-root venv)
 
 ### Manual WebSocket tooling (operator triage)
 
