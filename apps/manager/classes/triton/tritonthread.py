@@ -1,3 +1,4 @@
+import contextlib
 import logging
 import random
 import threading
@@ -68,6 +69,9 @@ class TritonThread(threading.Thread):
 
         # --- Data ---
         self.dict_servers: dict[tuple, TritonServer] = {}  # {(vm_id, container_id): TritonServer}
+        # Secondary index for O(1) lookup during inference:
+        # {(vm_ip, container_id): TritonServer}
+        self._servers_by_ip_container: dict[tuple[str, str], TritonServer] = {}
 
         # --- Inference runner (required by JobInference to build TritonInference) ---
         self.triton_infer: TritonInfer = TritonInfer()
@@ -158,6 +162,7 @@ class TritonThread(threading.Thread):
             return
 
         recovered: dict[tuple, TritonServer] = {}
+        recovered_by_ip_container: dict[tuple[str, str], TritonServer] = {}
         active_ips: set[str] = set()
 
         for line in raw:
@@ -227,9 +232,11 @@ class TritonThread(threading.Thread):
                 consecutive_health_failures=consecutive_health_failures,
                 last_healthy_ts=last_healthy_ts,
             )
+            recovered_by_ip_container[(str(vm_ip), str(container_id))] = recovered[(vm_id, container_id)]
 
         with self._data_lock:
             self.dict_servers = recovered
+            self._servers_by_ip_container = recovered_by_ip_container
         # Cleanup cached HTTP clients for removed servers.
         self.triton_info.prune_clients(active_ips)
 
@@ -390,6 +397,9 @@ class TritonThread(threading.Thread):
                             "container_id": container_id[:12],
                         },
                     )
+                # Maintain O(1) lookup index (best-effort).
+                with contextlib.suppress(Exception):
+                    self._servers_by_ip_container.pop((str(popped.vm_ip), str(popped.container_id)), None)
                 self._persist_servers()
         logger.warning(
             "AUDIT_TRITON_EVICTED: server evicted from registry (%s)",
@@ -424,8 +434,11 @@ class TritonThread(threading.Thread):
         with self._data_lock:
             existing = self.dict_servers.get((data["vm_id"], data["container_id"]))
             if existing:
+                with contextlib.suppress(Exception):
+                    self._servers_by_ip_container.pop((str(existing.vm_ip), str(existing.container_id)), None)
                 existing.close()
             self.dict_servers[(data["vm_id"], data["container_id"])] = server
+            self._servers_by_ip_container[(str(server.vm_ip), str(server.container_id))] = server
             self._persist_servers()
 
         return server
@@ -455,7 +468,10 @@ class TritonThread(threading.Thread):
 
         # --- Remove ---
         with self._data_lock:
-            self.dict_servers.pop((vm_id, container_id), None)
+            popped = self.dict_servers.pop((vm_id, container_id), None)
+            if popped is not None:
+                with contextlib.suppress(Exception):
+                    self._servers_by_ip_container.pop((str(popped.vm_ip), str(popped.container_id)), None)
             self._persist_servers()
 
         logger.info(f" Deregistered ({vm_id}, {container_id[:12]})")
@@ -468,11 +484,11 @@ class TritonThread(threading.Thread):
         Note: dict_servers is keyed by (vm_id, container_id). We do not always
         have vm_id at inference time, so we match by container_id and vm_ip.
         """
+        key = (str(vm_ip or ""), str(container_id or ""))
+        if not (key[0] and key[1]):
+            return None
         with self._data_lock:
-            for (_vm_id, _container_id), server in self.dict_servers.items():
-                if _container_id == container_id and server.vm_ip == vm_ip:
-                    return server
-        return None
+            return self._servers_by_ip_container.get(key)
 
     def readiness(self) -> tuple[bool, dict]:
         """

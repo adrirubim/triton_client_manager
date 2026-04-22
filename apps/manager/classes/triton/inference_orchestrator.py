@@ -8,7 +8,12 @@ import time
 from dataclasses import dataclass
 from typing import Callable, List, Optional
 
-from utils.metrics import observe_circuit_open, observe_inference_duration, observe_inference_error
+from utils.metrics import (
+    observe_circuit_open,
+    observe_inference_duration,
+    observe_inference_error,
+    observe_inference_shm_request,
+)
 
 from .infer import TritonInfer
 from .info.data.server import TritonServer
@@ -32,6 +37,23 @@ logger = logging.getLogger(__name__)
 MAX_BLOCKING_BACKOFF_SECONDS = 0.10
 
 
+@dataclass(frozen=True)
+class SHMReference:
+    """
+    POSIX shared memory metadata reference (zero-copy scaffolding).
+
+    This structure intentionally contains *only metadata* — the manager should
+    never touch actual tensor bytes for SHM requests.
+    """
+
+    name: str
+    shm_key: str
+    offset: int
+    byte_size: int
+    shape: list[int]
+    dtype: str
+
+
 @dataclass
 class TritonRequest:
     """High-level description of an inference request for a TritonServer.
@@ -43,6 +65,7 @@ class TritonRequest:
 
     model_name: Optional[str] = None
     inputs: Optional[List[dict]] = None
+    shm_inputs: Optional[List[SHMReference]] = None
     name: Optional[str] = None
     inputs_from: Optional[str] = None
     input_mapping: Optional[dict] = None
@@ -144,6 +167,11 @@ class TritonInference:
         attempts = max(0, request.retry_attempts) + 1
         last_error: TritonError | None = None
 
+        # Zero-copy scaffolding: validate SHM metadata once up-front.
+        if request.shm_inputs:
+            self._validate_shm_inputs(model_name=model_name, shm_inputs=request.shm_inputs)
+            observe_inference_shm_request(model_name, tenant_id=tenant_id)
+
         for attempt_idx in range(attempts):
             try:
                 # Circuit breaker: if open, fail fast with retry hint.
@@ -154,12 +182,20 @@ class TritonInference:
                     raise TritonCircuitOpenError(request.model_name or "unknown", retry_after_seconds=retry_after)
 
                 if protocol == "http":
-                    result = self.runner.infer(
-                        server.client,
-                        request.model_name or "",
-                        request.inputs or [],
-                        timeout=request.timeout,
-                    )
+                    if request.shm_inputs:
+                        result = self.runner.infer_shm(
+                            server.client,
+                            request.model_name or "",
+                            request.shm_inputs,
+                            timeout=request.timeout,
+                        )
+                    else:
+                        result = self.runner.infer(
+                            server.client,
+                            request.model_name or "",
+                            request.inputs or [],
+                            timeout=request.timeout,
+                        )
                     # Success closes breaker.
                     server.consecutive_inference_failures = 0
                     server.circuit_open_until_ts = 0.0
@@ -303,6 +339,34 @@ class TritonInference:
             request.model_name or "unknown",
             "Inference failed without a specific TritonInferenceFailed error",
         )
+
+    @staticmethod
+    def _validate_shm_inputs(*, model_name: str, shm_inputs: List[SHMReference]) -> None:
+        """
+        Fast-path validator for SHM metadata.
+
+        This is intentionally lightweight and runs *before* any numpy materialization
+        or Triton client calls. It enforces the contract shape so future SHM wiring
+        can be plugged in without changing control-plane behavior.
+        """
+        if not isinstance(shm_inputs, list) or not shm_inputs:
+            raise TritonInferenceFailed(model_name, "Invalid SHM inputs: expected non-empty list")
+
+        for ref in shm_inputs:
+            if not isinstance(ref, SHMReference):
+                raise TritonInferenceFailed(model_name, "Invalid SHM input: expected SHMReference objects")
+            if not isinstance(ref.name, str) or not ref.name.strip():
+                raise TritonInferenceFailed(model_name, "Invalid SHM input: missing input name")
+            if not isinstance(ref.shm_key, str) or not ref.shm_key.strip():
+                raise TritonInferenceFailed(model_name, "Invalid SHM input: missing shm_key")
+            if not isinstance(ref.offset, int) or ref.offset < 0:
+                raise TritonInferenceFailed(model_name, "Invalid SHM input: offset must be >= 0")
+            if not isinstance(ref.byte_size, int) or ref.byte_size <= 0:
+                raise TritonInferenceFailed(model_name, "Invalid SHM input: byte_size must be > 0")
+            if not isinstance(ref.shape, list) or any((not isinstance(d, int) or d < 0) for d in ref.shape):
+                raise TritonInferenceFailed(model_name, "Invalid SHM input: shape must be list[int>=0]")
+            if not isinstance(ref.dtype, str) or not ref.dtype.strip():
+                raise TritonInferenceFailed(model_name, "Invalid SHM input: missing dtype")
 
     @staticmethod
     def _backoff_delay_seconds(attempt_idx: int) -> float:

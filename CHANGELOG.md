@@ -2,7 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
-This project follows a practical variant of Semantic Versioning. The `v1.0.0-ULTIMATE` line represents a hardened, production-grade stabilization release.
+This project follows a practical variant of Semantic Versioning.
+
+- `v1.0.0-ULTIMATE`: hardened, production-grade stabilization line (Resilient Engine).
+- `v2.0.0-GOLDEN`: zero-copy era (High-Performance Gateway).
+
+## [v2.0.0-GOLDEN] — 2026-04-22
+
+Production release focused on **Zero‑Copy Shared Memory orchestration** and data-plane evolution.
+
+### Major feature: Zero‑Copy SHM (System Shared Memory)
+- Shared-memory inference path for large tensor payloads: clients send **metadata** (`SHMReference`) instead of raw tensor bytes.
+- Capability negotiation via `auth.payload.capability` (backwards compatible):
+  - legacy clients: `{"type":"auth.ok"}`
+  - negotiating clients: `{"type":"auth.ok","payload":{"capability":[...]}}`
+
+### Reliability and safety
+- Thread-safe SHM registration cache with LRU eviction (`TritonSHMManager`) to prevent region leaks.
+- Typed fatal error codes for SHM failures:
+  - `TRITON_SHM_UNAVAILABLE`
+  - `TRITON_SHM_REGISTRATION_FAILED`
+
+### Observability
+- Added SHM adoption counter:
+  - `tcm_inference_shm_requests_total{model,tenant_id}`
 
 ## [v1.0.0-ULTIMATE] — 2026-04-21
 

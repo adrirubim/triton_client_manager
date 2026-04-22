@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Callable
 import tritonclient.http as httpclient
 
 from classes.triton.constants import HTTP_PORT
-from classes.triton.inference_orchestrator import TritonInference, TritonRequest
+from classes.triton.inference_orchestrator import SHMReference, TritonInference, TritonRequest
 from classes.triton.info.data.server import TritonServer
 from classes.triton.tritonerrors import TritonInferenceFailed
 
@@ -145,9 +145,29 @@ class JobInferenceHttp:
                         f"Failed to create transient Triton HTTP client: {exc}",
                     )
 
+            shm_refs: list[SHMReference] = []
+            raw_inputs: list[dict] = []
+            if isinstance(inputs, list):
+                for item in inputs:
+                    if isinstance(item, dict) and {"shm_key", "offset", "byte_size", "shape", "dtype"}.issubset(
+                        item.keys()
+                    ):
+                        shm_refs.append(
+                            SHMReference(
+                                name=str(item.get("name") or ""),
+                                shm_key=str(item.get("shm_key") or ""),
+                                offset=int(item.get("offset") or 0),
+                                byte_size=int(item.get("byte_size") or 0),
+                                shape=list(item.get("shape") or []),
+                                dtype=str(item.get("dtype") or ""),
+                            )
+                        )
+                    else:
+                        raw_inputs.append(item)
             request = TritonRequest(
                 model_name=model_name,
-                inputs=inputs,
+                inputs=raw_inputs if raw_inputs else inputs,
+                shm_inputs=shm_refs or None,
                 protocol="http",
                 timeout=int(getattr(self.triton, "http_infer_timeout", 30)),
                 tenant_id=tenant_id,

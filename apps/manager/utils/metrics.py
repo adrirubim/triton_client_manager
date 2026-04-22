@@ -164,6 +164,14 @@ INFERENCE_ERRORS_TOTAL = Counter(
     registry=registry,
 )
 
+# SHM adoption (zero-copy scaffolding)
+INFERENCE_SHM_REQUESTS_TOTAL = Counter(
+    "tcm_inference_shm_requests_total",
+    "Total inference requests that use the SHM (zero-copy) data plane path",
+    ["model", "tenant_id"],
+    registry=registry,
+)
+
 # Circuit breaker events
 CIRCUIT_BREAKER_OPENS_TOTAL = Counter(
     "tcm_circuit_breaker_opens_total",
@@ -318,6 +326,13 @@ def observe_inference_error(
         code=str(code or "UNKNOWN"),
         retriable="true" if bool(retriable) else "false",
         protocol=str(protocol or "unknown"),
+        tenant_id=str(tenant_id or "unknown"),
+    ).inc()
+
+
+def observe_inference_shm_request(model_name: str, *, tenant_id: str = "unknown") -> None:
+    INFERENCE_SHM_REQUESTS_TOTAL.labels(
+        model=_model_label(model_name),
         tenant_id=str(tenant_id or "unknown"),
     ).inc()
 

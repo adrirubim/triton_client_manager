@@ -1,4 +1,4 @@
-# Technical Guide — Triton Client Manager (v1.0.0)
+# Technical Guide — Triton Client Manager (v2.0.0-GOLDEN)
 
 Single **Flat Master Docs** technical guide for this repository.
 If this guide disagrees with the code, **the code wins**.
@@ -40,8 +40,22 @@ WebSocket (/ws)
 
 - **Envelope (required)**: `uuid` (string), `type` (`auth|info|management|inference`), `payload` (object)
 - **Internal fields (server-only)**:
-  - `_correlation_id`: UUID4 per inbound message (for tracing)
+  - `_correlation_id`: fast token per inbound message (for tracing)
   - `_auth`: derived auth context after `auth` (`sub`, `tenant_id`, `roles`)
+
+### Protocol negotiation (capability)
+
+Clients may include a list of capabilities in the `auth` payload:
+
+- `payload.capability: ["json", "shm", ...]`
+
+Negotiation rules (v2.0.0-GOLDEN):
+
+- The manager always supports `json`.
+- The manager supports `shm` only when POSIX shared memory is available (`/dev/shm` accessible).
+- Backwards compatibility:
+  - if the client does **not** send `payload.capability`, the server replies with the legacy `{"type":"auth.ok"}`.
+  - if it **does**, the server replies with `{"type":"auth.ok","payload":{"capability":[...]}}`.
 
 ### Thread startup order
 
@@ -182,6 +196,50 @@ without parsing free-form strings.
     - `TRITON_MODEL_MISSING`
     - `TRITON_SHAPE_MISMATCH`
     - `TRITON_INFERENCE_FAILED`
+    - `TRITON_SHM_UNAVAILABLE`
+    - `TRITON_SHM_REGISTRATION_FAILED`
+
+---
+
+## Zero‑Copy Shared Memory (System SHM)
+
+v2.0.0-GOLDEN introduces a zero-copy data plane option where clients provide **SHM metadata** instead of raw tensor bytes.
+
+### `SHMReference` (metadata contract)
+
+An SHM input is expressed as a dict in `payload.request.inputs[*]`:
+
+```json
+{
+  "name": "INPUT__0",
+  "shm_key": "/tcm_demo_input0",
+  "offset": 0,
+  "byte_size": 602112,
+  "shape": [1, 3, 224, 224],
+  "dtype": "FP32"
+}
+```
+
+Contract notes:
+
+- `shm_key` is a POSIX shared memory name (expected to exist under `/dev/shm` on the manager host).
+- `byte_size` is the number of bytes Triton must read for that input (not an element count).
+- The manager validates this metadata **before** any numpy materialization.
+
+### `TritonSHMManager` (registration cache + LRU eviction)
+
+Implementation: `apps/manager/classes/triton/infer.py`
+
+- The manager maintains a thread-safe, per-process SHM registration cache **per Triton HTTP client**.
+- Cache key: `(shm_key, byte_size)`
+- Value: registered region name + local mapping handle
+- Eviction: LRU with a hard cap (`max_regions_per_client`)
+  - on eviction: `unregister_system_shared_memory(region_name)` + destroy local mapping handle.
+
+### SHM error codes
+
+- `TRITON_SHM_UNAVAILABLE` (Fatal): SHM not supported by environment, shm key missing/inaccessible, or metadata invalid.
+- `TRITON_SHM_REGISTRATION_FAILED` (Fatal): Triton refused SHM registration or the mapping/registration failed.
 
 ### Client-facing behavior
 
@@ -229,7 +287,7 @@ When enabled and the estimate exceeds the limit, the request fails fast with:
 - `TRITON_INFERENCE_FAILED` containing a reason string that includes:
   - `413 Payload Too Large: estimated_bytes=<...> limit_bytes=<...>`
 
-This triggers **before** contacting Triton and (as of v1.0.0‑ULTIMATE) before
+This triggers **before** contacting Triton and (as of v2.0.0‑GOLDEN) before
 Docker instance validation, so it can be validated in dev environments where the
 Docker cache is intentionally empty.
 
@@ -435,5 +493,5 @@ MIT — See [LICENSE](LICENSE).
 
 ---
 
-**Last Updated:** April 2026 · **Status:** Stable ✅ · **Version:** v1.0.0 · **Stack:** [VERSION_STACK.md](VERSION_STACK.md)
+**Last Updated:** April 2026 · **Status:** Stable ✅ · **Version:** v2.0.0-GOLDEN · **Stack:** [VERSION_STACK.md](VERSION_STACK.md)
 

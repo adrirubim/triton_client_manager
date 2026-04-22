@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Callable
 import tritonclient.grpc as grpcclient
 
 from classes.triton.constants import GRPC_PORT
-from classes.triton.inference_orchestrator import TritonInference, TritonRequest
+from classes.triton.inference_orchestrator import SHMReference, TritonInference, TritonRequest
 from classes.triton.info.data.server import TritonServer
 from classes.triton.tritonerrors import TritonInferenceFailed
 from utils.stream_cancel import clear as clear_cancel
@@ -64,6 +64,11 @@ class JobInferenceGrpc:
                 inputs,
                 max_request_payload_mb=int(getattr(self.triton, "max_request_payload_mb", 0) or 0),
             )
+            # SHM references are not supported for gRPC streaming yet (contract scaffolding only).
+            if isinstance(inputs, list) and any(
+                isinstance(item, dict) and "shm_key" in item for item in inputs
+            ):
+                raise TritonInferenceFailed(model_name, "SHM references are not supported for gRPC streaming yet")
             if not server:
                 if not allow_transient:
                     raise TritonInferenceFailed(model_name, "No active Triton session for this instance")

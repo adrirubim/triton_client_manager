@@ -2,9 +2,11 @@
   <img src="docs/assets/triton-client-manager-logo.png" alt="Triton Client Manager logo" width="96" />
 </p>
 
-# Triton Client Manager
+# Triton Client Manager — **v2.0.0-GOLDEN** (The Zero‑Copy Era)
 
 > A modern, enterprise-grade orchestration service for AI inference that coordinates OpenStack VMs, Docker containers, and NVIDIA Triton Inference Server via WebSockets. It provides multi-tenant scheduling (DRR), operational guardrails, and production-grade observability.
+
+**v2.0.0-GOLDEN breakthrough:** **Zero‑Copy Shared Memory orchestration** — the Manager can route inference using **POSIX shared memory metadata** so it does **not need to ingest tensor bytes** for large payloads.
 
 [![Python](https://img.shields.io/badge/Python-3.13-3776AB?style=flat&logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.136.0-009688?style=flat&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
@@ -74,7 +76,7 @@ graph TD
     User -->|make monitor| Obs["Observability Stack (Prometheus & Grafana)"]
     User -->|make k8s-deploy| K8s["Production-style Kubernetes Cluster"]
     
-    subgraph "Triton Client Manager v1.0.0"
+    subgraph "Triton Client Manager v2.0.0-GOLDEN"
         CI -.-> SDK["Python SDK Contract Tests"]
         MultiNode --> Manager1["Manager Replica 1"]
         MultiNode --> Manager2["Manager Replica 2"]
@@ -133,6 +135,31 @@ The system exposes inference endpoints (HTTP and gRPC) and manages per-user job 
 - ✅ **Deletion pipeline** — Triton → container → VM, with flat and nested payload support
 - ✅ **Config-driven behavior** — Jobs, OpenStack, Docker, Triton, and MinIO configured via YAML
 - ✅ **Observability** — Structured logging with correlation fields and Prometheus metrics exposed at `/metrics`
+
+### 🚀 Zero‑Copy Data Plane (v2.0.0‑GOLDEN)
+
+- ✅ **POSIX Shared Memory (System SHM)** — for large tensors, clients can send **SHM metadata** (`SHMReference`) instead of raw tensor bytes.
+- ✅ **Protocol negotiation** — clients can negotiate capabilities at auth time (`capability: ["json", "shm"]`).
+- ✅ **Safety-first fallback** — if SHM is unavailable, the Manager continues to support the classic JSON tensor path (v1-compatible).
+
+See: `examples/v2_shm_inference_example.py`.
+
+### 🤝 Protocol Negotiation (capability)
+
+Clients may include a capability list in the `auth` payload:
+
+```json
+{
+  "uuid": "client-uuid",
+  "type": "auth",
+  "payload": {
+    "capability": ["json", "shm"]
+  }
+}
+```
+
+- If provided, the Manager replies with `type="auth.ok"` and a `payload.capability` list containing the negotiated subset.
+- If **not** provided, the Manager replies with the legacy shape `{"type":"auth.ok"}` to preserve v1.0 compatibility.
 
 ### 🧠 Inference Workflows
 
@@ -508,17 +535,17 @@ it exists purely as an optional helper for image lifecycle management.
 <a id="project-status"></a>
 ## 📊 Project Status
 
-- **Current release:** **Production Ready v1.0.0** — **STABLE**
+- **Current release:** **v2.0.0-GOLDEN** — **Zero‑Copy Era**
 - **Changelog:** see [CHANGELOG.md](CHANGELOG.md) for highlights and upgrade notes.
 - **Roadmap completion:** the internal **13-stage project roadmap** has been fully completed and verified (CI, DX, observability, security, SDKs, horizontal scaling).
 
-This repository now represents the **1.0.0 production line** for Triton Client Manager, with documentation **100% synced to the current implementation**. Future changes will follow semantic versioning and be documented in the changelog.
+This repository now represents the **v2.0.0-GOLDEN production line** for Triton Client Manager, with documentation **synced to the current implementation**. Future changes will follow semantic versioning and be documented in the changelog.
 
 ---
 
-## ✅ Production Readiness (v1.0.0‑ULTIMATE)
+## ✅ Production Readiness (v2.0.0‑GOLDEN)
 
-The v1.0.0‑ULTIMATE hardening line ships with an operator-focused validation suite and the following
+The v2.0.0‑GOLDEN release ships with an operator-focused validation suite and the following
 benchmarks verified during Day‑2 runs:
 
 - **Readiness storm (p99)**: `< 25ms` under sustained `/ready` load (readiness TTL cache enabled)
@@ -707,5 +734,5 @@ MIT — See [LICENSE](LICENSE).
 
 ---
 
-**Last Updated:** April 2026 · **Status:** Stable ✅ · **Version:** v1.0.0 · **Stack:** [VERSION_STACK.md](VERSION_STACK.md)
+**Last Updated:** April 2026 · **Status:** Stable ✅ · **Version:** v2.0.0-GOLDEN · **Stack:** [VERSION_STACK.md](VERSION_STACK.md)
 

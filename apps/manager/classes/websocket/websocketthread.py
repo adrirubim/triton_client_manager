@@ -3,9 +3,11 @@ import ipaddress
 import json
 import logging
 import os
+import secrets
 import threading
 import time
 import uuid
+from collections import deque
 from typing import Callable, Dict, List, Optional
 
 import uvicorn
@@ -111,8 +113,8 @@ class WebSocketThread(threading.Thread):
 
         # In‑memory rate limiting structures (per client UUID).
         self._rate_lock = threading.Lock()
-        self._msg_timestamps: Dict[str, List[float]] = {}
-        self._auth_fail_timestamps: Dict[str, List[float]] = {}
+        self._msg_timestamps: Dict[str, deque[float]] = {}
+        self._auth_fail_timestamps: Dict[str, deque[float]] = {}
         # Tenant-level token bucket (sum across all connections).
         # {tenant_id: {"tokens": float, "last": float}}
         self._tenant_buckets: Dict[str, dict] = {}
@@ -254,15 +256,14 @@ class WebSocketThread(threading.Thread):
         window = 1.0
 
         with self._rate_lock:
-            timestamps = self._msg_timestamps.setdefault(client_id, [])
+            timestamps = self._msg_timestamps.setdefault(client_id, deque())
             cutoff = now - window
-            timestamps = [t for t in timestamps if t >= cutoff]
+            while timestamps and timestamps[0] < cutoff:
+                timestamps.popleft()
             if len(timestamps) >= limit:
-                self._msg_timestamps[client_id] = timestamps
                 RATE_LIMIT_VIOLATIONS_TOTAL.labels(scope="messages").inc()
                 return False
             timestamps.append(now)
-            self._msg_timestamps[client_id] = timestamps
         return True
 
     def _check_tenant_rate(self, tenant_id: str) -> bool:
@@ -313,13 +314,13 @@ class WebSocketThread(threading.Thread):
         window = 60.0
 
         with self._rate_lock:
-            timestamps = self._auth_fail_timestamps.setdefault(client_id, [])
+            timestamps = self._auth_fail_timestamps.setdefault(client_id, deque())
             cutoff = now - window
-            timestamps = [t for t in timestamps if t >= cutoff]
+            while timestamps and timestamps[0] < cutoff:
+                timestamps.popleft()
             timestamps.append(now)
-            self._auth_fail_timestamps[client_id] = timestamps
 
-            if limit > 0 and len(timestamps) > limit:
+            if limit > 0 and len(timestamps) > int(limit):
                 RATE_LIMIT_VIOLATIONS_TOTAL.labels(scope="auth").inc()
                 return False
 
@@ -375,10 +376,29 @@ class WebSocketThread(threading.Thread):
             observe_ws_message(message.get("type", "unknown"))
 
             # Correlation id for this incoming message (auth).
-            message["_correlation_id"] = str(uuid.uuid4())
+            message["_correlation_id"] = secrets.token_hex(8)
 
             # Optional multi-tenant auth payload validation
             payload = message.get("payload", {}) or {}
+
+            # Pre-v2 capability negotiation placeholder (backwards compatible):
+            # clients may send `payload.capability: ["json", "shm", "protobuf", ...]`.
+            # For now the manager supports JSON and (optionally) SHM metadata contracts.
+            requested_cap = payload.get("capability")
+            if isinstance(requested_cap, (list, tuple)):
+                requested_capabilities = [str(x) for x in requested_cap if isinstance(x, str)]
+            else:
+                requested_capabilities = []
+
+            supported_capabilities = {"json"}
+            # Enable SHM capability only when /dev/shm is accessible (POSIX shared memory).
+            try:
+                if os.path.isdir("/dev/shm") and os.access("/dev/shm", os.R_OK | os.W_OK | os.X_OK):
+                    supported_capabilities.add("shm")
+            except Exception:
+                pass
+
+            negotiated_capabilities = [c for c in requested_capabilities if c in supported_capabilities] or ["json"]
 
             # Token validation (strict mode returns verified claims).
             token = payload.get("token")
@@ -461,10 +481,16 @@ class WebSocketThread(threading.Thread):
                     "sub": sub,
                     "tenant_id": tenant_id,
                     "roles": roles,
+                    "capability": negotiated_capabilities,
                 }
 
             # Send auth confirmation
-            await websocket.send_text(_json_dumps({"type": "auth.ok"}))
+            # Backwards compatibility: if the client didn't request capability negotiation,
+            # keep the legacy `{"type":"auth.ok"}` response shape.
+            if requested_capabilities:
+                await websocket.send_text(_json_dumps({"type": "auth.ok", "payload": {"capability": negotiated_capabilities}}))
+            else:
+                await websocket.send_text(_json_dumps({"type": "auth.ok"}))
             logger.info(
                 "Client '%s' authenticated",
                 client_id,
@@ -540,7 +566,7 @@ class WebSocketThread(threading.Thread):
                     break
 
                 # Correlation id for this incoming message.
-                message["_correlation_id"] = str(uuid.uuid4())
+                message["_correlation_id"] = secrets.token_hex(8)
 
                 # Attach auth context (if any) so downstream components can enforce roles/limits
                 if client_id:

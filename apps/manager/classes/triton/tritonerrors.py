@@ -160,6 +160,33 @@ class TritonInferenceFailed(FatalError):
         super().__init__(model_name=model_name, code="TRITON_INFERENCE_FAILED", reason=reason)
 
 
+class TritonSHMUnavailable(FatalError):
+    """
+    SHM cannot be used (missing shm key, /dev/shm inaccessible, or similar).
+
+    This is a FatalError: callers must fix the request/environment.
+    """
+
+    def __init__(self, model_name: str, reason: str = "Shared memory unavailable", *, cause: Optional[BaseException] = None):
+        super().__init__(model_name=model_name, code="TRITON_SHM_UNAVAILABLE", reason=reason, cause=cause)
+
+
+class TritonSHMRegistrationFailed(FatalError):
+    """
+    SHM registration with Triton failed.
+    This is fatal for the request; do not retry blindly.
+    """
+
+    def __init__(
+        self,
+        model_name: str,
+        reason: str = "Failed to register shared memory",
+        *,
+        cause: Optional[BaseException] = None,
+    ):
+        super().__init__(model_name=model_name, code="TRITON_SHM_REGISTRATION_FAILED", reason=reason, cause=cause)
+
+
 class TritonServerStateChanged(Exception):
     def __init__(self, vm_ip: str, container_id: str, changed_fields: list):
         self.vm_ip = vm_ip

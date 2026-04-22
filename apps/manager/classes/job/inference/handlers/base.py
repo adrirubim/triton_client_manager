@@ -178,6 +178,13 @@ def estimate_payload_bytes(inputs: object) -> int:
     for inp in inputs:
         if not isinstance(inp, dict):
             continue
+        # SHM reference fast-path: do not inspect bytes, only count declared byte_size.
+        if "shm_key" in inp and "byte_size" in inp:
+            try:
+                total += int(inp.get("byte_size") or 0)
+            except Exception:
+                total += 0
+            continue
         dims = inp.get("dims")
         datatype = inp.get("type")
         total += _numel(dims) * _dtype_size_bytes(str(datatype or ""))

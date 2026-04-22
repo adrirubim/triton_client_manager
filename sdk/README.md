@@ -1,4 +1,4 @@
-# `tcm-client` SDK (WebSocket)
+# `tcm-client` SDK (WebSocket) — v2.0.0-GOLDEN ready
 
 This SDK is the supported client for the Triton Client Manager WebSocket API.
 
@@ -43,7 +43,7 @@ The server may also emit:
 
 - `type="error"` for system-level conditions (including shutdown)
 
-## Error handling model (v1.0.0-ULTIMATE)
+## Error handling model (v2.0.0-GOLDEN)
 
 The manager has two main error shapes you must handle:
 
@@ -129,6 +129,52 @@ Example failure reason:
 
 **Client guidance**
 - This is not retriable as-is. Reduce tensor dimensions / datatype size.
+
+---
+
+## Zero‑Copy Shared Memory (POSIX System SHM)
+
+For large tensors, the recommended v2.0.0-GOLDEN path is to avoid sending tensor bytes over WebSocket JSON and instead:
+
+- Write the tensor into POSIX shared memory (e.g. `/dev/shm`)
+- Send an `SHMReference` object as the inference input payload (metadata only)
+
+### Capability negotiation
+
+During `auth`, clients may request SHM support:
+
+```json
+{
+  "uuid": "client-uuid",
+  "type": "auth",
+  "payload": {
+    "capability": ["json", "shm"]
+  }
+}
+```
+
+- If the environment supports SHM, the manager replies with `auth.ok` and `payload.capability` including `"shm"`.
+- If the client does not send `capability`, the manager replies with legacy `{"type":"auth.ok"}` (v1 compatible).
+
+### `SHMReference` shape
+
+Send SHM inputs in `payload.request.inputs`:
+
+```json
+{
+  "name": "INPUT__0",
+  "shm_key": "/tcm_demo_input0",
+  "offset": 0,
+  "byte_size": 602112,
+  "shape": [1, 3, 224, 224],
+  "dtype": "FP32"
+}
+```
+
+### SHM error codes
+
+- `TRITON_SHM_UNAVAILABLE` (fatal): SHM not supported or shm key missing/inaccessible.
+- `TRITON_SHM_REGISTRATION_FAILED` (fatal): SHM registration failed on the Triton side.
 
 ## Recommended retry policy (high-level)
 
