@@ -141,7 +141,7 @@ class WebSocketThread(threading.Thread):
                 return {"status": "ready"}
             try:
                 ok, details = self.readiness_probe()
-            except Exception as exc:  # noqa: BLE001
+            except Exception:  # noqa: BLE001
                 error_id = str(uuid.uuid4())
                 logger.exception("readiness_probe_failed", extra={"error_id": error_id})
                 return JSONResponse(
