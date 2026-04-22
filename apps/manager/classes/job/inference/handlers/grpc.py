@@ -65,9 +65,7 @@ class JobInferenceGrpc:
                 max_request_payload_mb=int(getattr(self.triton, "max_request_payload_mb", 0) or 0),
             )
             # SHM references are not supported for gRPC streaming yet (contract scaffolding only).
-            if isinstance(inputs, list) and any(
-                isinstance(item, dict) and "shm_key" in item for item in inputs
-            ):
+            if isinstance(inputs, list) and any(isinstance(item, dict) and "shm_key" in item for item in inputs):
                 raise TritonInferenceFailed(model_name, "SHM references are not supported for gRPC streaming yet")
             if not server:
                 if not allow_transient:

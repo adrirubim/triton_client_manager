@@ -2,11 +2,13 @@
   <img src="docs/assets/triton-client-manager-logo.png" alt="Triton Client Manager logo" width="96" />
 </p>
 
-# Triton Client Manager — **v2.0.0-GOLDEN** (The Zero‑Copy Era)
+# Triton Client Manager
+
+**v2.0.0-GOLDEN — The Zero‑Copy Era**
 
 > A modern, enterprise-grade orchestration service for AI inference that coordinates OpenStack VMs, Docker containers, and NVIDIA Triton Inference Server via WebSockets. It provides multi-tenant scheduling (DRR), operational guardrails, and production-grade observability.
 
-**v2.0.0-GOLDEN breakthrough:** **Zero‑Copy Shared Memory orchestration** — the Manager can route inference using **POSIX shared memory metadata** so it does **not need to ingest tensor bytes** for large payloads.
+**Breakthrough (v2.0.0-GOLDEN):** **Zero‑Copy Shared Memory orchestration** — for large tensors, clients send **POSIX SHM metadata** and the Manager avoids ingesting tensor bytes.
 
 [![Python](https://img.shields.io/badge/Python-3.13-3776AB?style=flat&logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.136.0-009688?style=flat&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)

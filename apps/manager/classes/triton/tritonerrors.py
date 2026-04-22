@@ -167,7 +167,9 @@ class TritonSHMUnavailable(FatalError):
     This is a FatalError: callers must fix the request/environment.
     """
 
-    def __init__(self, model_name: str, reason: str = "Shared memory unavailable", *, cause: Optional[BaseException] = None):
+    def __init__(
+        self, model_name: str, reason: str = "Shared memory unavailable", *, cause: Optional[BaseException] = None
+    ):
         super().__init__(model_name=model_name, code="TRITON_SHM_UNAVAILABLE", reason=reason, cause=cause)
 
 

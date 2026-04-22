@@ -492,7 +492,9 @@ class WebSocketThread(threading.Thread):
             # Backwards compatibility: if the client didn't request capability negotiation,
             # keep the legacy `{"type":"auth.ok"}` response shape.
             if requested_capabilities:
-                await websocket.send_text(_json_dumps({"type": "auth.ok", "payload": {"capability": negotiated_capabilities}}))
+                await websocket.send_text(
+                    _json_dumps({"type": "auth.ok", "payload": {"capability": negotiated_capabilities}})
+                )
             else:
                 await websocket.send_text(_json_dumps({"type": "auth.ok"}))
             logger.info(
