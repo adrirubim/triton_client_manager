@@ -7,7 +7,8 @@ from classes.triton.constants import GRPC_PORT
 from classes.triton.inference_orchestrator import TritonInference, TritonRequest
 from classes.triton.info.data.server import TritonServer
 from classes.triton.tritonerrors import TritonInferenceFailed
-from utils.stream_cancel import clear as clear_cancel, get_or_create as get_cancel_event
+from utils.stream_cancel import clear as clear_cancel
+from utils.stream_cancel import get_or_create as get_cancel_event
 
 from .base import check_instance, enforce_payload_budget, normalize_inference_payload, validate_fields
 
@@ -82,7 +83,9 @@ class JobInferenceGrpc:
                     connect_timeout = int(getattr(self.triton, "connection_timeout", 5))
                     try:
                         if not client.is_server_ready(client_timeout=connect_timeout):
-                            raise TritonInferenceFailed(model_name, f"Transient gRPC client not ready within {connect_timeout}s")
+                            raise TritonInferenceFailed(
+                                model_name, f"Transient gRPC client not ready within {connect_timeout}s"
+                            )
                     except TypeError:
                         # Older client versions may not support client_timeout on is_server_ready.
                         pass

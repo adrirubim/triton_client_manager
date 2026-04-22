@@ -6,9 +6,9 @@ from typing import Callable, Optional
 
 from utils.metrics import observe_backend_error
 
-from .infer import TritonInfer
 from .creation.creation import TritonCreation
 from .deletion.deletion import TritonDeletion
+from .infer import TritonInfer
 from .info.data.server import TritonServer
 from .info.info import TritonInfo
 from .tritonerrors import (
@@ -203,7 +203,9 @@ class TritonThread(threading.Thread):
                 client = None
 
             # Verify health via TritonInfo (protocol-aware ready checks)
-            healthy = self.triton_info.is_server_ready(vm_ip, protocol=str(protocol or "http"), timeout=int(self.connection_timeout))
+            healthy = self.triton_info.is_server_ready(
+                vm_ip, protocol=str(protocol or "http"), timeout=int(self.connection_timeout)
+            )
             status = "ready" if healthy else "unhealthy"
             if healthy and model_name:
                 # Best-effort: mark unhealthy if model isn't ready

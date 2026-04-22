@@ -24,12 +24,11 @@ import os
 import time
 from dataclasses import dataclass
 
-from yaml import safe_load  # noqa: E402
-
-from apps.manager.classes.job import JobThread  # noqa: E402
-from apps.manager.classes.triton import TritonInfer  # noqa: E402
-from apps.manager.classes.websocket import WebSocketThread  # noqa: E402
-from apps.manager.utils.logging_config import configure_logging  # noqa: E402
+from apps.manager.classes.job import JobThread
+from apps.manager.classes.triton import TritonInfer
+from apps.manager.classes.websocket import WebSocketThread
+from apps.manager.utils.logging_config import configure_logging
+from yaml import safe_load
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +89,13 @@ def main() -> None:
     # Load minimal configuration needed for dev
     config_job = _load_yaml(os.path.join("config", "jobs.yaml"))
     config_ws = _load_yaml(os.path.join("config", "websocket.yaml"))
+    # CI/WSL friendliness: allow overriding the port without editing YAML.
+    try:
+        env_port = str(os.getenv("TCM_PORT", "") or "").strip()
+        if env_port:
+            config_ws["port"] = int(env_port)
+    except Exception:
+        pass
 
     # Dummy backends (no real OpenStack/Docker/Triton)
     docker_backend = DevBackend(name="DockerDevBackend")

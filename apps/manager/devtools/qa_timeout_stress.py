@@ -80,7 +80,10 @@ async def main_async(args: argparse.Namespace) -> int:
                     {
                         "uuid": client_id,
                         "type": "auth",
-                        "payload": {**({"token": args.token} if args.token else {}), "client": {"roles": ["inference"]}},
+                        "payload": {
+                            **({"token": args.token} if args.token else {}),
+                            "client": {"roles": ["inference"]},
+                        },
                     }
                 )
             )
@@ -163,4 +166,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

@@ -129,7 +129,7 @@ def test_4_container_lifecycle(config, mock_vms):
     worker_port = config.get("remote_api_port", 2376)
     if not _docker_worker_reachable(worker_ip, worker_port):
         pytest.skip(
-            f"Docker worker at {worker_ip}:{worker_port} not reachable " "(run in environment with access to worker VM)"
+            f"Docker worker at {worker_ip}:{worker_port} not reachable (run in environment with access to worker VM)"
         )
 
     print("\n" + "=" * 60)

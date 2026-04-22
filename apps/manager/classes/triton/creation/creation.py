@@ -3,8 +3,22 @@ import time
 
 import boto3
 import tritonclient.http as httpclient
-from pydantic import ValidationError
-from src.Domains.Config.Schemas.RuntimeMinioPayload import RuntimeMinioPayload
+from pydantic import BaseModel, ValidationError
+
+# Optional domain-layer dependency.
+# In CI/test contexts, the repo-root `src/` package may not be on PYTHONPATH.
+# TritonCreation only needs a small subset of the MinIO runtime schema.
+try:  # pragma: no cover
+    from src.Domains.Config.Schemas.RuntimeMinioPayload import RuntimeMinioPayload  # type: ignore
+except ModuleNotFoundError:  # pragma: no cover
+
+    class RuntimeMinioPayload(BaseModel):
+        endpoint: str
+        bucket: str
+        access_key: str
+        secret_key: str
+        folder: str
+
 
 from ..constants import GRPC_PORT, HTTP_PORT
 from ..info.data.server import TritonServer

@@ -82,6 +82,7 @@ jobs:
         working-directory: apps/manager
         env:
           PYTHONUNBUFFERED: "1"
+          TCM_PORT: "8000"
         run: |
           python dev_server.py &
           sleep 10

@@ -1,9 +1,8 @@
+import heapq
 import logging
+import time
 
 logger = logging.getLogger(__name__)
-
-import time
-import heapq
 
 import tritonclient.http as httpclient
 
@@ -140,8 +139,9 @@ class TritonInfo:
         self.drain_due_closures()
         if proto == "grpc":
             try:
-                from ..constants import GRPC_PORT
                 import tritonclient.grpc as grpcclient
+
+                from ..constants import GRPC_PORT
 
                 client = grpcclient.InferenceServerClient(url=f"{vm_ip}:{GRPC_PORT}")
                 try:

@@ -21,7 +21,6 @@ import asyncio
 import json
 import os
 import signal
-import time
 import uuid as uuidlib
 
 import websockets
@@ -29,6 +28,7 @@ import websockets
 
 def _json_dumps(obj: object) -> str:
     return json.dumps(obj, separators=(",", ":"), ensure_ascii=False)
+
 
 def _looks_like_shutdown_close(*, code: int | None, reason: str | None) -> bool:
     # Common close codes we can see during graceful stop/restart:
@@ -60,7 +60,11 @@ async def _one_client(*, ws_url: str, token: str | None, client_id: str, msg: di
                 raw = await asyncio.wait_for(ws.recv(), timeout=timeout_s)
             except (websockets.exceptions.ConnectionClosed, websockets.exceptions.ConnectionClosedError) as exc:
                 if _looks_like_shutdown_close(code=getattr(exc, "code", None), reason=getattr(exc, "reason", None)):
-                    return {"kind": "shutdown_disconnect", "code": getattr(exc, "code", None), "reason": getattr(exc, "reason", None)}
+                    return {
+                        "kind": "shutdown_disconnect",
+                        "code": getattr(exc, "code", None),
+                        "reason": getattr(exc, "reason", None),
+                    }
                 return {"kind": "timeout_or_disconnect", "detail": str(exc)}
 
             try:
@@ -74,7 +78,11 @@ async def _one_client(*, ws_url: str, token: str | None, client_id: str, msg: di
                 await ws.send(_json_dumps(msg))
             except (websockets.exceptions.ConnectionClosed, websockets.exceptions.ConnectionClosedError) as exc:
                 if _looks_like_shutdown_close(code=getattr(exc, "code", None), reason=getattr(exc, "reason", None)):
-                    return {"kind": "shutdown_disconnect", "code": getattr(exc, "code", None), "reason": getattr(exc, "reason", None)}
+                    return {
+                        "kind": "shutdown_disconnect",
+                        "code": getattr(exc, "code", None),
+                        "reason": getattr(exc, "reason", None),
+                    }
                 return {"kind": "timeout_or_disconnect", "detail": str(exc)}
 
             try:
@@ -82,13 +90,21 @@ async def _one_client(*, ws_url: str, token: str | None, client_id: str, msg: di
                 return {"kind": "frame", "frame": json.loads(raw)}
             except (websockets.exceptions.ConnectionClosed, websockets.exceptions.ConnectionClosedError) as exc:
                 if _looks_like_shutdown_close(code=getattr(exc, "code", None), reason=getattr(exc, "reason", None)):
-                    return {"kind": "shutdown_disconnect", "code": getattr(exc, "code", None), "reason": getattr(exc, "reason", None)}
+                    return {
+                        "kind": "shutdown_disconnect",
+                        "code": getattr(exc, "code", None),
+                        "reason": getattr(exc, "reason", None),
+                    }
                 return {"kind": "timeout_or_disconnect", "detail": str(exc)}
             except Exception as exc:
                 return {"kind": "timeout_or_disconnect", "detail": str(exc)}
     except (websockets.exceptions.ConnectionClosed, websockets.exceptions.ConnectionClosedError) as exc:
         if _looks_like_shutdown_close(code=getattr(exc, "code", None), reason=getattr(exc, "reason", None)):
-            return {"kind": "shutdown_disconnect", "code": getattr(exc, "code", None), "reason": getattr(exc, "reason", None)}
+            return {
+                "kind": "shutdown_disconnect",
+                "code": getattr(exc, "code", None),
+                "reason": getattr(exc, "reason", None),
+            }
         return {"kind": "timeout_or_disconnect", "detail": str(exc)}
     except Exception as exc:
         return {"kind": "timeout_or_disconnect", "detail": str(exc)}
@@ -179,7 +195,9 @@ async def main_async(args: argparse.Namespace) -> int:
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Fire requests, SIGTERM manager, verify SYSTEM_SHUTDOWN NACKs.")
-    p.add_argument("--manager-pid", default=os.getenv("TCM_MANAGER_PID", ""), required=not bool(os.getenv("TCM_MANAGER_PID")))
+    p.add_argument(
+        "--manager-pid", default=os.getenv("TCM_MANAGER_PID", ""), required=not bool(os.getenv("TCM_MANAGER_PID"))
+    )
     p.add_argument("--ws-url", default=os.getenv("TCM_WS_URL", "ws://127.0.0.1:8005/ws"))
     p.add_argument("--token", default=os.getenv("TCM_TOKEN", ""))
 
@@ -201,4 +219,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

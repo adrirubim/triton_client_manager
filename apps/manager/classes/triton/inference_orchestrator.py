@@ -1,28 +1,28 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+import contextlib
 import logging
 import random
 import threading
 import time
+from dataclasses import dataclass
 from typing import Callable, List, Optional
-import contextlib
+
+from utils.metrics import observe_circuit_open, observe_inference_duration, observe_inference_error
 
 from .infer import TritonInfer
 from .info.data.server import TritonServer
 from .tritonerrors import (
     FatalError,
-    RetriableError,
+    TritonAuthFailedError,
     TritonCircuitOpenError,
     TritonError,
-    TritonAuthFailedError,
     TritonInferenceFailed,
     TritonModelMissingError,
     TritonNetworkError,
     TritonOverloadedError,
     TritonTimeoutError,
 )
-from utils.metrics import observe_circuit_open, observe_inference_duration, observe_inference_error
 
 logger = logging.getLogger(__name__)
 
@@ -312,7 +312,7 @@ class TritonInference:
         """
         base = 0.10
         cap = 2.0
-        exp = min(cap, base * (2**max(0, int(attempt_idx))))
+        exp = min(cap, base * (2 ** max(0, int(attempt_idx))))
         jitter = random.uniform(0.0, exp * 0.25)  # nosec B311 - non-crypto jitter
         return float(min(cap, exp + jitter))
 

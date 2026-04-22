@@ -126,7 +126,7 @@ class DockerInfo:
                 worker_ip = vm.address_private
 
                 try:
-                    api_url = f"{self.remote_api_scheme}://{worker_ip}:{self.remote_api_port}" "/containers/json"
+                    api_url = f"{self.remote_api_scheme}://{worker_ip}:{self.remote_api_port}/containers/json"
                     response = requests.get(
                         api_url,
                         timeout=self.remote_api_timeout,
@@ -154,9 +154,7 @@ class DockerInfo:
     # --------------- HELPERS ---------------
     def get_container_ports(self, worker_ip: str, container_id: str) -> dict:
         try:
-            api_url = (
-                f"{self.remote_api_scheme}://{worker_ip}:{self.remote_api_port}" f"/containers/{container_id}/json"
-            )
+            api_url = f"{self.remote_api_scheme}://{worker_ip}:{self.remote_api_port}/containers/{container_id}/json"
             response = requests.get(
                 api_url,
                 timeout=self.remote_api_timeout,
@@ -181,7 +179,7 @@ class DockerInfo:
             return {}
 
     def load_single_container(self, worker_ip: str, container_id: str) -> Container:
-        api_url = f"{self.remote_api_scheme}://{worker_ip}:{self.remote_api_port}" f"/containers/{container_id}/json"
+        api_url = f"{self.remote_api_scheme}://{worker_ip}:{self.remote_api_port}/containers/{container_id}/json"
         response = requests.get(api_url, timeout=self.remote_api_timeout, **self._remote_api_requests_kwargs())
         response.raise_for_status()
         container_data = response.json()

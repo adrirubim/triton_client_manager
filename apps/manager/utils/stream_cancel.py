@@ -65,4 +65,3 @@ def cancel_all() -> None:
             ev.set()
         except Exception:
             pass
-

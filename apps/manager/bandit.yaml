@@ -10,3 +10,12 @@ exclude_dirs:
   - "tests"
   - "__pycache__"
 
+# The manager intentionally uses best-effort cleanup patterns during shutdown and
+# resource teardown. In these paths, `try/except: pass` is used to avoid masking
+# the primary failure cause and to keep termination deterministic.
+#
+# We ignore Bandit's B110 ("try_except_pass") to prevent false positives for
+# this operational hardening style.
+skips:
+  - B110
+

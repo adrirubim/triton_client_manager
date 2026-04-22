@@ -42,6 +42,7 @@ def _model_label(model_name: str) -> str:
         return "generic_model"
     return str(model_name or "unknown")
 
+
 # WebSocket-level metrics
 WS_CONNECTIONS_TOTAL = Counter(
     "tcm_ws_connections_total",
@@ -268,7 +269,9 @@ def observe_job_processing(job_type: str, duration_seconds: float) -> None:
 
 def observe_inference_latency(model_name: str, duration_seconds: float, *, tenant_id: str = "unknown") -> None:
     """Observe inference latency for a given model."""
-    INFERENCE_LATENCY_SECONDS.labels(model=_model_label(model_name), tenant_id=str(tenant_id or "unknown")).observe(float(duration_seconds))
+    INFERENCE_LATENCY_SECONDS.labels(model=_model_label(model_name), tenant_id=str(tenant_id or "unknown")).observe(
+        float(duration_seconds)
+    )
 
 
 def observe_inference_duration(

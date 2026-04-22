@@ -139,7 +139,7 @@ async def main_async(args: argparse.Namespace) -> int:
     )
 
     if delta < 1:
-        print("FAIL: expected tcm_grpc_stream_failures_total{reason=\"client_cancel\"} to increase.")
+        print('FAIL: expected tcm_grpc_stream_failures_total{reason="client_cancel"} to increase.')
         return 2
     return 0
 
@@ -166,4 +166,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

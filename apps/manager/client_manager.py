@@ -153,7 +153,7 @@ class ClientManager:
             if not tls_verify:
                 UNSAFE_CONFIG_STARTUPS_TOTAL.labels(reason="docker_remote_api_tls_noverify").inc()
                 logger.critical(
-                    "Unsafe Docker Remote API config: remote_api_tls_verify=false in '%s'. " "Refusing to start.",
+                    "Unsafe Docker Remote API config: remote_api_tls_verify=false in '%s'. Refusing to start.",
                     env,
                 )
                 raise RuntimeError("Unsafe Docker Remote API config (TLS verify disabled)")
@@ -172,7 +172,12 @@ class ClientManager:
         self.job = JobThread(**self.config_job)
         self.docker = DockerThread(self.config_docker)
         env = (os.getenv("TCM_ENV", "development") or "development").lower()
-        disable_openstack = str(os.getenv("TCM_DISABLE_OPENSTACK", "") or "").strip().lower() in {"1", "true", "yes", "on"}
+        disable_openstack = str(os.getenv("TCM_DISABLE_OPENSTACK", "") or "").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
 
         class _NullOpenstackThread:
             """
@@ -308,6 +313,7 @@ class ClientManager:
 
         # Drain queued requests with explicit NACK so callers don't hang.
         if hasattr(self.job, "drain_and_nack"):
+
             def _drain():
                 try:
                     self.job.drain_and_nack(reason="SYSTEM_SHUTDOWN")

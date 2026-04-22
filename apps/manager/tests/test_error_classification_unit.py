@@ -21,4 +21,3 @@ def test_error_classification_string_signals(msg: str, expected):
     assert isinstance(err, expected)
     # Retriable errors must be retriable=True for scheduler/backoff logic.
     assert getattr(err, "retriable", None) is True
-

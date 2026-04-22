@@ -3,9 +3,8 @@ import time
 from typing import TYPE_CHECKING, Callable
 
 from classes.job.joberrors import JobInferenceMissingField
-from classes.triton import TritonInfer
 from classes.triton.inference_orchestrator import TritonInference
-from classes.triton.tritonerrors import TritonError, TritonInferenceFailed
+from classes.triton.tritonerrors import TritonError
 from utils.metrics import observe_inference_latency
 
 from .handlers.grpc import JobInferenceGrpc
@@ -110,9 +109,9 @@ class JobInference:
         def send(status: str, data=None, model_name: str | None = None) -> bool:
             return bool(
                 self.websocket(
-                msg_uuid,
-                self._make_payload(msg_uuid, status, model_name, data),
-            )
+                    msg_uuid,
+                    self._make_payload(msg_uuid, status, model_name, data),
+                )
             )
 
         start = time.perf_counter()

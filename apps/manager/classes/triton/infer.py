@@ -84,7 +84,9 @@ class TritonInfer:
         """
         np = TritonInfer._np()
         if not isinstance(expected_shape, list) or any(not isinstance(d, int) for d in expected_shape):
-            raise TritonShapeMismatchError("unknown", f"Invalid dims for input {name!r}: expected list[int], got {expected_shape!r}")
+            raise TritonShapeMismatchError(
+                "unknown", f"Invalid dims for input {name!r}: expected list[int], got {expected_shape!r}"
+            )
         if not isinstance(data, np.ndarray):
             raise TritonShapeMismatchError(
                 "unknown",

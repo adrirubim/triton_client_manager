@@ -32,7 +32,16 @@ def _json_dumps(obj: object) -> str:
     return json.dumps(obj, separators=(",", ":"), ensure_ascii=False)
 
 
-async def _ws_worker(*, ws_url: str, token: str | None, roles: list[str], vm_ip: str, container_id: str, model_name: str, stop: asyncio.Event) -> None:
+async def _ws_worker(
+    *,
+    ws_url: str,
+    token: str | None,
+    roles: list[str],
+    vm_ip: str,
+    container_id: str,
+    model_name: str,
+    stop: asyncio.Event,
+) -> None:
     cid = f"qa-flap-{uuidlib.uuid4().hex[:10]}"
     try:
         async with websockets.connect(ws_url, max_size=2**23) as ws:
@@ -186,4 +195,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

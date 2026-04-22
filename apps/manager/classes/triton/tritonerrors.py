@@ -52,14 +52,18 @@ class TritonError(Exception):
 class RetriableError(TritonError):
     """Errors that should be retried with backoff (network, timeout, overload)."""
 
-    def __init__(self, *, model_name: str = "unknown", code: str, reason: str, cause: Optional[BaseException] = None) -> None:
+    def __init__(
+        self, *, model_name: str = "unknown", code: str, reason: str, cause: Optional[BaseException] = None
+    ) -> None:
         super().__init__(model_name=model_name, code=code, reason=reason, retriable=True, cause=cause)
 
 
 class FatalError(TritonError):
     """Errors that must NOT be retried (shape mismatch, model missing, auth failure)."""
 
-    def __init__(self, *, model_name: str = "unknown", code: str, reason: str, cause: Optional[BaseException] = None) -> None:
+    def __init__(
+        self, *, model_name: str = "unknown", code: str, reason: str, cause: Optional[BaseException] = None
+    ) -> None:
         super().__init__(model_name=model_name, code=code, reason=reason, retriable=False, cause=cause)
 
 
@@ -67,7 +71,9 @@ class FatalError(TritonError):
 # Retriable error specializations
 # -----------------------------
 class TritonNetworkError(RetriableError):
-    def __init__(self, model_name: str, reason: str = "Network error", *, cause: Optional[BaseException] = None) -> None:
+    def __init__(
+        self, model_name: str, reason: str = "Network error", *, cause: Optional[BaseException] = None
+    ) -> None:
         super().__init__(model_name=model_name, code="TRITON_NETWORK", reason=reason, cause=cause)
 
 
@@ -77,7 +83,9 @@ class TritonTimeoutError(RetriableError):
 
 
 class TritonOverloadedError(RetriableError):
-    def __init__(self, model_name: str, reason: str = "Server overloaded", *, cause: Optional[BaseException] = None) -> None:
+    def __init__(
+        self, model_name: str, reason: str = "Server overloaded", *, cause: Optional[BaseException] = None
+    ) -> None:
         super().__init__(model_name=model_name, code="TRITON_OVERLOADED", reason=reason, cause=cause)
 
 
@@ -110,7 +118,11 @@ class TritonAuthFailedError(FatalError):
 class TritonServerHealthFailed(RetriableError):
     def __init__(self, timeout: int):
         self.timeout = timeout
-        super().__init__(model_name="server", code="TRITON_SERVER_NOT_READY", reason=f"Server failed to become ready within {timeout}s")
+        super().__init__(
+            model_name="server",
+            code="TRITON_SERVER_NOT_READY",
+            reason=f"Server failed to become ready within {timeout}s",
+        )
 
 
 class TritonModelLoadFailed(FatalError):
@@ -124,13 +136,21 @@ class TritonModelNotReady(RetriableError):
     def __init__(self, model_name: str, timeout: int):
         self.model_name = model_name
         self.timeout = timeout
-        super().__init__(model_name=model_name, code="TRITON_MODEL_NOT_READY", reason=f"Model failed to become ready within {timeout}s")
+        super().__init__(
+            model_name=model_name,
+            code="TRITON_MODEL_NOT_READY",
+            reason=f"Model failed to become ready within {timeout}s",
+        )
 
 
 class TritonConfigDownloadFailed(RetriableError):
     def __init__(self, reason: str):
         self.reason = reason
-        super().__init__(model_name="config", code="TRITON_CONFIG_DOWNLOAD_FAILED", reason=f"Failed to download model config from S3: {reason}")
+        super().__init__(
+            model_name="config",
+            code="TRITON_CONFIG_DOWNLOAD_FAILED",
+            reason=f"Failed to download model config from S3: {reason}",
+        )
 
 
 class TritonInferenceFailed(FatalError):
@@ -153,13 +173,19 @@ class TritonServerCreationFailed(FatalError):
         self.vm_ip = vm_ip
         self.container_id = container_id
         self.reason = reason
-        super().__init__(model_name="server", code="TRITON_SERVER_CREATION_FAILED", reason=f"({vm_ip}, {container_id[:12]}): {reason}")
+        super().__init__(
+            model_name="server",
+            code="TRITON_SERVER_CREATION_FAILED",
+            reason=f"({vm_ip}, {container_id[:12]}): {reason}",
+        )
 
 
 class TritonMissingArgument(FatalError):
     def __init__(self, field: str):
         self.field = field
-        super().__init__(model_name="manager", code="TRITON_MISSING_ARGUMENT", reason=f"Missing required argument: '{field}'")
+        super().__init__(
+            model_name="manager", code="TRITON_MISSING_ARGUMENT", reason=f"Missing required argument: '{field}'"
+        )
 
 
 class TritonMissingInstance(FatalError):
