@@ -1,0 +1,51 @@
+groups:
+  - name: tcm-v2.0.0-golden-inference-alerts
+    interval: 30s
+    rules:
+      - alert: TCMTritonTimeoutSpike
+        expr: |
+          sum(rate(tcm_inference_errors_total{code="TRITON_TIMEOUT"}[5m]))
+          >
+          2
+        for: 2m
+        labels:
+          severity: page
+          service: triton-client-manager
+        annotations:
+          summary: "TCM: spike de TRITON_TIMEOUT"
+          description: |
+            Se detecta un spike de errores TRITON_TIMEOUT (retriables) en TCM.
+            - Métrica: tcm_inference_errors_total{code="TRITON_TIMEOUT"}
+            - Acción: revisar saturación/latencia del backend Triton, capacidad de GPU, y colas.
+
+      - alert: TCMCircuitBreakerOpened
+        expr: |
+          sum(increase(tcm_circuit_breaker_opens_total[1m])) > 0
+        for: 0m
+        labels:
+          severity: page
+          service: triton-client-manager
+        annotations:
+          summary: "TCM: circuit breaker abierto"
+          description: |
+            El circuit breaker de inferencia se abrió (fail-fast) para al menos un modelo.
+            - Métrica: tcm_circuit_breaker_opens_total
+            - Acción: inspeccionar código/razón (label code), salud del TritonServer y errores recientes.
+
+      - alert: TCMPayloadTooLargeRateHigh
+        expr: |
+          (
+            sum(rate(tcm_inference_duration_seconds_count{status="FAILED",code="TRITON_INFERENCE_FAILED"}[5m]))
+            /
+            clamp_min(sum(rate(tcm_inference_duration_seconds_count[5m])), 1)
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: warn
+          service: triton-client-manager
+        annotations:
+          summary: "TCM: rechazos 413 (payload budget) > 5%"
+          description: |
+            El ratio de fallos con code=TRITON_INFERENCE_FAILED supera el 5% del tráfico.
+            En v2.0.0-GOLDEN esto suele correlacionar con la política `TCM_MAX_REQUEST_PAYLOAD_MB` (413 Payload Too Large).
+            - Acción: promover SHM (zero-copy) para tensores grandes, o reducir dimensiones/dtype del input.
