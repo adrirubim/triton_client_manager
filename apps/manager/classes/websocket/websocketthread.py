@@ -142,9 +142,16 @@ class WebSocketThread(threading.Thread):
             try:
                 ok, details = self.readiness_probe()
             except Exception as exc:  # noqa: BLE001
+                error_id = str(uuid.uuid4())
+                logger.exception("readiness_probe_failed", extra={"error_id": error_id})
                 return JSONResponse(
                     status_code=503,
-                    content={"status": "not_ready", "reason": "readiness_probe_failed", "detail": str(exc)},
+                    content={
+                        "status": "not_ready",
+                        "reason": "readiness_probe_failed",
+                        "detail": "internal_error",
+                        "error_id": error_id,
+                    },
                 )
             if ok:
                 return {"status": "ready", **(details or {})}
