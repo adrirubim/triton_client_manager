@@ -163,10 +163,15 @@ Example failure reason:
 
 ## Zero‑Copy Shared Memory (POSIX System SHM)
 
-For large tensors, the recommended v2.0.0-GOLDEN path is to avoid sending tensor bytes over WebSocket JSON and instead:
+For large tensors, the recommended v2.0.0-GOLDEN path is to **minimize Data Plane overhead and serialization latency by bypassing JSON for tensor transport**:
 
-- Write the tensor into POSIX shared memory (e.g. `/dev/shm`)
-- Send an `SHMReference` object as the inference input payload (metadata only)
+- Write the tensor bytes into POSIX shared memory (e.g. `/dev/shm`)
+- Send an `SHMReference` object as the inference input payload (**metadata only**)
+
+Be precise about the architecture:
+
+- The SHM path reduces **transport cost** (the Manager orchestrates references, not tensor bytes).
+- The Manager remains a Python-based **Control Plane** (routing, validation, orchestration, observability).
 
 ### Capability negotiation
 
