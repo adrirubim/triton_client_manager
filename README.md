@@ -142,7 +142,7 @@ The system exposes inference endpoints (HTTP and gRPC) and manages per-user job 
 
 - ✅ **POSIX Shared Memory (System SHM)** — for large tensors, clients can send **SHM metadata** (`SHMReference`) instead of raw tensor bytes.
 - ✅ **Protocol negotiation** — clients can negotiate capabilities at auth time (`capability: ["json", "shm"]`).
-- ✅ **Safety-first fallback** — if SHM is unavailable, the Manager continues to support the classic JSON tensor path (v1-compatible).
+- ✅ **Safety-first fallback** — if SHM is unavailable (or not negotiated), the Manager continues to support the classic JSON tensor path.
 
 See: `examples/v2_shm_inference_example.py`.
 
@@ -161,7 +161,7 @@ Clients may include a capability list in the `auth` payload:
 ```
 
 - If provided, the Manager replies with `type="auth.ok"` and a `payload.capability` list containing the negotiated subset.
-- If **not** provided, the Manager replies with the legacy shape `{"type":"auth.ok"}` to preserve v1.0 compatibility.
+- If **not** provided, the Manager replies with the legacy shape `{"type":"auth.ok"}` (no `payload`) to avoid breaking older clients.
 
 ### 🧠 Inference Workflows
 
@@ -448,27 +448,24 @@ python -m pytest tests/ -v
 
 Prerequisite: complete the one-time setup in [TECHNICAL_GUIDE.md](TECHNICAL_GUIDE.md).
 
-### SRE/Chaos/Load suite (single dashboard runner)
+### SRE validation runner (Day‑2, CI parity)
 
-For Day‑2 “under fire” validation on WSL, use the repo-root runner:
+For Day‑2 validation, use the repo-root runner:
 
 ```bash
 cd /var/www/triton_client_manager
-source .venv/bin/activate
 
-# Unit + targeted resilience checks
+# Fast: pytest only
 bash ./test_suite_master.sh --unit
 
-# High-load + chaos suite (PHASE 3 + PHASE 4)
-TCM_PORT=8000 bash ./test_suite_master.sh --stress
+# Runtime smoke: starts threads + validates WS handshake path
+bash ./test_suite_master.sh --smoke
+
+# Full CI parity (delegates to scripts/check.sh: lint + compile + tests + security)
+bash ./test_suite_master.sh --full
 ```
 
-The stress suite executes:
-
-- **PHASE 3**: 1,000+ concurrent WS clients + payload budget verification (`413 Payload Too Large`)
-- **PHASE 4**: `/ready` storm (readiness TTL cache validation) + SIGTERM draining test
-
-Scripts live in `apps/manager/devtools/` and are intended to be operator-friendly and copy‑pasteable.
+Implementation details and the exact commands are documented in [TECHNICAL_GUIDE.md](TECHNICAL_GUIDE.md).
 
 ---
 
@@ -539,7 +536,6 @@ it exists purely as an optional helper for image lifecycle management.
 
 - **Current release:** **v2.0.0-GOLDEN** — **Zero‑Copy Era**
 - **Changelog:** see [CHANGELOG.md](CHANGELOG.md) for highlights and upgrade notes.
-- **Roadmap completion:** the internal **13-stage project roadmap** has been fully completed and verified (CI, DX, observability, security, SDKs, horizontal scaling).
 
 This repository now represents the **v2.0.0-GOLDEN production line** for Triton Client Manager, with documentation **synced to the current implementation**. Future changes will follow semantic versioning and be documented in the changelog.
 
@@ -547,15 +543,10 @@ This repository now represents the **v2.0.0-GOLDEN production line** for Triton 
 
 ## ✅ Production Readiness (v2.0.0‑GOLDEN)
 
-The v2.0.0‑GOLDEN release ships with an operator-focused validation suite and the following
-benchmarks verified during Day‑2 runs:
+The v2.0.0‑GOLDEN release ships with operator-focused validation entrypoints.
 
-- **Readiness storm (p99)**: `< 25ms` under sustained `/ready` load (readiness TTL cache enabled)
-- **Shutdown draining efficiency**: `100%` of in-flight WS clients received `SYSTEM_SHUTDOWN` NACKs in the SIGTERM draining test
-- **Admission control verification**: `413 Payload Too Large` observed under load when `TCM_MAX_REQUEST_PAYLOAD_MB>0`
-
-For the exact commands used to reproduce these checks, see `test_suite_master.sh` and the
-SRE Validation Suite section in [TECHNICAL_GUIDE.md](TECHNICAL_GUIDE.md).
+For reproducible commands, see `test_suite_master.sh` and the SRE Validation Suite section in
+[TECHNICAL_GUIDE.md](TECHNICAL_GUIDE.md).
 
 ---
 

@@ -43,6 +43,32 @@ The server may also emit:
 
 - `type="error"` for system-level conditions (including shutdown)
 
+## Inference request payload (wire contract)
+
+For `type="inference"`, the payload must include:
+
+- `vm_ip` (string) — required (routing target)
+- `container_id` (string) — required (routing target)
+- `model_name` (string) — required
+- `request.inputs` (list) — required
+
+### Tensor inputs (JSON path)
+
+The manager accepts two equivalent shapes in `payload.request.inputs[*]`:
+
+- **SDK-friendly**: `{name, shape, datatype, data}`
+- **Manager/internal**: `{name, dims, type, value}`
+
+### SHM inputs (zero‑copy metadata)
+
+For SHM, each input item is an `SHMReference` dict:
+
+- `{name, shm_key, offset, byte_size, shape, dtype}`
+
+Notes:
+- SHM is currently supported only for HTTP inference.
+- SHM is rejected for gRPC streaming requests.
+
 ## Error handling model (v2.0.0-GOLDEN)
 
 The manager has two main error shapes you must handle:
@@ -67,6 +93,9 @@ During shutdown draining (SIGTERM / deployment restarts), the manager explicitly
 - Treat as a stop-the-world signal: do not retry immediately.
 - Close the socket and reconnect with backoff.
 - Resume work only after `GET /ready` returns ready again.
+
+Operational detail:
+- The manager enforces a **hard 2.0s SIGTERM deadline** for draining (best-effort). Plan for NACKs under deploy restarts.
 
 ### B) Inference job failures (`type="inference"`, `payload.status="FAILED"`)
 Inference responses always come back as:
@@ -154,7 +183,7 @@ During `auth`, clients may request SHM support:
 ```
 
 - If the environment supports SHM, the manager replies with `auth.ok` and `payload.capability` including `"shm"`.
-- If the client does not send `capability`, the manager replies with legacy `{"type":"auth.ok"}` (v1 compatible).
+- If the client does not send `capability`, the manager replies with the legacy shape `{"type":"auth.ok"}` (no `payload`) to avoid breaking older clients.
 
 ### `SHMReference` shape
 

@@ -7,11 +7,15 @@ __all__ = [
     "TcmWebSocketClient",
     "quickstart_queue_stats",
     "run_quickstart",
+    "__release__",
     "__version__",
 ]
+
+# Canonical release tag (human-facing). This is the string used for git tags and docs.
+__release__ = "v2.0.0-GOLDEN"
 
 try:
     __version__ = version("tcm-client")
 except PackageNotFoundError:
     # Repo checkout / editable-import scenario (package not installed).
-    __version__ = "0.0.0"
+    __version__ = "2.0.0"

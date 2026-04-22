@@ -302,14 +302,19 @@ class TritonInfer:
     # -------------------------------------------- #
     def infer_shm(self, http_client, model_name: str, shm_inputs, timeout: int = 30):
         """
-        Placeholder for POSIX System Shared Memory integration.
+        POSIX System Shared Memory (zero-copy) HTTP inference path.
 
         Contract:
         - `shm_inputs` is a list of SHMReference objects (metadata only).
         - The manager must not materialize numpy arrays for this path.
+        - Regions are registered against the given Triton HTTP client using
+          Triton's System Shared Memory APIs, with a per-client thread-safe LRU cache.
 
-        Future implementation will register shared memory regions via
-        tritonclient's System Shared Memory APIs and issue infer calls referencing them.
+        Operational constraints (as implemented):
+        - POSIX `/dev/shm` must be accessible on the manager host.
+        - `shm_key` must exist under `/dev/shm` at request time.
+        - Offsets are supported only if the installed tritonclient supports
+          `InferInput.set_shared_memory(..., offset=...)`; otherwise `offset` must be 0.
         """
         return self._infer_shm(http_client, model_name, shm_inputs, timeout=timeout)
 

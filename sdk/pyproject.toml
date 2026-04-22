@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tcm-client"
-version = "0.1.0"
+version = "2.0.0"
 description = "Official Python WebSocket client for Triton Client Manager."
 readme = "README.md"
 requires-python = ">=3.10"

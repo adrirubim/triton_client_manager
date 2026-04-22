@@ -1,7 +1,11 @@
 # Technical Guide — Triton Client Manager (v2.0.0-GOLDEN)
 
 Single **Flat Master Docs** technical guide for this repository.
-If this guide disagrees with the code, **the code wins**.
+
+**Regla canónica (v2.0.0-GOLDEN):** esta documentación es la **fuente canónica de la verdad operativa**.
+Si encuentras cualquier divergencia entre documentación y código, es un **bug de release** que debe
+resolverse en esta auditoría (corrigiendo docs, código, o ambos) antes de considerar `v2.0.0-GOLDEN`
+como final.
 
 ---
 
@@ -259,6 +263,13 @@ During shutdown draining, the manager emits an explicit error NACK with:
 Clients must treat this as **non-retriable in the moment** (the manager is stopping)
 and reconnect only after readiness is restored.
 
+Operational deadline (SIGTERM):
+
+- On SIGTERM, the manager enters draining mode and enforces a **hard 2.0s deadline** (`apps/manager/client_manager.py`).
+- New WS messages are rejected early (shutdown guard in `WebSocketThread`).
+- Best-effort: queued work is drained with explicit `SYSTEM_SHUTDOWN` NACKs; if the deadline is exceeded,
+  active streams may be force-cancelled.
+
 ---
 
 ## Admission Control (Payload Budget / 413)
@@ -272,6 +283,14 @@ and reconnect only after readiness is restored.
 The manager enforces an **estimated decoded payload budget** to protect itself from
 OOM or pathological inputs. The estimate is computed from `inputs[*].dims` and
 `inputs[*].type` (bytes-per-element), not from raw `value` contents.
+
+Input normalization (operational reality):
+
+- The runtime accepts two equivalent JSON tensor shapes in `payload.request.inputs[*]`:
+  - **Manager shape**: `{name, dims, type, value}`
+  - **SDK-friendly shape**: `{name, shape, datatype, data}` (normalized internally to the manager shape)
+- SHM inputs are detected by the presence of `shm_key` + `byte_size` and are estimated by declared `byte_size`
+  (the manager does not inspect tensor bytes).
 
 ### Configuration
 
@@ -374,6 +393,13 @@ The `/ready` probe result is cached for **1 second**:
 - Makes readiness checks effectively **O(1)** per request within the TTL window
 - Preserves correctness: after TTL expires, readiness is recomputed from the current registry state
 
+Operational nuance (what “1 second” means in practice):
+
+- The TTL is enforced as `now - ts < 1.0` under a lock, where `ts` is captured at the start of the computation path.
+- When a recompute is needed, the work (iterating servers + readiness checks) runs *outside* the readiness lock, but
+  the cached timestamp remains the pre-compute `now`. Therefore, if recomputation takes \(d\) seconds, the post-compute
+  “freshness budget” is effectively \(1.0 - d\) seconds (and can approach 0 under downstream slowness).
+
 #### Security note (no exception exposure)
 
 If the readiness probe itself raises, `/ready` returns `503` with a sanitized payload and an `error_id`
@@ -385,33 +411,34 @@ for operator correlation. The exception string/stack trace is logged server-side
 
 ## SRE Validation Suite (Load/Chaos)
 
-The repository includes an operator-facing, CI-style test runner designed for WSL/dev
-and Day‑2 validation.
+This repository ships **operator-facing** validation entrypoints for Day‑2 confidence checks.
+In v2.0.0-GOLDEN the source of truth is the scripts that actually exist in the repo.
 
-### Single entrypoint runner
+### Single entrypoint runner (Day‑2 / CI parity)
 
 - Script: `test_suite_master.sh` (repo root)
 - Modes:
-  - `bash ./test_suite_master.sh --unit` (pytest + targeted resilience unit tests)
-  - `bash ./test_suite_master.sh --stress` (PHASE 3 load + PHASE 4 chaos)
-  - `bash ./test_suite_master.sh --full` (all phases)
+  - `bash ./test_suite_master.sh --unit` (fast: pytest only)
+  - `bash ./test_suite_master.sh --smoke` (runtime smoke + WS handshake path)
+  - `bash ./test_suite_master.sh --full` (CI parity: lint + compile + smoke + tests)
 
-### PHASE 3 — High-concurrency WS load
+Implementation delegates to:
 
-- Tool: `apps/manager/devtools/qa_load_tester_ws.py`
-- Purpose:
-  - 1,000+ concurrent WS clients
-  - Verify admission control (`413 Payload Too Large`) when enabled
-  - Detect connect errors and inference timeouts
+- `scripts/check.sh` (CI parity: install deps + lint + compile + pytest + security)
+- `scripts/dev-verify.sh` (local gate assuming a pre-existing venv)
 
-### PHASE 4 — Chaos & shutdown draining
+### Manual WebSocket tooling (operator triage)
 
-- `/ready` storm / flapping backend:
-  - `apps/manager/devtools/qa_chaos_flapping_backend.py`
-- Shutdown draining (SIGTERM → `SYSTEM_SHUTDOWN` NACKs):
-  - `apps/manager/devtools/qa_shutdown_draining_sigterm.py`
-- Zombie Killer (optional, requires real gRPC streaming backend/model):
-  - `apps/manager/devtools/qa_chaos_zombie_killer.py`
+- `apps/manager/devtools/ws_client.py`: interactive WS client for auth + `info.queue_stats`
+  and best-effort inference (requires real vm/container/model).
+
+### Load / concurrency validation (example-driven)
+
+- `examples/load_test_sdk.py`: SDK-driven load test harness (concurrency + reconnect behavior).
+
+If you need chaos-style probes, treat them as **explicit runbooks** (not implicit scripts):
+the manager already exposes the necessary control-plane signals (`/ready` TTL caching,
+`SYSTEM_SHUTDOWN` NACKs, and circuit breaker telemetry) to validate failure modes.
 
 ---
 

@@ -1,5 +1,5 @@
 """
-Phase 8 example: POSIX SHM → Triton Client Manager (metadata only).
+v2.0.0-GOLDEN example: POSIX SHM → Triton Client Manager (metadata only).
 
 This example demonstrates the *client-side* workflow:
   1) Create a POSIX shared memory segment (posix_ipc)
@@ -7,7 +7,7 @@ This example demonstrates the *client-side* workflow:
   3) Send an inference message containing SHMReference metadata to the Manager over WebSocket
 
 Notes:
-- This is a Pre-v2 example. The manager must be started on a host where /dev/shm is available.
+- The manager must be started on a host where /dev/shm is available.
 - The SHM path currently targets HTTP inference in the manager; gRPC streaming SHM is not supported yet.
 - You need to ensure the Triton model input matches:
     - `name`
