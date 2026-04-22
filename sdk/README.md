@@ -15,6 +15,18 @@ It provides a typed, ergonomic interface for:
   - `GET /health` (liveness)
   - `GET /ready` (readiness)
 
+`GET /ready` may return `503` with a sanitized payload if core dependencies are not healthy (or if the
+probe itself fails). In that case, use `error_id` to correlate server logs:
+
+```json
+{
+  "status": "not_ready",
+  "reason": "readiness_probe_failed",
+  "detail": "internal_error",
+  "error_id": "..."
+}
+```
+
 ## Message envelope (wire contract)
 
 All messages share the same top-level envelope:

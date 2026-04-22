@@ -366,6 +366,9 @@ You can mirror this flow in workflows such as [tests.yml](.github/workflows/test
 
 - `GET /health` — Liveness probe
 - `GET /ready` — Readiness probe
+  - On failure, returns `503` with a **sanitized** payload (no exception strings / stack traces).
+  - Operators can correlate server logs via `error_id`:
+    - `{"status":"not_ready","reason":"readiness_probe_failed","detail":"internal_error","error_id":"..."}`
 
 ### Smoke Test
 

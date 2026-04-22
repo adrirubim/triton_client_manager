@@ -316,6 +316,13 @@ The `/ready` probe result is cached for **1 second**:
 - Makes readiness checks effectively **O(1)** per request within the TTL window
 - Preserves correctness: after TTL expires, readiness is recomputed from the current registry state
 
+#### Security note (no exception exposure)
+
+If the readiness probe itself raises, `/ready` returns `503` with a sanitized payload and an `error_id`
+for operator correlation. The exception string/stack trace is logged server-side only:
+
+- `{"status":"not_ready","reason":"readiness_probe_failed","detail":"internal_error","error_id":"..."}`
+
 ---
 
 ## SRE Validation Suite (Load/Chaos)
