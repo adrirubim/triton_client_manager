@@ -153,14 +153,20 @@ def test_jobthread_fair_process_queues_records_processing_time(monkeypatch):
     q.put_nowait({"uuid": "u1", "type": "info", "payload": {}})
     jt.info_queues = {"u1": q}
 
+    # Make executor deterministic: run submitted work inline so metrics are updated
+    # before we assert. This avoids flakes due to thread scheduling jitter.
+    def inline_submit(fn, *args, **kwargs):
+        fn(*args, **kwargs)
+        return object()
+
+    monkeypatch.setattr(jt.executor_info, "submit", inline_submit)
+
     def fake_handler(_msg):
         # Simulate small processing time
         time.sleep(0.001)
 
     before = _get_processing_count("info")
     jt.fair_process_queues(jt.info_queues, jt.executor_info, fake_handler, "info")
-    # Give the executor a moment to run the job
-    time.sleep(0.01)
     after = _get_processing_count("info")
 
     assert after >= before + 1
