@@ -21,8 +21,20 @@ from __future__ import annotations
 
 import logging
 import os
+import sys
 import time
 from dataclasses import dataclass
+
+try:
+    # Ensure repo root is importable even when running from apps/manager.
+    # This makes `import apps.manager.*` work in CI jobs that set working-directory=apps/manager.
+    from pathlib import Path
+
+    repo_root = Path(__file__).resolve().parents[2]
+    if str(repo_root) not in sys.path:
+        sys.path.insert(0, str(repo_root))
+except Exception:
+    pass
 
 from apps.manager.classes.job import JobThread
 from apps.manager.classes.triton import TritonInfer

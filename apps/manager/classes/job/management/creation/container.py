@@ -3,8 +3,22 @@ import uuid
 from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
-from pydantic import ValidationError
-from src.Domains.Config.Schemas.RuntimeMinioPayload import RuntimeMinioPayload
+from pydantic import BaseModel, ValidationError
+
+# Optional domain-layer dependency.
+# In CI/test contexts, the repo-root `src/` package may not be on PYTHONPATH.
+# JobCreateContainer only needs a small subset of the MinIO runtime schema.
+try:  # pragma: no cover
+    from src.Domains.Config.Schemas.RuntimeMinioPayload import RuntimeMinioPayload  # type: ignore
+except ModuleNotFoundError:  # pragma: no cover
+
+    class RuntimeMinioPayload(BaseModel):
+        endpoint: str
+        bucket: str
+        access_key: str
+        secret_key: str
+        folder: str
+
 
 from classes.job.joberrors import JobContainerCreationFailed
 from utils.config_env import overlay_minio_payload
