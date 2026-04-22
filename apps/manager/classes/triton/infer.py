@@ -5,7 +5,7 @@ import threading
 import time
 from collections import OrderedDict
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 import tritonclient.grpc as grpcclient
 import tritonclient.http as httpclient
@@ -17,9 +17,9 @@ from .constants import TYPE_MAP
 from .tritonerrors import (
     TritonError,
     TritonInferenceFailed,
+    TritonShapeMismatchError,
     TritonSHMRegistrationFailed,
     TritonSHMUnavailable,
-    TritonShapeMismatchError,
 )
 
 logger = logging.getLogger(__name__)
@@ -29,6 +29,10 @@ logger = logging.getLogger(__name__)
 ###################################
 
 STREAM_TIMEOUT = 120  # seconds before a hung gRPC stream is abandoned
+
+# POSIX SHM root directory (Linux). Bandit B108 flags hardcoded tmp dirs, but
+# for Triton System Shared Memory this path is intentional and part of the contract.
+SHM_ROOT = "/dev/shm"  # nosec B108
 
 # NOTE: We intentionally avoid importing numpy at module import time.
 # These are "static" structures used to reduce per-request allocations.
@@ -311,8 +315,8 @@ class TritonInfer:
 
     def _infer_shm(self, http_client, model_name: str, shm_inputs, *, timeout: int = 30):
         # Validate environment support early (contract: POSIX /dev/shm only for now).
-        if not (os.path.isdir("/dev/shm") and os.access("/dev/shm", os.R_OK | os.W_OK | os.X_OK)):
-            raise TritonSHMUnavailable(model_name, "POSIX shared memory is not available (/dev/shm inaccessible)")
+        if not (os.path.isdir(SHM_ROOT) and os.access(SHM_ROOT, os.R_OK | os.W_OK | os.X_OK)):
+            raise TritonSHMUnavailable(model_name, f"POSIX shared memory is not available ({SHM_ROOT} inaccessible)")
 
         if not isinstance(shm_inputs, list) or not shm_inputs:
             raise TritonSHMUnavailable(model_name, "Invalid SHM inputs: expected non-empty list")
@@ -347,7 +351,7 @@ class TritonInfer:
 
             # Fail-fast if key doesn't exist on disk (POSIX shm segments appear under /dev/shm).
             key_fs = shm_key[1:] if shm_key.startswith("/") else shm_key
-            if not os.path.exists(os.path.join("/dev/shm", key_fs)):
+            if not os.path.exists(os.path.join(SHM_ROOT, key_fs)):
                 raise TritonSHMUnavailable(model_name, f"Shared memory key not found: {shm_key!r}")
 
             region_name = self._shm.ensure_registered(

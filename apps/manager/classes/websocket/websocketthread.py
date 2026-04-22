@@ -34,6 +34,10 @@ try:
 except Exception:  # noqa: BLE001
     orjson = None
 
+# POSIX SHM root directory (Linux). Bandit B108 flags hardcoded tmp dirs, but
+# for shared-memory capability negotiation this path is intentional.
+SHM_ROOT = "/dev/shm"  # nosec B108
+
 
 def _json_loads(s: str):
     if orjson is not None:
@@ -393,7 +397,7 @@ class WebSocketThread(threading.Thread):
             supported_capabilities = {"json"}
             # Enable SHM capability only when /dev/shm is accessible (POSIX shared memory).
             try:
-                if os.path.isdir("/dev/shm") and os.access("/dev/shm", os.R_OK | os.W_OK | os.X_OK):
+                if os.path.isdir(SHM_ROOT) and os.access(SHM_ROOT, os.R_OK | os.W_OK | os.X_OK):
                     supported_capabilities.add("shm")
             except Exception:
                 pass

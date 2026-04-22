@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Callable
 import tritonclient.grpc as grpcclient
 
 from classes.triton.constants import GRPC_PORT
-from classes.triton.inference_orchestrator import SHMReference, TritonInference, TritonRequest
+from classes.triton.inference_orchestrator import TritonInference, TritonRequest
 from classes.triton.info.data.server import TritonServer
 from classes.triton.tritonerrors import TritonInferenceFailed
 from utils.stream_cancel import clear as clear_cancel
