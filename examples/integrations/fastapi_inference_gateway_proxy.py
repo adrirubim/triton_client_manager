@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import os
 import time
+import uuid
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 from fastapi import Body, FastAPI, HTTPException, Response
+from fastapi.responses import JSONResponse
 
 from tcm_client import AuthContext, TcmWebSocketClient
 
@@ -38,7 +40,14 @@ def _ready_probe() -> Tuple[bool, Optional[str], JsonDict]:
     try:
         res = requests.get(_manager_http_base() + "/ready", timeout=1.5)
     except Exception as exc:
-        return False, None, {"status": "not_ready", "reason": "probe_failed", "detail": str(exc)}
+        # Never expose exception text to external callers (security hardening).
+        # Keep a local correlation handle for logs/triage.
+        local_error_id = str(uuid.uuid4())
+        return (
+            False,
+            local_error_id,
+            {"status": "not_ready", "reason": "probe_failed", "detail": "upstream_unreachable"},
+        )
 
     try:
         payload = res.json()
@@ -192,7 +201,18 @@ async def infer(
     except Exception as exc:
         # On transport errors, reset the pool so next request reconnects cleanly.
         await pool.reset()
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        # Do not leak exception details to external callers. Return a sanitized error
+        # with a correlation handle.
+        error_id = str(uuid.uuid4())
+        return JSONResponse(
+            status_code=502,
+            content={
+                "status": "error",
+                "code": "UPSTREAM_TRANSPORT_ERROR",
+                "message": "Upstream transport failure while contacting Manager",
+                "error_id": error_id,
+            },
+        )
     finally:
         t1 = time.perf_counter()
 
