@@ -16,7 +16,7 @@ docker==7.1.0
 # Triton Inference
 # NOTE: Avoid pip resolver conflicts with extras + latest grpcio.
 # We pin the base client and explicitly pin gRPC/HTTP deps below.
-tritonclient==2.67.0
+tritonclient==2.68.0
 grpcio==1.80.0
 aiohttp==3.13.5
 geventhttpclient==2.3.9
