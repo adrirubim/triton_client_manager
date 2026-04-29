@@ -462,7 +462,7 @@ Guardrail runtime: en `TCM_ENV=staging|production` el servicio **rechaza** arran
 
 `infra/triton/docker-compose.yml` uses:
 
-- image: `nvcr.io/nvidia/tritonserver:26.03-py3`
+- image: `nvcr.io/nvidia/tritonserver:26.04-py3`
 - guardrails (reference):
   - `shm_size: "2gb"`
   - CPU/RAM caps (tune per environment)

@@ -1,6 +1,6 @@
 services:
   triton:
-    image: nvcr.io/nvidia/tritonserver:26.03-py3
+    image: nvcr.io/nvidia/tritonserver:26.04-py3
     container_name: tcm-triton-ephemeral
     restart: unless-stopped
     shm_size: "2gb"
@@ -11,6 +11,7 @@ services:
       --model-repository=/models
       --allow-http=true
       --allow-grpc=true
+      --allow-client-shm=true
       --model-control-mode=explicit
       --exit-on-error=false
       --strict-readiness=false

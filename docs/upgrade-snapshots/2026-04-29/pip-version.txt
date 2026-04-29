@@ -1,0 +1,1 @@
+pip 26.1 from /var/www/triton_client_manager/.venv/lib/python3.12/site-packages/pip (python 3.12)
